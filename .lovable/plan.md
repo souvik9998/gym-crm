@@ -1,112 +1,72 @@
-## Goal
+# QStash-Driven Expiry & Expired Reminders — Activation Plan
 
-Create a real "Expiring Soon" scenario in the dashboard and verify the new **QStash expiry reminders** pipeline actually sends a WhatsApp message — without waiting for the 9 AM IST cron to fire.
+## Current State (already built)
 
-Today is **2026-04-27**. Branch **"Hrit's Fitness - Main"** (`81785086-…`) has:
-- `whatsapp_enabled = true`
-- `expiring_2days = true`, `expiring_days_before = 2`
+Most of the infrastructure already exists and is correctly architected (QStash = trigger only, backend = all logic):
 
-Currently the `qstash_schedules` table is **empty** — no QStash schedules have ever been synced. We'll fix that as part of the test.
+- **`qstash-schedule-manager`** edge fn — admin/super-admin endpoint to upsert/delete/list/sync-tenant QStash schedules. Stable schedule ID per `(branch, kind)`.
+- **`qstash-expiry-reminders`** edge fn — webhook receiver. Validates Upstash-Signature, reads `gym_settings.whatsapp_auto_send` per branch, queries members, dedupes via `whatsapp_notifications`, sends via existing `sendWhatsAppForTenant` (Periskope/Zavu).
+- **`qstash_schedules`** table — tracks each branch's two schedules.
+- **`WhatsAppAutoSendSettings.tsx`** — toggling "Expiring Soon" or "Expired Reminder" already calls `qstash-schedule-manager?action=upsert|delete`.
+- **`QstashSchedulerStatus.tsx`** (Super Admin) — lists schedules per branch + "Re-sync all".
+- All QStash secrets (`QSTASH_TOKEN`, `QSTASH_CURRENT_SIGNING_KEY`, `QSTASH_NEXT_SIGNING_KEY`) are configured.
+- Daily run is idempotent: `qstash-expiry-reminders` checks `whatsapp_notifications` rows by `subscription_id + notification_type + status='sent'` to avoid duplicates.
 
----
+## Gaps to Close
 
-## Step 1 — Create the "Expiring Soon" test member
+1. **Zero schedules currently exist in `qstash_schedules`.** Toggles are ON for some branches but the QStash schedules were never created in Upstash. Needs a one-time bulk sync.
+2. **Cutover flag not set.** `daily-whatsapp-job` still runs the "expiring_2days" path itself unless `EXPIRY_REMINDERS_VIA_QSTASH=true`. With QStash now owning that category, we must set this secret so we don't double-send.
+3. **Manual "Run Now" button** in `ManualAutomationTriggers.tsx` only invokes `daily-whatsapp-job`. Once the cutover flag is set, that function will skip `expiring_soon`. The button should additionally fire the same code path QStash uses, so admins can manually test/replay both `expiring_soon` and `expired` for their branch.
+4. **No "Send Reminder" button visible** in the Settings WhatsApp section beyond `ManualAutomationTriggers`. The user said: "make sure to utilise the send reminder button in the settings to do this same action manually." This refers to that Run Now button — we'll re-label it and make it trigger the full QStash-equivalent flow.
 
-Pick the existing member **Sanjay** (`ec2f4d73-9cb5-4f04-95c2-99c8f131b68f`, phone `9735273407`, branch *Hrit's Fitness - Main*). His current subscription `cc68d69b-6039-49e9-815f-1e5298ee0516` ends on 2026-05-21.
+## Implementation Steps
 
-Shift his subscription so it ends **2026-04-29** (today + 2 days), which matches the branch's `expiring_days_before = 2` window:
+### Step 1 — Add `manual` mode to `qstash-expiry-reminders`
 
-```sql
-UPDATE public.subscriptions
-SET end_date   = '2026-04-29',
-    start_date = '2026-03-30',   -- keep duration sensible
-    status     = 'expiring_soon',
-    updated_at = NOW()
-WHERE id = 'cc68d69b-6039-49e9-815f-1e5298ee0516';
+Currently the function requires a valid Upstash-Signature unless `dryRun: true`. Add a third bypass: `manual: true` accompanied by a valid Supabase JWT belonging to a user who is super_admin OR tenant_admin for the branch's tenant. This lets the front-end call the same function directly.
 
-SELECT public.refresh_subscription_statuses();
-```
+- Parse `manual` from body.
+- When `manual === true`, skip signature check, instead call `auth.getUser()` on the bearer token + check `is_super_admin` OR `is_tenant_admin`.
+- Insert `is_manual: true` into `whatsapp_notifications` rows on this path.
 
-After this, **Admin → Dashboard** will show Sanjay under **Expiring Soon** (the 7-day badge logic in `MembersTable` and `get_dashboard_stats` will both pick him up).
+### Step 2 — Update the "Run Now" button
 
-> If you'd rather not touch a real member, I can instead insert a brand-new throwaway member (e.g. "QStash Test", phone `9999900001`) with a fresh subscription ending 2026-04-29. Tell me which you prefer.
+In `src/components/admin/ManualAutomationTriggers.tsx`:
 
----
+- Rename header → **"Send Reminders Now"** (clearer than "Manual Automation Triggers").
+- Description: "Manually trigger the same daily reminder pipeline (expiring soon + expired) for this branch."
+- The single "Run Now" button now fires THREE calls in sequence for the current branch:
+  1. `qstash-expiry-reminders` with `{ branchId, kind: "expiring_soon", manual: true }`
+  2. `qstash-expiry-reminders` with `{ branchId, kind: "expired", manual: true }`
+  3. `daily-whatsapp-job` with `{ manual: true, branchId }` — for the **expiring_today** path which still lives there (and any other non-expiry summary logic).
+- Aggregate the `attempted/sent/failed` counts and show them in the Recent Runs panel.
 
-## Step 2 — Sync QStash schedules for this tenant
+### Step 3 — Set cutover env var
 
-Right now `qstash_schedules` is empty. Two options:
+Add Supabase secret `EXPIRY_REMINDERS_VIA_QSTASH=true` so `daily-whatsapp-job` no longer sends `expiring_2days` (avoids duplicates with the QStash schedule). `expiring_today` and any other categories continue from `daily-whatsapp-job` since QStash only owns `expiring_soon` + `expired`.
 
-**A) From the UI (preferred — exercises the real path):**
-1. Log in as Super Admin → open **Tenants → Hrit's Fitness** → the **QStash Scheduler Status** card.
-2. Click **"Sync All Schedules"**. This invokes `qstash-schedule-manager?action=sync-tenant` and registers daily 9 AM IST schedules with Upstash for each branch + each enabled reminder kind.
-3. Verify rows appear in `qstash_schedules` and the card shows "ON" for **Expiring Soon** on Hrit's Fitness - Main.
+### Step 4 — One-time backfill of QStash schedules
 
-**B) Direct edge function call (faster, same result):** I'll invoke `qstash-schedule-manager?action=sync-tenant` with `{ "tenantId": "a05bf6ee-283c-4630-91eb-3800874becf3" }` using `supabase--curl_edge_functions` and confirm the schedules are persisted.
+Run a server-side script (via the existing `qstash-schedule-manager?action=sync-tenant`) for each tenant that has ≥1 branch with `whatsapp_enabled=true`. This creates the missing Upstash schedules and fills `qstash_schedules`. Done via `supabase--curl_edge_functions` after deployment.
 
-This is a one-time setup per tenant — once synced, Upstash will fire the webhook daily at 9 AM IST automatically.
+### Step 5 — Verify end-to-end
 
----
+1. Deploy the two edge functions.
+2. Curl `qstash-schedule-manager?action=sync-tenant` for the active tenant; assert `qstash_schedules` rows appear.
+3. Curl `qstash-expiry-reminders` with `manual: true, kind: "expiring_soon", branchId: <souvik's branch>` — should pick up Souvik Das (end_date 2026-04-29, default `expiring_days_before = 2`, today = 2026-04-28 → target = 2026-04-30; we'll temporarily test with `kind: "expiring_soon"` and check logs / `whatsapp_notifications` rows).
+4. Confirm a row in `whatsapp_notifications` is created and dedupe works on a second invocation.
+5. Click "Send Reminders Now" from the UI to confirm the same flow triggers via the front-end.
 
-## Step 3 — Trigger the reminder NOW (don't wait for 9 AM)
+## Technical Notes
 
-The webhook function `qstash-expiry-reminders` accepts `dryRun: true`, which **skips Upstash signature verification** but still runs the full reminder logic (query expiring subs, send WhatsApp via Periskope, log to `whatsapp_notifications`).
+- **No new tables or migrations needed** — `qstash_schedules` and `whatsapp_notifications` already exist.
+- **Idempotency**: `qstash-expiry-reminders` already checks prior `whatsapp_notifications` rows per `subscription_id + notification_type` before sending.
+- **Multi-tenant scaling**: each branch has its own pair of QStash schedules (`gymkloud-expiring_soon-<branchId>`, `gymkloud-expired-<branchId>`); Upstash dispatches them in parallel. Adding a new gym branch + toggling either reminder ON automatically registers its schedule via `WhatsAppAutoSendSettings.tsx`.
+- **Settings honored per branch**: `whatsapp_enabled`, `whatsapp_auto_send.expiring_2days`, `whatsapp_auto_send.expired_reminder`, `expiring_days_before`, `expired_days_after` are all read inside `qstash-expiry-reminders` at fire time.
+- **No new secrets** beyond setting `EXPIRY_REMINDERS_VIA_QSTASH=true`.
 
-Invoke it directly via `supabase--curl_edge_functions`:
+## Files Touched
 
-```
-POST /qstash-expiry-reminders
-{
-  "branchId": "81785086-36f2-4ed0-bf1d-a174089ac8d0",
-  "kind": "expiring_soon",
-  "dryRun": true
-}
-```
-
-Expected response shape:
-```json
-{
-  "success": true,
-  "branchId": "81785086-...",
-  "kind": "expiring_soon",
-  "attempts": 1,
-  "sent": 1,
-  "failed": 0,
-  "members": [{ "name": "Sanjay", "phone": "9735273407", "ok": true }]
-}
-```
-
----
-
-## Step 4 — Verify end-to-end
-
-1. **Database** — confirm a row landed in `whatsapp_notifications` for Sanjay with the right `notification_type` (e.g. `expiring_2days`) and `status = 'sent'`.
-2. **Edge function logs** — pull the last `qstash-expiry-reminders` invocation logs to see the per-member send result and the Periskope response.
-3. **WhatsApp** — Sanjay's phone (`9735273407`) should receive the templated "expiring soon" message.
-4. **Dashboard** — the **Expiring Soon** count should include Sanjay; clicking through, his row in **MembersTable** should show the orange "Expiring Soon" badge.
-5. **Idempotency** — re-run the same dryRun POST. The function dedupes against `whatsapp_notifications`, so attempts should still be 1 but `sent` should be 0 (already-notified path), proving we won't double-send when the real cron fires tomorrow.
-
----
-
-## (Optional) Step 5 — Roll back the test data
-
-If you want to put Sanjay back to his real end date after testing:
-```sql
-UPDATE public.subscriptions
-SET end_date = '2026-05-21', start_date = '2026-04-21', status = 'active', updated_at = NOW()
-WHERE id = 'cc68d69b-6039-49e9-815f-1e5298ee0516';
-SELECT public.refresh_subscription_statuses();
-```
-And delete the test notification row(s) from `whatsapp_notifications` if you don't want them in history.
-
----
-
-## Files / systems touched
-
-- **Data only:** `subscriptions` (1 row UPDATE), `whatsapp_notifications` (insert by edge fn), `qstash_schedules` (insert/upsert by sync).
-- **No code changes** — this plan only exercises the already-built `qstash-schedule-manager`, `qstash-expiry-reminders`, and Periskope-backed WhatsApp pipeline.
-
-## Open questions for you
-
-1. **Test target:** modify existing member **Sanjay** (quickest), or create a fresh throwaway "QStash Test" member?
-2. **Schedule sync:** do you want to click *Sync All Schedules* yourself in the Super Admin UI (Step 2A), or should I invoke the sync edge function for you (Step 2B)?
+- `supabase/functions/qstash-expiry-reminders/index.ts` — add manual JWT-auth bypass.
+- `src/components/admin/ManualAutomationTriggers.tsx` — rebrand to "Send Reminders Now"; trigger all three calls; aggregate counts.
+- (Operational) Add `EXPIRY_REMINDERS_VIA_QSTASH=true` secret + run sync-tenant backfill.

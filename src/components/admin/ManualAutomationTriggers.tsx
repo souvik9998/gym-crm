@@ -7,24 +7,27 @@ import { toast } from "@/components/ui/sonner";
 import { getEdgeFunctionUrl, getEdgeFunctionHeaders } from "@/lib/supabaseConfig";
 import { getAuthToken } from "@/api/authenticatedFetch";
 import { useBranch } from "@/contexts/BranchContext";
-import { BoltIcon } from "@heroicons/react/24/outline";
+import { BoltIcon, PaperAirplaneIcon } from "@heroicons/react/24/outline";
 
 type RunResult = {
   label: string;
   ok: boolean;
-  status: number;
-  body: any;
+  attempted: number;
+  sent: number;
+  failed: number;
+  skipped?: boolean;
+  error?: string;
   ranAt: string;
 };
 
 export function ManualAutomationTriggers() {
-  const [isRunningExpiry, setIsRunningExpiry] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
   const [results, setResults] = useState<RunResult[]>([]);
   const { currentBranch } = useBranch();
 
   const pushResult = (r: RunResult) => setResults((prev) => [r, ...prev].slice(0, 6));
 
-  const callEdge = async (fn: string, payload: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: any }> => {
+  const callEdge = async (fn: string, payload: Record<string, unknown>) => {
     const token = await getAuthToken();
     if (!token) throw new Error("Not authenticated");
     const res = await fetch(getEdgeFunctionUrl(fn), {
@@ -34,36 +37,72 @@ export function ManualAutomationTriggers() {
     });
     let body: any = null;
     const text = await res.text();
-    try {
-      body = JSON.parse(text);
-    } catch {
-      body = text;
-    }
+    try { body = JSON.parse(text); } catch { body = text; }
     return { ok: res.ok, status: res.status, body };
   };
 
-  const handleRunExpiryReminder = async () => {
+  const handleSendReminders = async () => {
     if (!currentBranch?.id) {
       toast.error("No branch selected");
       return;
     }
-    setIsRunningExpiry(true);
+    setIsRunning(true);
+    const ranAt = new Date().toISOString();
+
     try {
-      const result = await callEdge("daily-whatsapp-job", { manual: true, branchId: currentBranch.id });
-      pushResult({ label: `Expiry reminders (${currentBranch.name})`, ok: result.ok, status: result.status, body: result.body, ranAt: new Date().toISOString() });
-      if (!result.ok) {
-        toast.error("Expiry job failed", { description: result.body?.error || `HTTP ${result.status}` });
-      } else if (result.body?.skipped) {
-        toast.info("Already ran today");
+      // Fire all three reminder paths sequentially.
+      // 1+2: QStash-equivalent paths (expiring_soon + expired)
+      // 3: daily-whatsapp-job (expiring_today + admin summary)
+      const [expSoon, expired, today] = await Promise.all([
+        callEdge("qstash-expiry-reminders", {
+          branchId: currentBranch.id, kind: "expiring_soon", manual: true,
+        }),
+        callEdge("qstash-expiry-reminders", {
+          branchId: currentBranch.id, kind: "expired", manual: true,
+        }),
+        callEdge("daily-whatsapp-job", { manual: true, branchId: currentBranch.id }),
+      ]);
+
+      const calls = [
+        { label: "Expiring Soon", res: expSoon },
+        { label: "Expired", res: expired },
+        { label: "Expiring Today", res: today },
+      ];
+
+      let totalAttempted = 0, totalSent = 0, totalFailed = 0;
+      const errors: string[] = [];
+
+      for (const c of calls) {
+        const b: any = c.res.body || {};
+        const attempted = Number(b.attempted ?? b.notificationsSent ?? 0) + Number(b.failed ?? 0);
+        const sent = Number(b.sent ?? b.notificationsSent ?? 0);
+        const failed = Number(b.failed ?? 0);
+        const skipped = b.skipped === true || typeof b.skipped === "string";
+        totalAttempted += attempted;
+        totalSent += sent;
+        totalFailed += failed;
+        if (!c.res.ok) errors.push(`${c.label}: ${b.error || `HTTP ${c.res.status}`}`);
+        pushResult({
+          label: `${c.label} — ${currentBranch.name}`,
+          ok: c.res.ok, attempted, sent, failed, skipped,
+          error: c.res.ok ? undefined : (b.error || `HTTP ${c.res.status}`),
+          ranAt,
+        });
+      }
+
+      if (errors.length > 0) {
+        toast.error("Some reminders failed", { description: errors.join(" · ") });
+      } else if (totalSent === 0 && totalAttempted === 0) {
+        toast.info("No members matched the reminder criteria today");
       } else {
-        toast.success("Expiry reminders sent", {
-          description: `${result.body?.notificationsSent ?? 0} sent / ${result.body?.failed ?? 0} failed`,
+        toast.success(`Reminders sent: ${totalSent}`, {
+          description: totalFailed > 0 ? `${totalFailed} failed` : "All delivered",
         });
       }
     } catch (e: any) {
-      toast.error("Failed to run", { description: e.message });
+      toast.error("Failed to run", { description: e?.message || String(e) });
     } finally {
-      setIsRunningExpiry(false);
+      setIsRunning(false);
     }
   };
 
@@ -72,12 +111,12 @@ export function ManualAutomationTriggers() {
       <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
-            <BoltIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+            <PaperAirplaneIcon className="w-4 h-4 lg:w-5 lg:h-5" />
           </div>
           <div>
-            <CardTitle className="text-base lg:text-xl">Manual Automation Triggers</CardTitle>
+            <CardTitle className="text-base lg:text-xl">Send Reminders Now</CardTitle>
             <CardDescription className="text-xs lg:text-sm">
-              Test & manually trigger automation jobs for <strong>{currentBranch?.name || "current branch"}</strong>
+              Manually trigger the same daily reminder pipeline (expiring soon + today + expired) for <strong>{currentBranch?.name || "this branch"}</strong>
             </CardDescription>
           </div>
         </div>
@@ -87,68 +126,56 @@ export function ManualAutomationTriggers() {
           <div className="space-y-0.5 flex-1 mr-3">
             <p className="text-xs lg:text-sm font-medium flex items-center gap-2">
               <BoltIcon className="w-3.5 h-3.5 text-orange-500" />
-              Expiry Reminder Job (this branch)
+              Run reminder pipeline
             </p>
             <p className="text-[10px] lg:text-xs text-muted-foreground">
-              Sends expiring-soon / today / expired reminders for {currentBranch?.name || "this branch"}
+              Honors your WhatsApp auto-send settings. Duplicate-safe — members already reminded today will be skipped.
             </p>
           </div>
           <Button
             variant="outline"
             size="sm"
-            onClick={handleRunExpiryReminder}
-            disabled={isRunningExpiry}
+            onClick={handleSendReminders}
+            disabled={isRunning}
             className="h-8 lg:h-9 text-xs lg:text-sm rounded-lg active:scale-[0.97] transition-all"
           >
-            {isRunningExpiry ? <><ButtonSpinner /> Running...</> : "▶ Run Now"}
+            {isRunning ? <><ButtonSpinner /> Sending...</> : "▶ Send Reminders"}
           </Button>
         </div>
 
-        {/* Recent results panel — friendly summary only */}
         {results.length > 0 && (
           <div className="space-y-2 mt-2">
             <p className="text-xs font-medium text-muted-foreground">Recent Runs</p>
-            {results.map((r, i) => {
-              const b: any = (r.body && typeof r.body === "object") ? r.body : {};
-              const sent = b.notificationsSent ?? b.processed ?? (r.ok && b.test_mode ? 1 : 0);
-              const failed = b.failed ?? b.errors ?? 0;
-              const skipped = b.skipped === true;
-
-              return (
-                <div key={i} className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="text-xs font-medium truncate">{r.label}</p>
-                    <Badge
-                      variant={r.ok ? "default" : "destructive"}
-                      className={`text-[10px] ${r.ok ? (skipped ? "bg-muted text-muted-foreground" : "bg-emerald-600") : ""}`}
-                    >
-                      {!r.ok ? "Failed" : skipped ? "Already ran today" : "Success"}
-                    </Badge>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
-                  {r.ok ? (
-                    !skipped && (
-                      <div className="flex flex-wrap gap-1.5 pt-0.5">
-                        <Badge variant="secondary" className="text-[10px]">Sent: {sent}</Badge>
-                        {failed > 0 && (
-                          <Badge variant="destructive" className="text-[10px]">Failed: {failed}</Badge>
-                        )}
-                        {typeof b.branchesProcessed === "number" && (
-                          <Badge variant="secondary" className="text-[10px]">Branches: {b.branchesProcessed}</Badge>
-                        )}
-                      </div>
-                    )
-                  ) : (
-                    <p className="text-[10px] text-destructive">{b.error || `Request failed (${r.status})`}</p>
-                  )}
+            {results.map((r, i) => (
+              <div key={i} className="p-3 bg-muted/30 border border-border/40 rounded-lg space-y-1.5 animate-fade-in">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs font-medium truncate">{r.label}</p>
+                  <Badge
+                    variant={r.ok ? "default" : "destructive"}
+                    className={`text-[10px] ${r.ok ? (r.skipped ? "bg-muted text-muted-foreground" : "bg-emerald-600") : ""}`}
+                  >
+                    {!r.ok ? "Failed" : r.skipped ? "Skipped" : "Success"}
+                  </Badge>
                 </div>
-              );
-            })}
+                <p className="text-[10px] text-muted-foreground">{new Date(r.ranAt).toLocaleString()}</p>
+                {r.ok ? (
+                  !r.skipped && (
+                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                      <Badge variant="secondary" className="text-[10px]">Sent: {r.sent}</Badge>
+                      {r.failed > 0 && <Badge variant="destructive" className="text-[10px]">Failed: {r.failed}</Badge>}
+                      {r.attempted === 0 && <Badge variant="secondary" className="text-[10px]">No matches</Badge>}
+                    </div>
+                  )
+                ) : (
+                  <p className="text-[10px] text-destructive">{r.error}</p>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
         <p className="text-[10px] text-muted-foreground italic">
-          💡 The cron pipeline runs automatically every day at 9:00 AM IST. Use these triggers for testing & ad-hoc runs.
+          💡 Reminders run automatically every day at 9:00 AM IST via Upstash QStash. Use this button to test or replay manually.
         </p>
       </CardContent>
     </Card>

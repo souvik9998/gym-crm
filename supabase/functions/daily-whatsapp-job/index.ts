@@ -316,9 +316,12 @@ Deno.serve(async (req) => {
         },
       });
 
-      // --- EXPIRING SOON --- (sent ONCE per subscription cycle)
-      // Skipped here when QStash owns this category (cutover flag).
-      const qstashOwnsExpiry = Deno.env.get("EXPIRY_REMINDERS_VIA_QSTASH") === "true";
+      // --- EXPIRING SOON ---
+      // Now owned by `qstash-expiry-reminders` (Upstash QStash schedules).
+      // Kept here only for the manual "Send Reminders Now" button, which calls
+      // qstash-expiry-reminders separately for this category — so we always skip it
+      // in this function to avoid double-sends.
+      const qstashOwnsExpiry = true;
       if (!qstashOwnsExpiry && prefs.expiring_2days !== false) {
         const daysBefore = prefs.expiring_days_before ?? 2;
         const targetDate = new Date(today);
