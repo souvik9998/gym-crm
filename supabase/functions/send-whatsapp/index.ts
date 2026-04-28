@@ -65,6 +65,7 @@ Deno.serve(async (req) => {
       name,
       endDate,
       staffCredentials,
+      eventDetails,
     } = validation.data!;
 
     // Resolve branch name: use provided name, or look up from DB
@@ -512,6 +513,9 @@ Deno.serve(async (req) => {
         case "payment_details": return "payment_details";
         case "admin_add_member": return "admin_add_member";
         case "staff_credentials": return "staff_credentials";
+        case "event_registration":
+        case "event_confirmation":
+          return "event_confirmation";
         case "promotional":
         case "custom":
         case "manual":
@@ -627,7 +631,18 @@ Deno.serve(async (req) => {
       }
 
       const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
-      const variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      let variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
+      if ((type === "event_registration" || type === "event_confirmation") && eventDetails) {
+        variables = {
+          name,
+          event_title: eventDetails.title,
+          event_date: eventDetails.date,
+          event_time: eventDetails.time,
+          venue: eventDetails.venue,
+          amount: String(eventDetails.amount),
+          branch_name: branchName || "",
+        };
+      }
       const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
 
       await logWhatsAppMessage({

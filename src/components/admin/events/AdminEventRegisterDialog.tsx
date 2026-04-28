@@ -494,15 +494,25 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       if (notifyMember) {
         try {
           const customMessage = buildRegistrationWhatsAppMessage(effectivePaymentStatus, amountToPay);
+          const eventDateObj = new Date(event.event_date);
+          const dateStr = eventDateObj.toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" });
+          const timeStr = eventDateObj.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
           const { error: whatsappError } = await supabase.functions.invoke("send-whatsapp", {
             body: {
-              type: "custom",
+              type: "event_registration",
               isManual: true,
               branchId: event.branch_id,
               phone,
               name: name.trim(),
               memberIds: foundMember?.id ? [foundMember.id] : undefined,
               customMessage,
+              eventDetails: {
+                title: event.title,
+                date: dateStr,
+                time: timeStr,
+                venue: event.location || "TBA",
+                amount: amountToPay,
+              },
             },
           });
 
