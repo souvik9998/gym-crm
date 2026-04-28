@@ -270,6 +270,12 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
                     <div className="flex items-center gap-2 flex-wrap">
                       <BuildingStorefrontIcon className="w-4 h-4 text-muted-foreground shrink-0" />
                       <p className="text-sm font-medium truncate">{branch.name}</p>
+                      {settings?.reminder_time && (
+                        <Badge variant="outline" className="text-[10px] gap-1 font-mono">
+                          <ClockIcon className="w-3 h-3" />
+                          {(settings.reminder_time as string).slice(0, 5)} IST
+                        </Badge>
+                      )}
                       {!waEnabled && (
                         <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700 dark:text-amber-300">
                           WhatsApp OFF
