@@ -336,7 +336,7 @@ Deno.serve(async (req) => {
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", targetStr)
           .eq("members.branch_id", branchId)
-          .in("status", ["active", "expiring_soon", "expiring_today"]);
+          .in("status", ["active", "expiring_soon"]);
 
         // Dedup: skip subscriptions that already received an expiring_2days reminder
         const candidateSubIds = (expiringSubsRaw || []).map((s: any) => s.id).filter(Boolean);
@@ -420,7 +420,7 @@ Deno.serve(async (req) => {
           .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
           .eq("end_date", todayStr)
           .eq("members.branch_id", branchId)
-          .in("status", ["active", "expiring_soon", "expiring_today"]);
+          .in("status", ["active", "expiring_soon"]);
 
         // Deduplicate: skip subscriptions already reminded today for "expiring_today".
         const candidateSubIds = (expiringTodaySubsRaw || []).map((s: any) => s.id).filter(Boolean);

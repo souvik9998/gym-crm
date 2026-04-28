@@ -224,7 +224,7 @@ export function useAdminNotifications() {
           .from("subscriptions")
           .select("id, end_date, status, member_id, members!inner(id, name, phone, branch_id)")
           .eq("members.branch_id", currentBranch.id)
-          .in("status", ["active", "expiring_soon", "expiring_today"]);
+          .in("status", ["active", "expiring_soon"]);
 
         const dateFilters = [
           expiringSoonEnabled ? `end_date.eq.${targetSoonDate}` : null,

@@ -256,7 +256,7 @@ export const TimeSlotDetailDialog = ({
         .from("subscriptions")
         .select("member_id, end_date")
         .in("member_id", memberIds.length > 0 ? memberIds : ["__none__"])
-        .in("status", ["active", "expiring_soon", "expiring_today"])
+        .in("status", ["active", "expiring_soon"])
         .gte("end_date", today)
         .order("end_date", { ascending: false }),
     ]);
@@ -440,7 +440,7 @@ export const TimeSlotDetailDialog = ({
         .from("subscriptions")
         .select("end_date")
         .eq("member_id", transferConfirm.memberId)
-        .in("status", ["active", "expiring_soon", "expiring_today"])
+        .in("status", ["active", "expiring_soon"])
         .order("end_date", { ascending: false })
         .limit(1)
         .maybeSingle();

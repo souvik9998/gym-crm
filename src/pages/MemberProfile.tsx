@@ -113,8 +113,6 @@ const MemberProfile = () => {
     switch (status) {
       case "active":
         return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
-      case "expiring_today":
-        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20 dark:text-orange-400 animate-pulse-subtle">Expiring Today</Badge>;
       case "expiring_soon":
         return <Badge className="bg-warning/10 text-warning border-warning/20">Expiring Soon</Badge>;
       case "expired":
@@ -144,7 +142,7 @@ const MemberProfile = () => {
   };
 
   const currentSubscription = subscriptions.find(
-    (s) => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today"
+    (s) => s.status === "active" || s.status === "expiring_soon"
   );
 
   if (!member) return null;

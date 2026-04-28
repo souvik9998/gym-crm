@@ -828,7 +828,7 @@ Deno.serve(async (req) => {
       
       // Get active or most recent subscription
       const activeSubscription = member.subscriptions?.find(
-        (s: any) => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today"
+        (s: any) => s.status === "active" || s.status === "expiring_soon"
       ) || member.subscriptions?.[0];
       
       const memberEndDate = activeSubscription?.end_date || new Date().toISOString().split("T")[0];

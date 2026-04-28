@@ -85,7 +85,7 @@ const ShareCalendarDialog = ({ open, onOpenChange, shareUrl }: ShareCalendarDial
         const rows: MemberRow[] = data.map((m: any) => {
           const subs = m.subscriptions || [];
           const isActive = subs.some(
-            (s: any) => s.status === "active" || s.status === "expiring_soon" || s.status === "expiring_today"
+            (s: any) => s.status === "active" || s.status === "expiring_soon"
           );
           return {
             id: m.id,

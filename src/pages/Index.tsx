@@ -127,7 +127,7 @@ const Index = () => {
 
             const subscription = subscriptionData?.[0];
             const isValidForPT =
-              subscription && (subscription.status === "active" || subscription.status === "expiring_soon" || subscription.status === "expiring_today");
+              subscription && (subscription.status === "active" || subscription.status === "expiring_soon");
             setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
             setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
             setExistingMember(member);
@@ -180,7 +180,7 @@ const Index = () => {
 
         const subscription = subscriptionData?.[0];
         const isValidForPT =
-          subscription && (subscription.status === "active" || subscription.status === "expiring_soon" || subscription.status === "expiring_today");
+          subscription && (subscription.status === "active" || subscription.status === "expiring_soon");
         setMembershipEndDate(isValidForPT ? subscription?.end_date : null);
         setMembershipStartDate(isValidForPT ? subscription?.start_date : null);
 

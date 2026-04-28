@@ -171,10 +171,6 @@ export default {
   			'refresh-sweep': {
   				'0%': { transform: 'translateX(-100%)' },
   				'100%': { transform: 'translateX(400%)' }
-  			},
-  			'pulse-subtle': {
-  				'0%, 100%': { opacity: '1' },
-  				'50%': { opacity: '0.75' }
   			}
   		},
   		animation: {
@@ -182,8 +178,7 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
-  			shimmer: 'shimmer 3s ease-in-out infinite',
-  			'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite'
+  			shimmer: 'shimmer 3s ease-in-out infinite'
   		}
   	}
   },

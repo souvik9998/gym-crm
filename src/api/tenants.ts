@@ -406,7 +406,7 @@ export async function fetchFilteredPlatformStats(tenantId?: string, branchId?: s
   let activeSubsQuery = supabase
     .from("subscriptions")
     .select("member_id")
-    .in("status", ["active", "expiring_soon", "expiring_today"]);
+    .in("status", ["active", "expiring_soon"]);
   if (branchIds.length > 0) {
     activeSubsQuery = activeSubsQuery.in("branch_id", branchIds);
   }
