@@ -197,13 +197,17 @@ Deno.serve(async (req) => {
   // EXPIRING SOON
   // ----------------------------------------------------------------------------
   if (kind === "expiring_soon") {
-    if (prefs.expiring_2days === false) {
+    const soonEnabled = prefs.expiring_2days !== false;
+    const todayEnabled = prefs.expiring_today !== false;
+    if (!soonEnabled && !todayEnabled) {
       log("expiring-soon-toggle-off", { branchId });
       return new Response(JSON.stringify({ success: true, skipped: "toggle-off", attempted, sent, failed }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+  if (soonEnabled) {
 
     const daysBefore =
       typeof prefs.expiring_days_before === "number" ? (prefs.expiring_days_before as number) : 2;
