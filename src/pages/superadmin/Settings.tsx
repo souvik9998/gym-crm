@@ -11,6 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import { toast } from "sonner";
+import { PlatformQstashOverview } from "@/components/superadmin/PlatformQstashOverview";
 
 interface PlatformSettings {
   id: string;
@@ -134,7 +135,7 @@ export default function SuperAdminSettings() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-5xl">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Platform Settings</h1>
         <p className="text-sm text-muted-foreground">
@@ -305,6 +306,8 @@ export default function SuperAdminSettings() {
           {isSaving ? "Saving..." : "Save Settings"}
         </Button>
       </div>
+
+      <PlatformQstashOverview />
     </div>
   );
 }
