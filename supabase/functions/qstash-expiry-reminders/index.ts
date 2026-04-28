@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
         notification_type: "expiring_2days",
         status: result.success ? "sent" : "failed",
         error_message: result.success ? null : result.error,
-        is_manual: false,
+        is_manual: parsed.manual === true,
         branch_id: branchId,
       });
 
@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
         notification_type: "expired_reminder",
         status: result.success ? "sent" : "failed",
         error_message: result.success ? null : result.error,
-        is_manual: false,
+        is_manual: parsed.manual === true,
         branch_id: branchId,
       });
 
