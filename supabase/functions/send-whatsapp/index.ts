@@ -506,8 +506,10 @@ Deno.serve(async (req) => {
         case "renewal": return "renewal";
         case "daily_pass": return "daily_pass";
         case "pt_extension": return "pt_extension";
-        case "expiring_2days": return "expiring_2days";
-        case "expiring_today": return "expiring_today";
+        // Auto-trigger reminders reuse the approved manual expiry-reminder template
+        // (gk_expired_membership_reminder) to avoid template-approval issues.
+        case "expiring_2days":
+        case "expiring_today":
         case "expired_reminder":
         case "expiry_reminder":
           return "expired_reminder";
