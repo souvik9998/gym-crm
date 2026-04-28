@@ -515,6 +515,7 @@ Deno.serve(async (req) => {
     const finishedAt = new Date();
     const durationMs = finishedAt.getTime() - runStartedAt.getTime();
     const expiringSoonCount = memberLogs.filter((m) => m.type === "expiring_2days").length;
+    const expiringTodayCount = memberLogs.filter((m) => m.type === "expiring_today").length;
     const expiredCount = memberLogs.filter((m) => m.type === "expired_reminder").length;
 
     await supabase.from("whatsapp_scheduler_runs").insert({
@@ -530,7 +531,7 @@ Deno.serve(async (req) => {
       total_sent: sent,
       total_failed: failed,
       expiring_soon_count: expiringSoonCount,
-      expiring_today_count: 0,
+      expiring_today_count: expiringTodayCount,
       expired_count: expiredCount,
       recipients: memberLogs,
       metadata: { kind, gymName, dryRun: !!parsed.dryRun },
