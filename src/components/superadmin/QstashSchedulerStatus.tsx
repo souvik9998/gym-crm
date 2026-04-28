@@ -181,20 +181,61 @@ export const QstashSchedulerStatus = ({ tenantId, branches }: QstashSchedulerSta
           <CardDescription className="mt-1.5 space-y-1">
             <span className="block">
               Each branch gets its own pair of QStash schedules — one for <strong>Expiring Soon</strong> and one for{" "}
-              <strong>Expired</strong> reminders. Both fire daily at <strong>09:00 IST</strong> and respect that branch's
-              individual WhatsApp settings (toggles, days-before, days-after).
+              <strong>Expired</strong> reminders. The exact send time is controlled by each branch's
+              <strong> Daily Reminder Time</strong> in their WhatsApp settings (defaults to 09:00 IST).
             </span>
             <span className="block text-xs">
               {branchesWithSchedules} of {branches.length} branches active · {totalSchedules} schedules registered
             </span>
           </CardDescription>
         </div>
-        <Button onClick={handleSyncTenant} disabled={syncing || branches.length === 0} variant="outline" size="sm">
+        <Button onClick={handleSyncTenant} disabled={syncing || branches.length === 0 || !schedulerEnabled} variant="outline" size="sm">
           <ArrowPathIcon className={`w-4 h-4 mr-2 ${syncing ? "animate-spin" : ""}`} />
           {syncing ? "Syncing..." : "Re-sync tenant"}
         </Button>
       </CardHeader>
       <CardContent>
+        {/* Tenant-wide kill switch */}
+        <div
+          className={`mb-4 p-3 lg:p-4 rounded-lg border transition-all ${
+            schedulerEnabled
+              ? "border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/10"
+              : "border-amber-500/40 bg-amber-50/50 dark:bg-amber-950/10"
+          }`}
+        >
+          <div className="flex items-start justify-between gap-3 flex-wrap">
+            <div className="flex items-start gap-2 flex-1 min-w-0">
+              <PowerIcon
+                className={`w-5 h-5 mt-0.5 shrink-0 ${
+                  schedulerEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"
+                }`}
+              />
+              <div className="space-y-0.5 min-w-0">
+                <p className="text-sm font-semibold">Automated WhatsApp Reminders</p>
+                <p className="text-[11px] lg:text-xs text-muted-foreground">
+                  {schedulerEnabled
+                    ? "Daily QStash schedules will run for every branch in this tenant that has WhatsApp + reminder toggles enabled."
+                    : "All QStash schedules for this tenant are paused. Members will not receive any automated expiry reminders until you turn this back on."}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Badge
+                variant={schedulerEnabled ? "default" : "secondary"}
+                className={`text-[10px] ${schedulerEnabled ? "bg-emerald-600 hover:bg-emerald-600" : ""}`}
+              >
+                {schedulerEnabled ? "ON" : "OFF"}
+              </Badge>
+              <Switch
+                checked={schedulerEnabled}
+                disabled={togglingScheduler}
+                onCheckedChange={handleToggleScheduler}
+                aria-label="Toggle automated WhatsApp scheduler"
+              />
+            </div>
+          </div>
+        </div>
+
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : branches.length === 0 ? (
