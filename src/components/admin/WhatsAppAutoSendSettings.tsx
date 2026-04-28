@@ -283,16 +283,21 @@ export const WhatsAppAutoSendSettings = ({ whatsappEnabled = true }: WhatsAppAut
                       <SelectContent>
                         {PRESET_DAYS.map((d) => (
                           <SelectItem key={d} value={String(d)}>
-                            {d} {d === 1 ? "day" : "days"}
+                            {d === 0 ? "Same day" : `${d} ${d === 1 ? "day" : "days"}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                     <span className="text-[11px] lg:text-xs text-muted-foreground">
                       {type.hasDaySelector === "before"
-                        ? `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} before the membership expires`
-                        : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} after the membership expires`}
+                        ? dayValue === 0
+                          ? "→ Sent on the day membership expires (Expiring Today template)"
+                          : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} before the membership expires`
+                        : dayValue === 0
+                          ? "→ Sent on the day membership expires"
+                          : `→ Sent ${dayValue} day${dayValue > 1 ? "s" : ""} after the membership expires`}
                     </span>
+
                   </div>
                   <p className="text-[10px] lg:text-[11px] text-muted-foreground mt-2 italic">
                     ✓ Each member receives this reminder only once per membership cycle.
