@@ -153,9 +153,8 @@ export interface UpsertScheduleArgs {
 
 export async function upsertQstashSchedule(args: UpsertScheduleArgs): Promise<string> {
   // Endpoint: POST /v2/schedules/{destination}
-  // The destination is URL-encoded into the path.
-  const destEncoded = encodeURIComponent(args.destinationUrl);
-  const res = await fetch(`${QSTASH_BASE}/schedules/${destEncoded}`, {
+  // Per Upstash docs, the destination URL is appended to the path as-is (NOT URL-encoded).
+  const res = await fetch(`${QSTASH_BASE}/schedules/${args.destinationUrl}`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${args.qstashToken}`,
