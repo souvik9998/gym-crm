@@ -25,6 +25,8 @@ interface WebhookBody {
   kind: "expiring_soon" | "expired";
   /** Optional: sent during dry-run testing from the schedule manager. */
   dryRun?: boolean;
+  /** Optional: manual admin/super-admin invocation (bypass Upstash signature, use JWT). */
+  manual?: boolean;
 }
 
 const formatPhone = (phoneNum: string): string => {
@@ -69,7 +71,49 @@ Deno.serve(async (req) => {
     });
   }
 
-  if (!parsed.dryRun) {
+  // Auth strategy:
+  //   1. dryRun=true        → no auth (used by internal sync test paths)
+  //   2. manual=true        → require valid Supabase JWT for super_admin or tenant_admin
+  //   3. otherwise (QStash) → verify Upstash-Signature
+  const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+
+  if (parsed.manual === true) {
+    const authHeader = req.headers.get("authorization") || "";
+    const accessToken = authHeader.replace(/^Bearer\s+/i, "");
+    if (!accessToken || !SUPABASE_ANON_KEY) {
+      return new Response(JSON.stringify({ error: "unauthenticated" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: authHeader } },
+    });
+    const { data: userData, error: userErr } = await userClient.auth.getUser(accessToken);
+    if (userErr || !userData.user) {
+      return new Response(JSON.stringify({ error: "invalid-token" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const adminClient = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const { data: isSuper } = await adminClient.rpc("is_super_admin", { _user_id: userData.user.id });
+    let allowed = isSuper === true;
+    if (!allowed && parsed.branchId) {
+      const { data: tenantId } = await adminClient.rpc("get_tenant_from_branch", { _branch_id: parsed.branchId });
+      if (tenantId) {
+        const { data: isTenantAdmin } = await adminClient.rpc("is_tenant_admin", {
+          _user_id: userData.user.id, _tenant_id: tenantId,
+        });
+        allowed = isTenantAdmin === true;
+      }
+    }
+    if (!allowed) {
+      log("manual-forbidden", { userId: userData.user.id, branchId: parsed.branchId });
+      return new Response(JSON.stringify({ error: "forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    log("manual-authorized", { userId: userData.user.id, branchId: parsed.branchId });
+  } else if (!parsed.dryRun) {
     if (!CURRENT_KEY) {
       log("missing-signing-key");
       return new Response(JSON.stringify({ error: "server-misconfigured" }), {
