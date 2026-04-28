@@ -20,7 +20,7 @@ interface MessageTypeConfig {
   hasDaySelector?: "before" | "after";
 }
 
-const PRESET_DAYS = [1, 2, 3, 5, 7, 10, 15];
+const PRESET_DAYS = [0, 1, 2, 3, 5, 7, 10, 15];
 
 const MESSAGE_TYPES: MessageTypeConfig[] = [
   { key: "new_registration", label: "New Member Registration", description: "Send welcome message after a new member registers" },
