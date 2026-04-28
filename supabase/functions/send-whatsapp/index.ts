@@ -480,6 +480,7 @@ Deno.serve(async (req) => {
       const vars: Record<string, string> = {
         name: memberName,
         expiry_date: formattedDate,
+        days: String(Math.max(0, diffDays)),
         days_expired: String(Math.abs(Math.min(0, diffDays))),
         branch_name: actualBranchName || "Your Gym",
       };
