@@ -498,6 +498,8 @@ Deno.serve(async (req) => {
 
     // Map the legacy `type` string used by callers to a MessageCategory.
     // Unknown / custom / promotional fall back to "promotional".
+    // IMPORTANT: each reminder variant must use its own approved template so
+    // members get the correct copy (expiring soon vs today vs already expired).
     const categoryFor = (t: string): MessageCategory => {
       switch (t) {
         case "new_registration":
@@ -506,12 +508,12 @@ Deno.serve(async (req) => {
         case "renewal": return "renewal";
         case "daily_pass": return "daily_pass";
         case "pt_extension": return "pt_extension";
-        // Auto-trigger reminders reuse the approved manual expiry-reminder template
-        // (gk_expired_membership_reminder) to avoid template-approval issues.
         case "expiring_2days":
-        case "expiring_today":
-        case "expired_reminder":
         case "expiry_reminder":
+          return "expiring_2days";
+        case "expiring_today":
+          return "expiring_today";
+        case "expired_reminder":
           return "expired_reminder";
         case "payment_details": return "payment_details";
         case "admin_add_member": return "admin_add_member";
@@ -527,8 +529,24 @@ Deno.serve(async (req) => {
       }
     };
 
+    // When a manual "Send Expiry Reminder" comes in as the generic
+    // "expiry_reminder" type, pick the right per-member variant based on
+    // the member's actual subscription end date so the correct WhatsApp
+    // template is used (expiring_today / expiring_2days / expired_reminder).
+    const resolveReminderType = (requested: string, endDate: string): string => {
+      if (requested !== "expiry_reminder") return requested;
+      if (!endDate) return "expiring_2days";
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const end = new Date(endDate);
+      end.setHours(0, 0, 0, 0);
+      const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (diff < 0) return "expired_reminder";
+      if (diff === 0) return "expiring_today";
+      return "expiring_2days";
+    };
 
-    // STAFF CREDENTIALS SEND
+
     if (type === "staff_credentials" && staffCredentials) {
       const { staffName, staffPhone, password, role, branches } = staffCredentials;
       const formattedPhone = formatPhone(staffPhone);
@@ -633,7 +651,9 @@ Deno.serve(async (req) => {
         }
       }
 
-      const message = generateMessage(name, memberEndDate, type, paymentInfo, null, branchName);
+      // Pick correct reminder template variant based on actual expiry
+      const effectiveType = resolveReminderType(type, memberEndDate);
+      const message = generateMessage(name, memberEndDate, effectiveType, paymentInfo, null, branchName);
       let variables = buildMemberVariables(name, memberEndDate, branchName, paymentInfo);
       if ((type === "event_registration" || type === "event_confirmation") && eventDetails) {
         variables = {
@@ -646,14 +666,14 @@ Deno.serve(async (req) => {
           branch_name: branchName || "",
         };
       }
-      const result = await sendMessage(formattedPhone, message, categoryFor(type), variables, branchId || null);
+      const result = await sendMessage(formattedPhone, message, categoryFor(effectiveType), variables, branchId || null);
 
       await logWhatsAppMessage({
         member_id: directMemberId,
         daily_pass_user_id: directDailyPassUserId,
         recipient_phone: phone,
         recipient_name: name,
-        notification_type: type,
+        notification_type: effectiveType,
         message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
@@ -814,13 +834,18 @@ Deno.serve(async (req) => {
       const memberEndDate = activeSubscription?.end_date || new Date().toISOString().split("T")[0];
       const paymentInfo = paymentsMap[member.id] || null;
       const memberBranchName = (member.branches as any)?.name;
-      
-      const message = generateMessage(member.name, memberEndDate, type, paymentInfo, memberBranchName, branchName);
+
+      // Resolve generic "expiry_reminder" to per-member variant so the
+      // correct WhatsApp template is selected for each recipient
+      // (expiring_today vs expiring_2days vs expired_reminder).
+      const effectiveType = resolveReminderType(type, memberEndDate);
+
+      const message = generateMessage(member.name, memberEndDate, effectiveType, paymentInfo, memberBranchName, branchName);
       const variables = buildMemberVariables(member.name, memberEndDate, memberBranchName || branchName, paymentInfo);
       const result = await sendMessage(
         formattedPhone,
         message,
-        categoryFor(type),
+        categoryFor(effectiveType),
         variables,
         member.branch_id || branchId || null,
       );
@@ -829,7 +854,7 @@ Deno.serve(async (req) => {
         member_id: member.id,
         recipient_phone: member.phone,
         recipient_name: member.name,
-        notification_type: type,
+        notification_type: effectiveType,
         message_content: message,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
