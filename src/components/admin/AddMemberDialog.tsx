@@ -1141,11 +1141,10 @@ export const AddMemberDialog = ({
       gymStartDate.setHours(0, 0, 0, 0);
 
       if ((selectedAction === "renew_gym" || selectedAction === "renew_gym_pt") && gymStartDate < minAllowedStartDate) {
-        toast.error("Renewal start date is invalid", {
-          description: `The next membership must start on ${format(minAllowedStartDate, "d MMM yyyy")} or later.`,
-        });
         setStartDate(minAllowedStartDate);
-        return;
+        const e: any = new Error(`Start date must be on or after ${format(minAllowedStartDate, "d MMM yyyy")}.`);
+        e.friendly = true;
+        throw e;
       }
 
       // Renew Gym Membership
