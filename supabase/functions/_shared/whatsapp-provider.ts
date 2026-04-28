@@ -229,23 +229,33 @@ async function sendViaPeriskope(
 async function fetchZavuMessageStatus(
   apiKey: string,
   messageId: string,
-): Promise<{ status?: string; errorCode?: string; errorMessage?: string } | null> {
+): Promise<{ status?: string; errorCode?: string; errorMessage?: string; raw?: string } | null> {
   try {
     const res = await fetch(`https://api.zavu.dev/v1/messages/${encodeURIComponent(messageId)}`, {
       method: "GET",
       headers: { Authorization: `Bearer ${apiKey}` },
     });
-    if (!res.ok) return null;
-    const body = await res.json().catch(() => null) as { message?: Record<string, unknown> } | null;
+    const rawText = await res.text().catch(() => "");
+    if (!res.ok) return { raw: `HTTP ${res.status} - ${rawText.substring(0, 300)}` };
+    let body: { message?: Record<string, unknown> } | null = null;
+    try { body = JSON.parse(rawText); } catch { /* noop */ }
     const m = body?.message as Record<string, unknown> | undefined;
-    if (!m) return null;
+    if (!m) return { raw: rawText.substring(0, 300) };
+    // Zavu sometimes nests error info under `error` or `failureReason`.
+    const errObj = (m.error ?? m.failure ?? null) as Record<string, unknown> | null;
     return {
       status: typeof m.status === "string" ? m.status : undefined,
-      errorCode: typeof m.errorCode === "string" ? m.errorCode : undefined,
-      errorMessage: typeof m.errorMessage === "string" ? m.errorMessage : undefined,
+      errorCode: typeof m.errorCode === "string"
+        ? m.errorCode
+        : (errObj && typeof errObj.code === "string" ? errObj.code : undefined),
+      errorMessage: typeof m.errorMessage === "string"
+        ? m.errorMessage
+        : (typeof m.failureReason === "string" ? m.failureReason
+          : (errObj && typeof errObj.message === "string" ? errObj.message : undefined)),
+      raw: rawText.substring(0, 400),
     };
-  } catch {
-    return null;
+  } catch (e) {
+    return { raw: `fetch-error: ${(e as Error).message}` };
   }
 }
 
