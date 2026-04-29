@@ -7,6 +7,8 @@ import { SlotMembersTab } from "./timeslots/SlotMembersTab";
 import { TimeSlotAnalyticsTab } from "./timeslots/TimeSlotAnalyticsTab";
 import { TimeBucketsSettings } from "@/components/admin/TimeBucketsSettings";
 import { AdjustmentsHorizontalIcon, ChartBarIcon, ClockIcon, UserGroupIcon } from "@heroicons/react/24/outline";
+import { PageTour } from "@/components/guide/PageTour";
+import { TIMESLOTS_STEPS } from "@/components/guide/tourSteps";
 
 interface TimeSlotManagementProps {
   trainers: Staff[];
@@ -53,20 +55,20 @@ export const TimeSlotManagement = ({
   return (
     <div className="space-y-4">
       <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
-        <TabsList className="grid w-full max-w-2xl grid-cols-4">
-          <TabsTrigger value="slots" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+        <TabsList data-tour="timeslots-tabs" className="grid w-full max-w-2xl grid-cols-4">
+          <TabsTrigger value="slots" data-tour="timeslots-tab-slots" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <ClockIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Time Slots</span>
           </TabsTrigger>
-          <TabsTrigger value="members" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+          <TabsTrigger value="members" data-tour="timeslots-tab-members" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Slot Members</span>
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+          <TabsTrigger value="analytics" data-tour="timeslots-tab-analytics" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Analytics</span>
           </TabsTrigger>
-          <TabsTrigger value="time-filters" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
+          <TabsTrigger value="time-filters" data-tour="timeslots-tab-filters" className="flex items-center gap-1 text-[10px] lg:text-sm px-1 lg:px-3">
             <AdjustmentsHorizontalIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
             <span>Time Filters</span>
           </TabsTrigger>
@@ -88,6 +90,7 @@ export const TimeSlotManagement = ({
           <TimeBucketsSettings />
         </TabsContent>
       </Tabs>
+      <PageTour tourId="timeslots" steps={TIMESLOTS_STEPS} autoStart={false} />
     </div>
   );
 };

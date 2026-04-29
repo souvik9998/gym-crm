@@ -11,6 +11,8 @@ import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
 import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
 import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
 import StaffActivityLogsTab from "@/components/admin/StaffActivityLogsTab";
+import { PageTour } from "@/components/guide/PageTour";
+import { LOGS_STEPS } from "@/components/guide/tourSteps";
 
 const Logs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -36,20 +38,20 @@ const Logs = () => {
   return (
     <div className="max-w-7xl mx-auto">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
-          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto">
-            <TabsTrigger value="activity" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsList data-tour="logs-tabs" className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto">
+            <TabsTrigger value="activity" data-tour="logs-tab-activity" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <ClipboardDocumentListIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               Admin
             </TabsTrigger>
-            <TabsTrigger value="user" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="user" data-tour="logs-tab-user" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               User
             </TabsTrigger>
-            <TabsTrigger value="staff" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="staff" data-tour="logs-tab-staff" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <UsersIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               Staff
             </TabsTrigger>
-            <TabsTrigger value="whatsapp" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="whatsapp" data-tour="logs-tab-whatsapp" className="gap-1 lg:gap-2 text-[11px] lg:text-sm py-1.5 lg:py-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
               WhatsApp
             </TabsTrigger>
@@ -71,6 +73,7 @@ const Logs = () => {
             <WhatsAppLogsTab refreshKey={refreshKey} />
           </TabsContent>
         </Tabs>
+        <PageTour tourId="logs" steps={LOGS_STEPS} autoStart={false} />
       </div>
   );
 };

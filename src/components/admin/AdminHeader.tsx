@@ -279,11 +279,11 @@ export const AdminHeader = ({
                 </>
               )}
 
-              {/* Guide — available to everyone */}
+              {/* Guide — available to everyone. Closes the dropdown and opens the Guide sheet. */}
               <DropdownMenuItem
-                onSelect={(e) => {
-                  e.preventDefault();
-                  setIsGuideOpen(true);
+                onSelect={() => {
+                  // Defer opening the sheet so the dropdown's close animation runs first.
+                  setTimeout(() => setIsGuideOpen(true), 50);
                 }}
                 className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground transition-colors"
               >

@@ -175,7 +175,7 @@ const CoachmarkBubble = ({ rect, side, title, description, stepLabel, onDismiss,
         role="dialog"
         aria-label={title}
         className={cn(
-          "fixed z-[61] w-[260px] rounded-2xl border border-border/60 bg-card shadow-2xl",
+          "fixed z-[61] w-[260px] rounded-xl border border-border/60 bg-card shadow-2xl",
           "p-3 animate-fade-in"
         )}
         style={{ top, left }}
