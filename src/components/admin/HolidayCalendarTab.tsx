@@ -580,10 +580,10 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[58px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[52px] sm:min-h-[68px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
