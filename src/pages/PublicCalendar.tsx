@@ -253,9 +253,9 @@ export default function PublicCalendar() {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
+            <div className="grid grid-cols-7 gap-1 sm:gap-1 lg:gap-1.5">
               {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-                <div key={`pad-${i}`} className="min-h-[68px] sm:min-h-[76px] lg:min-h-[100px]" />
+                <div key={`pad-${i}`} className="min-h-[44px] sm:min-h-[60px] lg:min-h-[100px]" />
               ))}
               {calendarDays.days.map((day, idx) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -265,13 +265,11 @@ export default function PublicCalendar() {
                 const isCurrent = isToday(day);
                 const isPast = isBefore(day, startOfDay(new Date())) && !isCurrent;
                 const isSunday = getDay(day) === 0;
+                const isSelected = selectedDate === dateStr;
+                const hasAnything = !!holiday || hasEvent;
 
-                // Cell wrapper: link if a single event, plain div otherwise
+                // Cell wrapper: link if a single event on desktop, button on mobile
                 const singleEvent = dayEvents.length === 1 ? dayEvents[0] : null;
-                const Wrapper: any = singleEvent ? "a" : "div";
-                const wrapperProps = singleEvent
-                  ? { href: eventLink(singleEvent), title: singleEvent.title }
-                  : {};
 
                 return (
                   <div
@@ -279,97 +277,125 @@ export default function PublicCalendar() {
                     className="relative group animate-fade-in"
                     style={{ animationDelay: `${Math.min(idx * 8, 240)}ms`, animationFillMode: "both" }}
                   >
-                    <Wrapper
-                      {...wrapperProps}
+                    {/* MOBILE / TABLET cell — compact, tap to select */}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(isSelected ? null : dateStr)}
                       className={cn(
-                        "block w-full min-h-[68px] sm:min-h-[76px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
-                        "border border-transparent transition-all duration-200 ease-out",
-                        (singleEvent || hasEvent) && "cursor-pointer lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10 active:scale-95",
-                        isPast && "opacity-50",
-                        // Normal day
-                        !holiday && !isCurrent && !hasEvent && "bg-muted/20",
-                        !holiday && !isCurrent && hasEvent && "bg-blue-500/8 lg:hover:bg-blue-500/12 lg:hover:border-blue-500/30",
-                        // Today
-                        isCurrent && !holiday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
+                        "lg:hidden block w-full min-h-[44px] sm:min-h-[60px] rounded-lg flex flex-col items-center justify-start p-1 sm:p-1.5 relative overflow-hidden",
+                        "border transition-all duration-200 ease-out active:scale-95",
+                        isPast && !isSelected && "opacity-60",
+                        // Default
+                        !holiday && !isCurrent && !hasEvent && "bg-muted/20 border-transparent",
+                        // Has event (no holiday)
+                        !holiday && !isCurrent && hasEvent && "bg-blue-500/10 border-blue-500/25",
                         // Holiday
-                        holiday && "bg-destructive/8 lg:hover:bg-destructive/14 border-destructive/20",
-                        // Sunday text
-                        isSunday && !holiday && "text-destructive/60",
+                        holiday && !isCurrent && "bg-destructive/10 border-destructive/25",
+                        // Today
+                        isCurrent && !holiday && "bg-primary/15 border-primary/40 ring-1 ring-primary/30",
+                        isCurrent && holiday && "border-primary/50 ring-1 ring-primary/40",
+                        // Selected
+                        isSelected && "ring-2 ring-primary border-primary scale-[1.04] shadow-md z-10",
+                        isSunday && !holiday && !hasEvent && "text-destructive/70",
                       )}
+                      aria-label={`${format(day, "EEEE, MMMM d")}${holiday ? ` — ${holiday.holiday_name}` : ""}${hasEvent ? ` — ${dayEvents.length} event${dayEvents.length > 1 ? "s" : ""}` : ""}`}
                     >
-                      {/* Date number row */}
-                      <div className="flex items-center justify-between leading-none">
-                        <span className={cn(
-                          "text-[11px] sm:text-xs lg:text-sm leading-none",
-                          isCurrent && !holiday && "text-primary font-bold",
-                          holiday && "text-destructive font-semibold",
-                          !holiday && !isCurrent && "font-medium",
-                        )}>
-                          {format(day, "d")}
-                        </span>
-                        {isCurrent && (
-                          <span className="hidden lg:inline-block text-[8px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-1 py-0.5 rounded leading-none">
-                            Today
-                          </span>
-                        )}
-                      </div>
+                      <span className={cn(
+                        "text-xs sm:text-sm leading-none mt-0.5",
+                        isCurrent && "text-primary font-bold",
+                        holiday && !isCurrent && "text-destructive font-semibold",
+                        !holiday && !isCurrent && "font-medium",
+                      )}>
+                        {format(day, "d")}
+                      </span>
 
-                      {/* Holiday label (desktop) */}
-                      {holiday && (
-                        <span className="hidden lg:block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
-                          {holiday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
-                        </span>
-                      )}
-                      {holiday && (
-                        <span className="hidden lg:block text-[9px] leading-tight px-1 line-clamp-1 text-destructive/80">
-                          {holiday.holiday_name}
-                        </span>
-                      )}
-
-                      {/* Mobile/tablet: in-cell name pills (no overlay tooltip) */}
-                      <div className="lg:hidden flex flex-col gap-0.5 mt-0.5 min-w-0">
-                        {holiday && (
-                          <span className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-destructive/15 text-destructive font-semibold truncate text-center">
-                            {holiday.holiday_name}
-                          </span>
-                        )}
-                        {hasEvent && dayEvents.slice(0, holiday ? 1 : 2).map((ev) => (
-                          <span
-                            key={ev.id}
-                            className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-medium truncate text-center"
-                          >
-                            {ev.title}
-                          </span>
-                        ))}
-                        {hasEvent && dayEvents.length > (holiday ? 1 : 2) && (
-                          <span className="text-[8px] leading-tight text-blue-600 dark:text-blue-400 font-semibold text-center">
-                            +{dayEvents.length - (holiday ? 1 : 2)}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Event pills (desktop) */}
-                      {hasEvent && (
-                        <div className="hidden lg:flex flex-col gap-0.5 mt-auto pt-1">
-                          {dayEvents.slice(0, 2).map((ev) => (
-                            <a
-                              key={ev.id}
-                              href={eventLink(ev)}
-                              onClick={(e) => e.stopPropagation()}
-                              className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
-                              title={ev.title}
-                            >
-                              {ev.title}
-                            </a>
+                      {/* Dot indicators row */}
+                      {hasAnything && (
+                        <div className="flex items-center gap-0.5 mt-auto mb-0.5">
+                          {holiday && (
+                            <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                          )}
+                          {hasEvent && dayEvents.slice(0, 3).map((ev, i) => (
+                            <span key={ev.id + i} className="w-1.5 h-1.5 rounded-full bg-blue-500" />
                           ))}
-                          {dayEvents.length > 2 && (
-                            <div className="text-[8px] text-blue-600 dark:text-blue-400 font-semibold px-1 leading-none">
-                              +{dayEvents.length - 2} more
-                            </div>
+                          {hasEvent && dayEvents.length > 3 && (
+                            <span className="text-[8px] text-blue-600 dark:text-blue-400 font-bold leading-none">+</span>
                           )}
                         </div>
                       )}
-                    </Wrapper>
+                    </button>
+
+                    {/* DESKTOP cell — unchanged */}
+                    {(() => {
+                      const Wrapper: any = singleEvent ? "a" : "div";
+                      const wrapperProps = singleEvent
+                        ? { href: eventLink(singleEvent), title: singleEvent.title }
+                        : {};
+                      return (
+                        <Wrapper
+                          {...wrapperProps}
+                          className={cn(
+                            "hidden lg:flex w-full min-h-[100px] rounded-xl flex-col items-stretch p-2 relative text-sm overflow-hidden",
+                            "border border-transparent transition-all duration-200 ease-out",
+                            (singleEvent || hasEvent) && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                            isPast && "opacity-50",
+                            !holiday && !isCurrent && !hasEvent && "bg-muted/20",
+                            !holiday && !isCurrent && hasEvent && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                            isCurrent && !holiday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
+                            holiday && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                            isSunday && !holiday && "text-destructive/60",
+                          )}
+                        >
+                          <div className="flex items-center justify-between leading-none">
+                            <span className={cn(
+                              "text-sm leading-none",
+                              isCurrent && !holiday && "text-primary font-bold",
+                              holiday && "text-destructive font-semibold",
+                              !holiday && !isCurrent && "font-medium",
+                            )}>
+                              {format(day, "d")}
+                            </span>
+                            {isCurrent && (
+                              <span className="inline-block text-[8px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-1 py-0.5 rounded leading-none">
+                                Today
+                              </span>
+                            )}
+                          </div>
+
+                          {holiday && (
+                            <span className="block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
+                              {holiday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
+                            </span>
+                          )}
+                          {holiday && (
+                            <span className="block text-[9px] leading-tight px-1 line-clamp-1 text-destructive/80">
+                              {holiday.holiday_name}
+                            </span>
+                          )}
+
+                          {hasEvent && (
+                            <div className="flex flex-col gap-0.5 mt-auto pt-1">
+                              {dayEvents.slice(0, 2).map((ev) => (
+                                <a
+                                  key={ev.id}
+                                  href={eventLink(ev)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
+                                  title={ev.title}
+                                >
+                                  {ev.title}
+                                </a>
+                              ))}
+                              {dayEvents.length > 2 && (
+                                <div className="text-[8px] text-blue-600 dark:text-blue-400 font-semibold px-1 leading-none">
+                                  +{dayEvents.length - 2} more
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </Wrapper>
+                      );
+                    })()}
 
                     {/* Hover Tooltip (desktop only) */}
                     {(holiday || hasEvent) && (
@@ -393,6 +419,91 @@ export default function PublicCalendar() {
                 );
               })}
             </div>
+
+            {/* MOBILE selected date details panel */}
+            {selectedDate && (() => {
+              const selDate = parseISO(selectedDate);
+              const selHoliday = holidayMap.get(selectedDate);
+              const selEvents = eventDateMap.get(selectedDate) || [];
+              const isEmpty = !selHoliday && selEvents.length === 0;
+              return (
+                <div className="lg:hidden mt-3 rounded-xl border border-border/40 bg-gradient-to-br from-muted/30 to-muted/10 p-3 animate-fade-in">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-primary/10 text-primary">
+                        <span className="text-[9px] font-medium leading-none uppercase">{format(selDate, "MMM")}</span>
+                        <span className="text-sm font-bold leading-tight">{format(selDate, "d")}</span>
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-tight">{format(selDate, "EEEE")}</p>
+                        <p className="text-[11px] text-muted-foreground leading-tight">{format(selDate, "d MMM yyyy")}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDate(null)}
+                      className="text-[11px] text-muted-foreground hover:text-foreground px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+                      aria-label="Close details"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  {isEmpty && (
+                    <p className="text-xs text-muted-foreground text-center py-3">No events or holidays on this day.</p>
+                  )}
+
+                  {selHoliday && (
+                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 mb-2">
+                      <div className="flex items-start gap-2">
+                        <span className="text-base leading-none mt-0.5">{selHoliday.holiday_type === "full_day" ? "🚫" : "⏰"}</span>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-destructive leading-tight">{selHoliday.holiday_name}</p>
+                          <p className="text-[11px] text-destructive/80 mt-0.5">
+                            {selHoliday.holiday_type === "full_day"
+                              ? "Gym Closed — Full Day"
+                              : `Half Day · ${formatTime12h(selHoliday.half_day_start_time)} – ${formatTime12h(selHoliday.half_day_end_time)}`}
+                          </p>
+                          {selHoliday.description && (
+                            <p className="text-[11px] text-muted-foreground mt-1">{selHoliday.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {selEvents.length > 0 && (
+                    <div className="space-y-1.5">
+                      {selEvents.map((ev) => (
+                        <a
+                          key={ev.id}
+                          href={eventLink(ev)}
+                          className="flex items-center gap-2 p-2 rounded-lg border border-blue-500/20 bg-blue-500/5 active:scale-[0.98] transition-transform"
+                        >
+                          <div className="w-1 h-9 rounded-full bg-blue-500 flex-shrink-0" />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold truncate text-foreground">{ev.title}</p>
+                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                              <span className="flex items-center gap-0.5">
+                                <ClockIcon className="w-2.5 h-2.5" />
+                                {format(parseISO(ev.event_date), "h:mm a")}
+                              </span>
+                              {ev.location && (
+                                <span className="flex items-center gap-0.5 truncate">
+                                  <MapPinIcon className="w-2.5 h-2.5" />
+                                  <span className="truncate">{ev.location}</span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <ChevronRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
               <div className="flex items-center gap-1.5">
