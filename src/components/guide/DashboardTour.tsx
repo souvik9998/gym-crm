@@ -264,19 +264,18 @@ const TourBubble = ({
         <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
       </div>
 
-      {/* Spotlight ring around the anchor */}
+      {/* Spotlight glow around the anchor — soft, breathing, no jarring border */}
       <div
         aria-hidden
-        className="pointer-events-none fixed z-[60]"
+        className="pointer-events-none fixed z-[60] rounded-2xl animate-coachmark-pulse"
         style={{
           top: rect.top - PAD,
           left: rect.left - PAD,
           width: rect.width + PAD * 2,
           height: rect.height + PAD * 2,
+          transition: "top 360ms cubic-bezier(0.22, 1, 0.36, 1), left 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
-      >
-        <span className="absolute inset-0 rounded-2xl ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.25)] animate-[coachmark-pulse_1.6s_ease-out_infinite]" />
-      </div>
+      />
 
       {/* Bubble */}
       <div
