@@ -218,41 +218,41 @@ export const TimeSlotAnalyticsTab = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-primary/10 p-2 text-primary"><ClockIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total slots</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.totalSlots}</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-primary/10 p-1.5 text-primary lg:p-2"><ClockIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Total slots</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.totalSlots}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-accent/20 p-2 text-accent-foreground"><UserGroupIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Assigned members</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.totalMembers}</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-accent/20 p-1.5 text-accent-foreground lg:p-2"><UserGroupIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Assigned members</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.totalMembers}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-secondary p-2 text-secondary-foreground"><ChartBarIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Avg utilization</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.avgUtilization}%</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-secondary p-1.5 text-secondary-foreground lg:p-2"><ChartBarIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Avg utilization</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.avgUtilization}%</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-muted p-2 text-foreground"><BoltIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Peak window</p>
-              <p className="text-lg font-semibold text-foreground">{analytics.peakWindow.label}</p>
-              <p className="text-xs text-muted-foreground">{analytics.peakWindow.members} active members</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-muted p-1.5 text-foreground lg:p-2"><BoltIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Peak window</p>
+              <p className="text-sm font-semibold text-foreground lg:text-lg">{analytics.peakWindow.label}</p>
+              <p className="text-[10px] text-muted-foreground lg:text-xs">{analytics.peakWindow.members} active</p>
             </div>
           </CardContent>
         </Card>
