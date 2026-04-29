@@ -486,33 +486,56 @@ const HolidayCalendarTab = () => {
   const sendHolidayNotifications = async () => {
     if (!currentBranch?.id || !formWhatsAppMessage.trim()) return;
 
-    const started = whatsAppOverlay.startSending("all active members");
+    let memberIds: string[] = [];
+    let recipientLabel = "all active members";
+
+    if (notifyAudience === "specific") {
+      memberIds = Array.from(notifySelectedIds);
+      recipientLabel = `${memberIds.length} selected member${memberIds.length === 1 ? "" : "s"}`;
+      if (memberIds.length === 0) {
+        toast.error("Select at least one member to notify");
+        return;
+      }
+    } else if (notifyMembers.length > 0) {
+      // Use already-loaded members list
+      const filtered =
+        notifyAudience === "all"
+          ? notifyMembers
+          : notifyMembers.filter((m) => m.status === "active");
+      memberIds = filtered.map((m) => m.id);
+      recipientLabel = notifyAudience === "all" ? "all members" : "all active members";
+    }
+
+    const started = whatsAppOverlay.startSending(recipientLabel);
     if (!started) return;
 
     try {
-      // Fetch all active members for this branch
-      const { data: members, error: membersError } = await supabase
-        .from("members")
-        .select("id, name, phone, subscriptions(status)")
-        .eq("branch_id", currentBranch.id);
+      // Fallback: fetch members if list wasn't preloaded
+      if (memberIds.length === 0 && notifyAudience !== "specific") {
+        const { data: members, error: membersError } = await supabase
+          .from("members")
+          .select("id, name, phone, subscriptions(status)")
+          .eq("branch_id", currentBranch.id);
 
-      if (membersError || !members?.length) {
-        whatsAppOverlay.markError("No members found to notify");
-        return;
+        if (membersError || !members?.length) {
+          whatsAppOverlay.markError("No members found to notify");
+          return;
+        }
+
+        const filtered = notifyAudience === "all"
+          ? members
+          : members.filter((m: any) => {
+              const subs = m.subscriptions || [];
+              return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
+            });
+
+        if (filtered.length === 0) {
+          whatsAppOverlay.markError("No matching members found to notify");
+          return;
+        }
+
+        memberIds = filtered.map((m: any) => m.id);
       }
-
-      // Filter to members with active/expiring_soon subscriptions
-      const activeMembers = members.filter((m: any) => {
-        const subs = m.subscriptions || [];
-        return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
-      });
-
-      if (activeMembers.length === 0) {
-        whatsAppOverlay.markError("No active members found to notify");
-        return;
-      }
-
-      const memberIds = activeMembers.map((m: any) => m.id);
 
       // Send via send-whatsapp edge function with custom message
       const { data: { session } } = await supabase.auth.getSession();
