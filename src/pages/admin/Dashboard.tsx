@@ -568,7 +568,7 @@ const AdminDashboard = () => {
                 {/* Mobile/Tablet: Filter + Action Buttons Row */}
                 <div className="md:hidden flex items-center gap-1.5">
                   {/* Member Filter Dropdown (includes trainer/slot filters inside) */}
-                  <div className="flex-1 min-w-0">
+                  <div data-tour="filters" className="flex-1 min-w-0">
                     <MemberFilter 
                       value={memberFilter} 
                       onChange={handleMemberFilterChange}
@@ -655,6 +655,7 @@ const AdminDashboard = () => {
                     {/* Add Member */}
                     {canManageMembers && (
                       <Button 
+                        data-tour="add-member"
                         size="sm"
                         onClick={() => setIsAddMemberOpen(true)} 
                         className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm whitespace-nowrap"
@@ -667,7 +668,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Desktop/Tablet: Inline Member Filter Chips */}
-                <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
+                <div data-tour="filters" className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
                   <MemberFilter 
                     value={memberFilter} 
                     onChange={handleMemberFilterChange}
@@ -732,6 +733,9 @@ const AdminDashboard = () => {
         onOpenChange={setIsAddMemberOpen}
         onSuccess={handleMemberSuccess}
       />
+
+      {/* First-time guided tour across the dashboard */}
+      <DashboardTour />
 
     </Fragment>
   );
