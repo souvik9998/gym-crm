@@ -290,11 +290,11 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
 
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Quick insights</CardTitle>
-            <CardDescription>Use these signals to tune staffing and slot creation.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Quick insights</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Use these signals to tune staffing and slot creation.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
