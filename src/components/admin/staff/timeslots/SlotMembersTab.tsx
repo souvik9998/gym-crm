@@ -734,8 +734,12 @@ export const SlotMembersTab = ({
                 </div>
               </div>
 
-              <TimeBucketChips value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
-
+              <div className="lg:hidden">
+                <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
+              </div>
+              <div className="hidden lg:block">
+                <TimeBucketChips value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
+              </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:gap-3 xl:grid-cols-5">
                 {!restrictedTrainerId && (
                   <div className="space-y-1">
