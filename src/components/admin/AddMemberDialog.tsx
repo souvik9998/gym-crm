@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DobInput } from "@/components/ui/dob-input";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "@/components/guide/InfoTip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
