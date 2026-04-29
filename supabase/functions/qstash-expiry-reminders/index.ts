@@ -130,31 +130,7 @@ Deno.serve(async (req) => {
       NEXT_KEY,
     );
     if (!verification.ok) {
-      // Diagnostic: log raw body bytes + claimed body hash so we can see what mismatched.
-      try {
-        const sigHdr = req.headers.get("upstash-signature") || "";
-        const parts = sigHdr.split(".");
-        let claimedBody = "";
-        if (parts.length === 3) {
-          const padded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-          const pad = padded.length % 4 === 0 ? padded : padded + "=".repeat(4 - (padded.length % 4));
-          const payloadJson = JSON.parse(atob(pad));
-          claimedBody = String(payloadJson.body || "");
-        }
-        const enc = new TextEncoder().encode(rawBody);
-        const digest = await crypto.subtle.digest("SHA-256", enc);
-        let bin = ""; for (const b of new Uint8Array(digest)) bin += String.fromCharCode(b);
-        const computed = btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-        log("signature-debug", {
-          reason: verification.reason,
-          rawBodyLen: rawBody.length,
-          rawBodyPreview: rawBody.slice(0, 200),
-          rawBodyHex: Array.from(enc.slice(0, 80)).map(b => b.toString(16).padStart(2,"0")).join(""),
-          claimedBodyHash: claimedBody,
-          computedBodyHash: computed,
-          contentEncoding: req.headers.get("content-encoding"),
-        });
-      } catch (e) { log("signature-debug-error", { msg: (e as Error).message }); }
+      log("signature-rejected", { reason: verification.reason });
       return new Response(JSON.stringify({ error: "invalid-signature", reason: verification.reason }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
