@@ -812,18 +812,18 @@ const HolidayCalendarTab = () => {
 
       {/* Upcoming Holidays */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex-shrink-0">
               <SparklesIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
-            <div>
-              <CardTitle className="text-base lg:text-xl">Upcoming Holidays</CardTitle>
-              <CardDescription className="text-xs lg:text-sm">Next scheduled gym closures</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm lg:text-xl">Upcoming Holidays</CardTitle>
+              <CardDescription className="text-[11px] lg:text-sm leading-snug">Next scheduled gym closures</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
           {isLoading ? (
             <div className="space-y-3">
               {[0, 1, 2].map(i => (
@@ -845,21 +845,21 @@ const HolidayCalendarTab = () => {
                   <div
                     key={holiday.id}
                     className={cn(
-                      "flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/30 transition-all duration-200 hover:shadow-sm hover:border-border/50",
+                      "flex items-center justify-between gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border border-border/30 transition-all duration-200 hover:shadow-sm hover:border-border/50 overflow-hidden",
                       isUpcoming && "bg-red-500/5 border-red-500/20"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 lg:gap-3 min-w-0 flex-1">
                       <div className={cn(
-                        "flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl text-center",
+                        "flex flex-col items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl text-center flex-shrink-0",
                         isUpcoming ? "bg-red-500/10 text-red-600" : "bg-muted/50 text-muted-foreground"
                       )}>
                         <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
                         <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{holiday.holiday_name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs lg:text-sm truncate">{holiday.holiday_name}</p>
+                        <div className="flex items-center gap-1.5 lg:gap-2 mt-0.5 flex-wrap">
                           <span className={cn(
                             "inline-flex items-center gap-1 text-[10px] lg:text-xs px-1.5 py-0.5 rounded-md",
                             holiday.holiday_type === "full_day"
@@ -884,11 +884,11 @@ const HolidayCalendarTab = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 lg:gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-foreground"
                         onClick={() => openEditDialog(holiday)}
                       >
                         <PencilIcon className="w-3.5 h-3.5" />
@@ -896,7 +896,7 @@ const HolidayCalendarTab = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-destructive"
                         onClick={() => handleDelete(holiday)}
                       >
                         <TrashIcon className="w-3.5 h-3.5" />
