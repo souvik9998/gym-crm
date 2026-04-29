@@ -731,21 +731,21 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
+          <div className="flex items-center gap-x-3 gap-y-2 mt-3 lg:mt-4 pt-2.5 lg:pt-3 border-t border-border/30 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-blue-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Event</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-red-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Gym Holiday</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-orange-400" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">National Holiday</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full ring-2 ring-primary/30 bg-primary/20" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ring-2 ring-primary/30 bg-primary/20" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Today</span>
             </div>
           </div>
