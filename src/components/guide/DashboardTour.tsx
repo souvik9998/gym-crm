@@ -23,14 +23,6 @@ const STEPS: Step[] = [
     side: "bottom",
   },
   {
-    _skip: true,
-    selector: "[data-tour='stats-grid']",
-    title: "Live gym stats",
-    description:
-      "At-a-glance counts: Total members, Active, Expiring Soon (7 days), and this month's revenue. Tap a card to filter.",
-    side: "bottom",
-  },
-  {
     selector: "[data-tour='tabs-list']",
     title: "Switch what you're managing",
     description:
