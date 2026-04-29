@@ -174,9 +174,6 @@ export function ManualAutomationTriggers() {
           </div>
         )}
 
-        <p className="text-[10px] text-muted-foreground italic">
-          💡 Reminders run automatically every day at 9:00 AM IST via Upstash QStash. Use this button to test or replay manually.
-        </p>
       </CardContent>
     </Card>
   );
