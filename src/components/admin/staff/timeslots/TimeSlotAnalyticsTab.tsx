@@ -258,25 +258,25 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
-        <Card className="border-border/60">
+      <div className="grid gap-3 lg:gap-4 xl:grid-cols-[1.3fr_1fr]">
+        <Card className="border-border/60 overflow-hidden">
           <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
             <CardTitle className="text-sm lg:text-base">Peak hours</CardTitle>
             <CardDescription className="text-[11px] lg:text-sm">Member volume and average utilization by time window.</CardDescription>
           </CardHeader>
-          <CardContent className="px-2 pb-3 sm:px-4 sm:pb-4">
+          <CardContent className="px-1 pb-3 sm:px-4 sm:pb-4">
             <ChartContainer
               config={{
                 members: { label: "Members", color: "hsl(var(--primary))" },
                 avgUtilization: { label: "Utilization", color: "hsl(var(--accent))" },
               }}
-              className="h-[260px] sm:h-[320px]"
+              className="h-[220px] w-full sm:h-[320px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={analytics.peakHours} margin={{ top: 8, right: 8, left: isMobile ? -16 : -8, bottom: 0 }}>
+                <BarChart data={analytics.peakHours} margin={{ top: 8, right: isMobile ? 4 : 8, left: isMobile ? -24 : -8, bottom: 0 }}>
                   <CartesianGrid vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.45} />
-                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={12} />
-                  <YAxis tickLine={false} axisLine={false} fontSize={12} allowDecimals={false} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} fontSize={isMobile ? 10 : 12} interval={0} />
+                  <YAxis tickLine={false} axisLine={false} fontSize={isMobile ? 10 : 12} allowDecimals={false} width={isMobile ? 24 : 32} />
                   <ChartTooltip content={<ChartTooltipContent indicator="dot" />} />
                   <Bar dataKey="members" radius={[8, 8, 0, 0]}>
                     {analytics.peakHours.map((entry, index) => (
@@ -289,43 +289,43 @@ export const TimeSlotAnalyticsTab = ({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60">
+        <Card className="border-border/60 overflow-hidden">
           <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
             <CardTitle className="text-sm lg:text-base">Quick insights</CardTitle>
             <CardDescription className="text-[11px] lg:text-sm">Use these signals to tune staffing and slot creation.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-2.5 lg:p-3">
               <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Busiest window</p>
-                  <p className="text-xs text-muted-foreground">Most active members grouped by start time.</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground lg:text-sm">Busiest window</p>
+                  <p className="text-[11px] text-muted-foreground lg:text-xs">Most active members grouped by start time.</p>
                 </div>
-                <Badge variant="secondary">{analytics.peakWindow.label}</Badge>
+                <Badge variant="secondary" className="shrink-0 text-[10px] lg:text-xs">{analytics.peakWindow.label}</Badge>
               </div>
             </div>
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-2.5 lg:p-3">
               <div className="flex items-center justify-between gap-2">
-                <div>
-                  <p className="text-sm font-medium text-foreground">Full slots</p>
-                  <p className="text-xs text-muted-foreground">Slots currently at capacity.</p>
+                <div className="min-w-0">
+                  <p className="text-xs font-medium text-foreground lg:text-sm">Full slots</p>
+                  <p className="text-[11px] text-muted-foreground lg:text-xs">Slots currently at capacity.</p>
                 </div>
-                <Badge variant="outline">{analytics.fullSlots}</Badge>
+                <Badge variant="outline" className="shrink-0 text-[10px] lg:text-xs">{analytics.fullSlots}</Badge>
               </div>
             </div>
-            <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
-              <p className="text-sm font-medium text-foreground">Trainer load</p>
-              <div className="mt-3 space-y-2">
+            <div className="rounded-lg border border-border/70 bg-muted/20 p-2.5 lg:p-3">
+              <p className="text-xs font-medium text-foreground lg:text-sm">Trainer load</p>
+              <div className="mt-2 space-y-1.5 lg:mt-3 lg:space-y-2">
                 {analytics.trainerLoad.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No trainer load data yet.</p>
+                  <p className="text-[11px] text-muted-foreground lg:text-xs">No trainer load data yet.</p>
                 ) : (
                   analytics.trainerLoad.map((trainer) => (
-                    <div key={trainer.trainer} className="flex items-center justify-between gap-2 text-sm">
+                    <div key={trainer.trainer} className="flex items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <p className="truncate font-medium text-foreground">{trainer.trainer}</p>
-                        <p className="text-xs text-muted-foreground">{trainer.slots} slot{trainer.slots === 1 ? "" : "s"}</p>
+                        <p className="truncate text-xs font-medium text-foreground lg:text-sm">{trainer.trainer}</p>
+                        <p className="text-[11px] text-muted-foreground lg:text-xs">{trainer.slots} slot{trainer.slots === 1 ? "" : "s"}</p>
                       </div>
-                      <Badge variant="secondary">{trainer.members} members</Badge>
+                      <Badge variant="secondary" className="shrink-0 text-[10px] lg:text-xs">{trainer.members} members</Badge>
                     </div>
                   ))
                 )}
