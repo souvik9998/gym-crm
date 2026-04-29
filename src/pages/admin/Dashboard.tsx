@@ -358,6 +358,9 @@ const AdminDashboard = () => {
   return (
     <Fragment>
       <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
+        {/* Recommended Next Step (auto-hides when setup is complete) */}
+        {canManageMembers && <RecommendedNextStep />}
+
         {/* Stats Grid */}
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
