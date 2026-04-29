@@ -13,6 +13,9 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { isFirstTimeUser, markFirstRunSeen } from "@/hooks/useCoachmarks";
+
+const DISMISS_KEY = "gymkloud:nextstep:dismissed";
 
 interface SetupState {
   hasPlan: boolean;
@@ -70,7 +73,29 @@ export const RecommendedNextStep = () => {
     hasMember: false,
     loading: true,
   });
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      // Honor a previous "skip" and only auto-show on the very first session.
+      if (localStorage.getItem(DISMISS_KEY) === "1") return true;
+      // For returning users (any non-first session), don't auto-show.
+      if (!isFirstTimeUser()) return true;
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = (persist: boolean) => {
+    setDismissed(true);
+    if (persist) {
+      try {
+        localStorage.setItem(DISMISS_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }
+    markFirstRunSeen();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -217,19 +242,32 @@ export const RecommendedNextStep = () => {
         <div className="flex items-center gap-2 md:flex-col md:items-stretch md:gap-1.5 shrink-0">
           <Button
             size="sm"
-            onClick={() => navigate(step.href)}
+            onClick={() => {
+              markFirstRunSeen();
+              navigate(step.href);
+            }}
             className="h-9 gap-1.5 rounded-lg text-xs"
           >
             {step.cta}
             <ArrowRightIcon className="h-3.5 w-3.5" />
           </Button>
-          <button
-            type="button"
-            onClick={() => setDismissed(true)}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors md:text-center"
-          >
-            Hide
-          </button>
+          <div className="flex items-center gap-2 md:justify-center">
+            <button
+              type="button"
+              onClick={() => handleDismiss(false)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Hide
+            </button>
+            <span className="text-[10px] text-muted-foreground/40">·</span>
+            <button
+              type="button"
+              onClick={() => handleDismiss(true)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Skip
+            </button>
+          </div>
         </div>
       </div>
     </div>
