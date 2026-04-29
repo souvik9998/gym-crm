@@ -242,19 +242,32 @@ export const RecommendedNextStep = () => {
         <div className="flex items-center gap-2 md:flex-col md:items-stretch md:gap-1.5 shrink-0">
           <Button
             size="sm"
-            onClick={() => navigate(step.href)}
+            onClick={() => {
+              markFirstRunSeen();
+              navigate(step.href);
+            }}
             className="h-9 gap-1.5 rounded-lg text-xs"
           >
             {step.cta}
             <ArrowRightIcon className="h-3.5 w-3.5" />
           </Button>
-          <button
-            type="button"
-            onClick={() => setDismissed(true)}
-            className="text-[11px] text-muted-foreground hover:text-foreground transition-colors md:text-center"
-          >
-            Hide
-          </button>
+          <div className="flex items-center gap-2 md:justify-center">
+            <button
+              type="button"
+              onClick={() => handleDismiss(false)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Hide
+            </button>
+            <span className="text-[10px] text-muted-foreground/40">·</span>
+            <button
+              type="button"
+              onClick={() => handleDismiss(true)}
+              className="text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Skip
+            </button>
+          </div>
         </div>
       </div>
     </div>
