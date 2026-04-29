@@ -17,6 +17,12 @@ interface CoachmarkProps {
   side?: "top" | "bottom" | "left" | "right";
   /** Disable the coachmark entirely (e.g. when a dialog is open) */
   disabled?: boolean;
+  /** Optional step indicator e.g. "2 / 5" */
+  stepLabel?: string;
+  /** Called when this single step is skipped (Skip button). Defaults to dismissing this coachmark only. */
+  onSkipStep?: () => void;
+  /** Optional "End tour" handler — when provided, shows a small secondary link. */
+  onEndTour?: () => void;
 }
 
 /**
