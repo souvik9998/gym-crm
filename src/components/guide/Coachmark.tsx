@@ -37,10 +37,19 @@ export const Coachmark = ({
   description,
   side = "bottom",
   disabled = false,
+  stepLabel,
+  onSkipStep,
+  onEndTour,
 }: CoachmarkProps) => {
   const { visible, dismiss } = useCoachmark(id);
-  const handleSkipAll = () => {
-    skipAllCoachmarks();
+  // "Skip" should skip ONLY this step (per user request) — not the whole tour.
+  const handleSkipStep = () => {
+    if (onSkipStep) onSkipStep();
+    dismiss();
+  };
+  const handleEndTour = () => {
+    if (onEndTour) onEndTour();
+    else skipAllCoachmarks();
     dismiss();
   };
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
