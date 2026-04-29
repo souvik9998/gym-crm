@@ -844,14 +844,14 @@ export const SlotMembersTab = ({
                         : "Compare members across matching slots and then drill into one slot for actions."}
                     </p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <div className="relative">
+                  <div className="flex w-full flex-wrap gap-2 lg:w-auto">
+                    <div className="relative w-full lg:w-auto">
                       <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         placeholder="Search members, trainer, phone"
                         value={searchFilter}
                         onChange={(e) => setSearchFilter(e.target.value)}
-                        className="h-8 w-56 border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm"
+                        className="h-8 w-full border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm lg:w-56"
                       />
                     </div>
                   </div>
