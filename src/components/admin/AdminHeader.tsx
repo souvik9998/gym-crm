@@ -13,6 +13,7 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   BuildingStorefrontIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import {
   DropdownMenu,
