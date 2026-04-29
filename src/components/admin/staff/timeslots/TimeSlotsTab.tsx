@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { matchesTimeFilter, type TimeBucket } from "./timeSlotUtils";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
+import { Coachmark } from "@/components/guide/Coachmark";
 
 interface TimeSlot {
   id: string;
