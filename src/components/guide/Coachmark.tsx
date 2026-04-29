@@ -185,13 +185,16 @@ const CoachmarkBubble = ({ rect, side, title, description, stepLabel, onDismiss,
             <SparklesIcon className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
+            {stepLabel && (
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-primary/80">{stepLabel}</p>
+            )}
             <p className="text-[13px] font-semibold leading-tight text-foreground">{title}</p>
             <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{description}</p>
           </div>
           <button
             type="button"
-            onClick={onDismiss}
-            aria-label="Dismiss tip"
+            onClick={onEndTour}
+            aria-label="End tour"
             className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <XMarkIcon className="h-3.5 w-3.5" />
@@ -200,10 +203,10 @@ const CoachmarkBubble = ({ rect, side, title, description, stepLabel, onDismiss,
         <div className="mt-2 flex items-center justify-between gap-2">
           <button
             type="button"
-            onClick={onSkipAll}
+            onClick={onSkipStep}
             className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
           >
-            Skip tour
+            Skip this step
           </button>
           <button
             type="button"
