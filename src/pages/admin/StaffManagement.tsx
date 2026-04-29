@@ -92,6 +92,7 @@ const StaffManagement = () => {
   );
 
   return (
+    <>
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
       <TabsList data-tour="staff-tabs" className="grid w-full max-w-md grid-cols-3 mb-6">
         <TabsTrigger value="trainers" data-tour="staff-tab-trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
