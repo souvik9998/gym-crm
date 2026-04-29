@@ -563,7 +563,7 @@ const HolidayCalendarTab = () => {
           toast.info(`Sent to ${successCount} members, ${failCount} failed`);
         } else {
           whatsAppOverlay.markSuccess();
-          toast.success(`Holiday notice sent to ${successCount} active members`);
+          toast.success(`Holiday notice sent to ${successCount} member${successCount === 1 ? "" : "s"}`);
         }
       }
     } catch (err: any) {
