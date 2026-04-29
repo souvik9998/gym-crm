@@ -606,10 +606,10 @@ const HolidayCalendarTab = () => {
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[58px] lg:min-h-[100px] rounded-xl flex flex-col items-stretch p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "w-full min-h-[52px] sm:min-h-[68px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                       "border border-transparent",
                       "transition-all duration-200 ease-out",
-                      "hover:scale-[1.02] hover:shadow-md hover:z-10",
+                      "active:scale-95 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10",
                       isPast && "opacity-50",
                       // Normal day
                       !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60 hover:border-border/40",
@@ -625,9 +625,9 @@ const HolidayCalendarTab = () => {
                     )}
                   >
                     {/* Top row: date + today badge */}
-                    <div className="flex items-center justify-between leading-none">
+                    <div className="flex items-center justify-between leading-none gap-0.5">
                       <span className={cn(
-                        "text-xs lg:text-sm leading-none",
+                        "text-[11px] sm:text-xs lg:text-sm leading-none",
                         isCurrentDay && !gymHoliday && "text-primary font-bold",
                         gymHoliday && "text-destructive font-semibold",
                         !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
@@ -641,11 +641,11 @@ const HolidayCalendarTab = () => {
                         </span>
                       )}
                       {hasEvent && (
-                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                       )}
                     </div>
 
-                    {/* Holiday name (mobile + desktop) */}
+                    {/* Holiday name (desktop) */}
                     {gymHoliday && (
                       <span className="hidden lg:block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
                         {gymHoliday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
@@ -662,14 +662,24 @@ const HolidayCalendarTab = () => {
                       </span>
                     )}
 
-                    {/* Mobile: tiny holiday text */}
+                    {/* Mobile/tablet: indicator dots row */}
+                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5">
+                      {gymHoliday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                      )}
+                      {!gymHoliday && nationalHoliday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+
+                    {/* Mobile/tablet: tiny holiday text (only if name short enough) */}
                     {gymHoliday && (
-                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium mt-0.5">
+                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
                         {gymHoliday.holiday_name}
                       </span>
                     )}
                     {!gymHoliday && nationalHoliday && (
-                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-orange-500/80 font-medium mt-0.5">
+                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
                         {nationalHoliday}
                       </span>
                     )}
