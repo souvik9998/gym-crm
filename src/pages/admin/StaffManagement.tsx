@@ -93,16 +93,16 @@ const StaffManagement = () => {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-      <TabsList className="grid w-full max-w-md grid-cols-3 mb-6">
-        <TabsTrigger value="trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+      <TabsList data-tour="staff-tabs" className="grid w-full max-w-md grid-cols-3 mb-6">
+        <TabsTrigger value="trainers" data-tour="staff-tab-trainers" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <AcademicCapIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Trainers</span>
         </TabsTrigger>
-        <TabsTrigger value="staff" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+        <TabsTrigger value="staff" data-tour="staff-tab-other" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <UserGroupIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Other Staff</span>
         </TabsTrigger>
-        <TabsTrigger value="overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
+        <TabsTrigger value="overview" data-tour="staff-tab-overview" className="flex items-center gap-1 lg:gap-2 text-[10px] lg:text-sm px-1 lg:px-3">
           <ChartBarIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
           <span>Overview</span>
         </TabsTrigger>
@@ -146,6 +146,8 @@ const StaffManagement = () => {
         />
       </TabsContent>
     </Tabs>
+    <PageTour tourId="staff" steps={STAFF_STEPS} autoStart={false} />
+    </>
   );
 };
 
