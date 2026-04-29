@@ -337,11 +337,11 @@ export const TimeSlotAnalyticsTab = ({
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Top occupied slots</CardTitle>
-            <CardDescription>Most used time slots with trainer names and utilization.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Top occupied slots</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Most used time slots with trainer names and utilization.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.busiestSlots.length === 0 ? (
               <p className="text-sm text-muted-foreground">No occupied slots yet.</p>
             ) : (
