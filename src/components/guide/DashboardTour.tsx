@@ -110,13 +110,35 @@ export const DashboardTour = () => {
     if (!step) return;
 
     let frame = 0;
+    // Pick the FIRST visible match — the dashboard renders both mobile
+    // and desktop variants of the same anchor, and only one is on screen.
+    const pickVisible = (sel: string): HTMLElement | null => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(sel)
+      );
+      for (const n of nodes) {
+        const r = n.getBoundingClientRect();
+        const style = window.getComputedStyle(n);
+        const visible =
+          r.width > 0 &&
+          r.height > 0 &&
+          style.visibility !== "hidden" &&
+          style.display !== "none";
+        if (visible) return n;
+      }
+      return nodes[0] ?? null;
+    };
     const update = () => {
-      const el = document.querySelector(step.selector) as HTMLElement | null;
+      const el = pickVisible(step.selector);
       if (!el) {
         setRect(null);
         return;
       }
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      const r = el.getBoundingClientRect();
+      // Only auto-scroll if anchor is off-screen
+      if (r.top < 80 || r.bottom > window.innerHeight - 80) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
       setRect(el.getBoundingClientRect());
     };
     update();
