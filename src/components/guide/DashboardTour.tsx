@@ -110,13 +110,35 @@ export const DashboardTour = () => {
     if (!step) return;
 
     let frame = 0;
+    // Pick the FIRST visible match — the dashboard renders both mobile
+    // and desktop variants of the same anchor, and only one is on screen.
+    const pickVisible = (sel: string): HTMLElement | null => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(sel)
+      );
+      for (const n of nodes) {
+        const r = n.getBoundingClientRect();
+        const style = window.getComputedStyle(n);
+        const visible =
+          r.width > 0 &&
+          r.height > 0 &&
+          style.visibility !== "hidden" &&
+          style.display !== "none";
+        if (visible) return n;
+      }
+      return nodes[0] ?? null;
+    };
     const update = () => {
-      const el = document.querySelector(step.selector) as HTMLElement | null;
+      const el = pickVisible(step.selector);
       if (!el) {
         setRect(null);
         return;
       }
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      const r = el.getBoundingClientRect();
+      // Only auto-scroll if anchor is off-screen
+      if (r.top < 80 || r.bottom > window.innerHeight - 80) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+      }
       setRect(el.getBoundingClientRect());
     };
     update();
@@ -231,27 +253,36 @@ const TourBubble = ({
   }
   if (top < padding) top = padding;
 
+  // Cutout-style scrim: 4 dim panels around the anchor (top/bottom/left/right).
+  // No blur — keeps the UI crisp while drawing focus to the spotlighted area.
+  const PAD = 6;
+  const cutTop = Math.max(0, rect.top - PAD);
+  const cutBottom = Math.min(window.innerHeight, rect.bottom + PAD);
+  const cutLeft = Math.max(0, rect.left - PAD);
+  const cutRight = Math.min(window.innerWidth, rect.right + PAD);
+
   return (
     <>
-      {/* Soft scrim so the rest of the UI dims slightly */}
-      <div
-        aria-hidden
-        className="pointer-events-none fixed inset-0 z-[55] bg-foreground/10 backdrop-blur-[1px] animate-fade-in"
-      />
+      {/* Cutout scrim — dims everything EXCEPT the spotlight rectangle */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 z-[55] animate-fade-in">
+        <div className="absolute left-0 right-0 top-0 bg-foreground/40" style={{ height: cutTop }} />
+        <div className="absolute left-0 right-0 bottom-0 bg-foreground/40" style={{ top: cutBottom }} />
+        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }} />
+        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
+      </div>
 
       {/* Spotlight ring around the anchor */}
       <div
         aria-hidden
         className="pointer-events-none fixed z-[60]"
         style={{
-          top: rect.top - 6,
-          left: rect.left - 6,
-          width: rect.width + 12,
-          height: rect.height + 12,
+          top: rect.top - PAD,
+          left: rect.left - PAD,
+          width: rect.width + PAD * 2,
+          height: rect.height + PAD * 2,
         }}
       >
-        <span className="absolute inset-0 rounded-2xl ring-2 ring-primary/80 animate-[coachmark-pulse_1.6s_ease-out_infinite]" />
-        <span className="absolute inset-0 rounded-2xl ring-1 ring-primary/40" />
+        <span className="absolute inset-0 rounded-2xl ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.25)] animate-[coachmark-pulse_1.6s_ease-out_infinite]" />
       </div>
 
       {/* Bubble */}
