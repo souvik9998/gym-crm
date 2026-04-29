@@ -518,18 +518,18 @@ const HolidayCalendarTab = () => {
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-3 lg:space-y-6 overflow-x-hidden">
       {/* Calendar Card */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex-shrink-0">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 lg:gap-3">
+            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+              <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex-shrink-0">
                 <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div className="min-w-0">
-                <CardTitle className="text-base lg:text-xl">Calendar</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — tap any date to manage</CardDescription>
+                <CardTitle className="text-sm lg:text-xl">Calendar</CardTitle>
+                <CardDescription className="text-[11px] lg:text-sm leading-snug">Holidays & events at a glance — tap any date to manage</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -558,9 +558,9 @@ const HolidayCalendarTab = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 lg:p-6 pt-2 lg:pt-2">
+        <CardContent className="p-3 lg:p-6 pt-1 lg:pt-2">
           {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2.5 lg:mb-4">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
               <ChevronLeftIcon className="w-4 h-4" />
             </Button>
@@ -571,9 +571,9 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
+          <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1">
             {WEEKDAYS.map(day => (
-              <div key={day} className="text-center text-[10px] lg:text-xs font-medium text-muted-foreground py-1.5">
+              <div key={day} className="text-center text-[9px] lg:text-xs font-medium text-muted-foreground py-1 lg:py-1.5">
                 {day}
               </div>
             ))}
@@ -583,7 +583,7 @@ const HolidayCalendarTab = () => {
           <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[52px] sm:min-h-[68px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[44px] sm:min-h-[58px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
@@ -606,7 +606,7 @@ const HolidayCalendarTab = () => {
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[52px] sm:min-h-[68px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "w-full min-h-[44px] sm:min-h-[58px] lg:min-h-[100px] rounded-md lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                       "border border-transparent",
                       "transition-all duration-200 ease-out",
                       "active:scale-95 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10",
