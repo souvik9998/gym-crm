@@ -308,6 +308,8 @@ export const AdminHeader = ({
         </div>
       </div>
     </header>
+    <GuideDrawer open={isGuideOpen} onOpenChange={setIsGuideOpen} />
+    </>
   );
 };
 
