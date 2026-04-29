@@ -218,14 +218,30 @@ Deno.serve(async (req) => {
     const notificationType = isToday ? "expiring_today" : "expiring_2days";
     const category = isToday ? "expiring_today" : "expiring_2days";
 
-    const { data: candidates } = await supabase
+    // Fetch all subscriptions for the branch (latest first), then keep only the
+    // latest per member. This way, if a member has renewed (a newer subscription
+    // row exists), the old row is ignored — eligibility resets on every renewal.
+    const { data: branchSubs } = await supabase
       .from("subscriptions")
-      .select("id, member_id, end_date, branch_id, members!inner(id, name, phone, branch_id)")
-      .eq("end_date", targetStr)
+      .select("id, member_id, end_date, status, branch_id, members!inner(id, name, phone, branch_id)")
       .eq("members.branch_id", branchId)
-      .in("status", ["active", "expiring_soon"]);
+      .order("end_date", { ascending: false });
 
-    const candidateSubIds = (candidates || []).map((s: any) => s.id).filter(Boolean);
+    const latestByMember = new Map<string, any>();
+    for (const sub of branchSubs || []) {
+      const m = (sub as any).members;
+      if (!m?.id || latestByMember.has(m.id)) continue;
+      latestByMember.set(m.id, sub);
+    }
+
+    // Match the latest subscription for each member against the reminder window
+    const candidates = Array.from(latestByMember.values()).filter(
+      (s: any) =>
+        s.end_date === targetStr &&
+        (s.status === "active" || s.status === "expiring_soon"),
+    );
+
+    const candidateSubIds = candidates.map((s: any) => s.id).filter(Boolean);
     let alreadySoon = new Set<string>();
     if (candidateSubIds.length > 0) {
       const { data: priorLogs } = await supabase
@@ -237,7 +253,7 @@ Deno.serve(async (req) => {
         .in("subscription_id", candidateSubIds);
       alreadySoon = new Set((priorLogs || []).map((p: any) => p.subscription_id).filter(Boolean));
     }
-    const toSend = (candidates || []).filter((s: any) => !alreadySoon.has(s.id));
+    const toSend = candidates.filter((s: any) => !alreadySoon.has(s.id));
 
     log("expiring-soon-query", {
       branchId,
