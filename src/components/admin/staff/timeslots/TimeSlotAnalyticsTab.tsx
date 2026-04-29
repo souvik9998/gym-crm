@@ -370,11 +370,11 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
 
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Window breakdown</CardTitle>
-            <CardDescription>How many slots are available in each part of the day.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Window breakdown</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">How many slots are available in each part of the day.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.peakHours.map((window) => (
               <div key={window.bucket} className="rounded-lg border border-border/70 p-3">
                 <div className="flex items-center justify-between gap-2">
