@@ -73,7 +73,29 @@ export const RecommendedNextStep = () => {
     hasMember: false,
     loading: true,
   });
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      // Honor a previous "skip" and only auto-show on the very first session.
+      if (localStorage.getItem(DISMISS_KEY) === "1") return true;
+      // For returning users (any non-first session), don't auto-show.
+      if (!isFirstTimeUser()) return true;
+      return false;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleDismiss = (persist: boolean) => {
+    setDismissed(true);
+    if (persist) {
+      try {
+        localStorage.setItem(DISMISS_KEY, "1");
+      } catch {
+        // ignore
+      }
+    }
+    markFirstRunSeen();
+  };
 
   useEffect(() => {
     let cancelled = false;
