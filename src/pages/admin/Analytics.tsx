@@ -21,6 +21,8 @@ import { SmartMetricCard } from "@/components/analytics/SmartMetricCard";
 import { InsightsPanel, Insight } from "@/components/analytics/InsightsPanel";
 import { cn } from "@/lib/utils";
 import { formatBucketRange, granularityLabel } from "@/components/analytics/chartUtils";
+import { PageTour } from "@/components/guide/PageTour";
+import { ANALYTICS_STEPS } from "@/components/guide/tourSteps";
 
 // Lazy load chart components
 const RevenueChart = lazy(() => import("@/components/analytics/RevenueChart").then((m) => ({ default: m.default })));
@@ -228,7 +230,7 @@ function OverviewSection() {
 
   return (
     <>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div data-tour="analytics-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <SmartMetricCard
           label="Total Revenue"
           value={totals.totalRevenue}
@@ -264,7 +266,9 @@ function OverviewSection() {
         />
       </div>
 
-      <InsightsPanel insights={insights} />
+      <div data-tour="analytics-insights">
+        <InsightsPanel insights={insights} />
+      </div>
     </>
   );
 }
