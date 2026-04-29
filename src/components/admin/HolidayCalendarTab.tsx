@@ -523,34 +523,36 @@ const HolidayCalendarTab = () => {
       <Card className="border border-border/40 shadow-sm overflow-hidden">
         <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex-shrink-0">
                 <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <CardTitle className="text-base lg:text-xl">Calendar</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — click any date to manage holidays</CardDescription>
+                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — tap any date to manage</CardDescription>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Button
                 variant="outline"
                 size="sm"
-                className="gap-1.5 rounded-xl text-xs lg:text-sm border-primary/30 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all"
+                className="flex-1 sm:flex-none gap-1.5 rounded-xl h-8 lg:h-9 text-xs lg:text-sm border-primary/30 text-primary hover:bg-primary/5 hover:text-primary hover:border-primary/50 transition-all"
                 onClick={handleShareCalendar}
                 disabled={!shareUrl}
                 title="Share calendar with members"
               >
                 <ShareIcon className="w-3.5 h-3.5" />
-                Share Calendar
+                <span className="sm:hidden">Share</span>
+                <span className="hidden sm:inline">Share Calendar</span>
               </Button>
               <Button
                 size="sm"
-                className="gap-1.5 rounded-xl text-xs lg:text-sm"
+                className="flex-1 sm:flex-none gap-1.5 rounded-xl h-8 lg:h-9 text-xs lg:text-sm"
                 onClick={() => openAddDialog(new Date())}
               >
                 <PlusIcon className="w-3.5 h-3.5" />
-                Add Holiday
+                <span className="sm:hidden">Add</span>
+                <span className="hidden sm:inline">Add Holiday</span>
               </Button>
             </div>
           </div>
@@ -578,10 +580,10 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[58px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[52px] sm:min-h-[68px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
@@ -604,10 +606,10 @@ const HolidayCalendarTab = () => {
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[58px] lg:min-h-[100px] rounded-xl flex flex-col items-stretch p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "w-full min-h-[52px] sm:min-h-[68px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                       "border border-transparent",
                       "transition-all duration-200 ease-out",
-                      "hover:scale-[1.02] hover:shadow-md hover:z-10",
+                      "active:scale-95 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10",
                       isPast && "opacity-50",
                       // Normal day
                       !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60 hover:border-border/40",
@@ -623,9 +625,9 @@ const HolidayCalendarTab = () => {
                     )}
                   >
                     {/* Top row: date + today badge */}
-                    <div className="flex items-center justify-between leading-none">
+                    <div className="flex items-center justify-between leading-none gap-0.5">
                       <span className={cn(
-                        "text-xs lg:text-sm leading-none",
+                        "text-[11px] sm:text-xs lg:text-sm leading-none",
                         isCurrentDay && !gymHoliday && "text-primary font-bold",
                         gymHoliday && "text-destructive font-semibold",
                         !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
@@ -639,11 +641,11 @@ const HolidayCalendarTab = () => {
                         </span>
                       )}
                       {hasEvent && (
-                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500" />
+                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
                       )}
                     </div>
 
-                    {/* Holiday name (mobile + desktop) */}
+                    {/* Holiday name (desktop) */}
                     {gymHoliday && (
                       <span className="hidden lg:block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
                         {gymHoliday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
@@ -660,14 +662,24 @@ const HolidayCalendarTab = () => {
                       </span>
                     )}
 
-                    {/* Mobile: tiny holiday text */}
+                    {/* Mobile/tablet: indicator dots row */}
+                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5">
+                      {gymHoliday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                      )}
+                      {!gymHoliday && nationalHoliday && (
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                      )}
+                    </div>
+
+                    {/* Mobile/tablet: tiny holiday text (only if name short enough) */}
                     {gymHoliday && (
-                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium mt-0.5">
+                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
                         {gymHoliday.holiday_name}
                       </span>
                     )}
                     {!gymHoliday && nationalHoliday && (
-                      <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-orange-500/80 font-medium mt-0.5">
+                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
                         {nationalHoliday}
                       </span>
                     )}
