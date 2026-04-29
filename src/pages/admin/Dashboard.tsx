@@ -45,6 +45,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
+import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
+import { Coachmark } from "@/components/guide/Coachmark";
 
 // Memoized stat card component
 const StatCard = memo(({ 
