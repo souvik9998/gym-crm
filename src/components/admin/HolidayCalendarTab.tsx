@@ -369,6 +369,9 @@ const HolidayCalendarTab = () => {
     setFormCloseTime("22:00");
     setFormNotify(false);
     setFormWhatsAppMessage("");
+    setNotifyAudience("all_active");
+    setNotifySelectedIds(new Set());
+    setNotifySearch("");
     setIsDialogOpen(true);
   };
 
