@@ -114,9 +114,9 @@ const jobLabel = (job: string) => {
     case "daily-whatsapp-job":
       return "Daily Job (Today + Expired)";
     case "qstash-expiring-soon":
-      return "QStash · Expiring Soon";
+      return "GymKloud · Expiring Soon";
     case "qstash-expired":
-      return "QStash · Expired";
+      return "GymKloud · Expired";
     default:
       return job;
   }
@@ -158,7 +158,7 @@ const TriggerBadge = ({ source }: { source: string }) => {
   if (source === "qstash") {
     return (
       <Badge variant="outline" className="gap-1">
-        <Activity className="w-3 h-3" /> QStash
+        <Activity className="w-3 h-3" /> GymKloud
       </Badge>
     );
   }
