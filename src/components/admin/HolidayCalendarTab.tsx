@@ -571,19 +571,20 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1">
+          <div className="grid grid-cols-7 gap-1 lg:gap-1 mb-1.5">
             {WEEKDAYS.map(day => (
-              <div key={day} className="text-center text-[9px] lg:text-xs font-medium text-muted-foreground py-1 lg:py-1.5">
-                {day}
+              <div key={day} className="text-center text-[10px] lg:text-xs font-semibold text-muted-foreground/80 py-1 lg:py-1.5 uppercase tracking-wider">
+                <span className="lg:hidden">{day.charAt(0)}</span>
+                <span className="hidden lg:inline">{day}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[44px] sm:min-h-[58px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[68px] sm:min-h-[72px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
@@ -606,14 +607,14 @@ const HolidayCalendarTab = () => {
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[44px] sm:min-h-[58px] lg:min-h-[100px] rounded-md lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "w-full min-h-[68px] sm:min-h-[72px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                       "border border-transparent",
                       "transition-all duration-200 ease-out",
                       "active:scale-95 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10",
                       isPast && "opacity-50",
                       // Normal day
                       !hasHoliday && !isCurrentDay && !hasEvent && "hover:bg-muted/60 hover:border-border/40",
-                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/30",
+                      !hasHoliday && !isCurrentDay && hasEvent && "bg-blue-500/5 hover:bg-blue-500/10 hover:border-blue-500/30 border-blue-500/20",
                       // Today
                       isCurrentDay && !gymHoliday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
                       // Gym holiday
@@ -627,7 +628,7 @@ const HolidayCalendarTab = () => {
                     {/* Top row: date + today badge */}
                     <div className="flex items-center justify-between leading-none gap-0.5">
                       <span className={cn(
-                        "text-[10px] sm:text-xs lg:text-sm leading-none",
+                        "text-[11px] sm:text-xs lg:text-sm leading-none",
                         isCurrentDay && !gymHoliday && "text-primary font-bold",
                         gymHoliday && "text-destructive font-semibold",
                         !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
@@ -640,8 +641,10 @@ const HolidayCalendarTab = () => {
                           Today
                         </span>
                       )}
-                      {hasEvent && (
-                        <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500 flex-shrink-0" />
+                      {isCurrentDay && (
+                        <span className="lg:hidden text-[7px] uppercase font-bold text-primary bg-primary/20 px-1 py-px rounded leading-none">
+                          Now
+                        </span>
                       )}
                     </div>
 
@@ -662,27 +665,32 @@ const HolidayCalendarTab = () => {
                       </span>
                     )}
 
-                    {/* Mobile/tablet: indicator dots row */}
-                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5 min-h-2">
+                    {/* Mobile/tablet: name pills (gym holiday > national > event) */}
+                    <div className="lg:hidden flex flex-col gap-0.5 mt-1 min-w-0">
                       {gymHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
+                        <span className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-destructive/15 text-destructive font-semibold truncate text-center">
+                          {gymHoliday.holiday_name}
+                        </span>
                       )}
                       {!gymHoliday && nationalHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
+                        <span className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-orange-500/15 text-orange-600 dark:text-orange-400 font-semibold truncate text-center">
+                          {nationalHoliday}
+                        </span>
+                      )}
+                      {hasEvent && dayEvents.slice(0, gymHoliday || nationalHoliday ? 1 : 2).map((ev) => (
+                        <span
+                          key={ev.id}
+                          className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-medium truncate text-center"
+                        >
+                          {ev.title}
+                        </span>
+                      ))}
+                      {hasEvent && dayEvents.length > (gymHoliday || nationalHoliday ? 1 : 2) && (
+                        <span className="text-[7px] text-blue-600 dark:text-blue-400 font-semibold leading-none text-center">
+                          +{dayEvents.length - (gymHoliday || nationalHoliday ? 1 : 2)}
+                        </span>
                       )}
                     </div>
-
-                    {/* Mobile/tablet: tiny holiday text (only if name short enough) */}
-                    {gymHoliday && (
-                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
-                        {gymHoliday.holiday_name}
-                      </span>
-                    )}
-                    {!gymHoliday && nationalHoliday && (
-                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
-                        {nationalHoliday}
-                      </span>
-                    )}
 
                     {/* Desktop: event pills inside the cell */}
                     {hasEvent && (
