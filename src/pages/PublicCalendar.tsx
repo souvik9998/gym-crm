@@ -228,7 +228,8 @@ export default function PublicCalendar() {
               <div>
                 <CardTitle className="text-base lg:text-xl">{format(currentMonth, "MMMM yyyy")}</CardTitle>
                 <CardDescription className="text-xs lg:text-sm">
-                  Hover or tap a date for details
+                  <span className="lg:hidden">Tap a date to see events & holidays</span>
+                  <span className="hidden lg:inline">Hover or tap a date for details</span>
                 </CardDescription>
               </div>
             </div>
