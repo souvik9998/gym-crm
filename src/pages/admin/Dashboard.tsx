@@ -471,14 +471,22 @@ const AdminDashboard = () => {
                     
                     {/* Add Member Button - Only for admins or staff with can_manage_members */}
                     {canManageMembers && (
-                      <Button 
-                        size="sm"
-                        onClick={() => setIsAddMemberOpen(true)} 
-                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                      <Coachmark
+                        id="members.add"
+                        title="Add your first member"
+                        description="Opens a quick 4-step wizard. Phone is collected first to detect duplicates."
+                        side="bottom"
+                        disabled={isAddMemberOpen}
                       >
-                        <PlusIcon className="w-4 h-4" />
-                        <span>Add Member</span>
-                      </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddMemberOpen(true)}
+                          className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                          <span>Add Member</span>
+                        </Button>
+                      </Coachmark>
                     )}
                   </div>
                 </div>
