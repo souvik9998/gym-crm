@@ -16,13 +16,6 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    selector: "[data-tour='next-step']",
-    title: "Setup checklist",
-    description:
-      "Tracks your onboarding progress — Plan, Trainer, First Member. Click the action to jump straight to the missing step.",
-    side: "bottom",
-  },
-  {
     selector: "[data-tour='stats-grid']",
     title: "Live gym stats",
     description:
@@ -265,25 +258,24 @@ const TourBubble = ({
     <>
       {/* Cutout scrim — dims everything EXCEPT the spotlight rectangle */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-[55] animate-fade-in">
-        <div className="absolute left-0 right-0 top-0 bg-foreground/40" style={{ height: cutTop }} />
-        <div className="absolute left-0 right-0 bottom-0 bg-foreground/40" style={{ top: cutBottom }} />
-        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }} />
-        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
+        <div className="absolute left-0 right-0 top-0 bg-foreground/45 transition-[height] duration-300 ease-out" style={{ height: cutTop }} />
+        <div className="absolute left-0 right-0 bottom-0 bg-foreground/45 transition-[top] duration-300 ease-out" style={{ top: cutBottom }} />
+        <div className="absolute bg-foreground/45 transition-all duration-300 ease-out" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }} />
+        <div className="absolute bg-foreground/45 transition-all duration-300 ease-out" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
       </div>
 
-      {/* Spotlight ring around the anchor */}
+      {/* Spotlight glow around the anchor — soft, breathing, no jarring border */}
       <div
         aria-hidden
-        className="pointer-events-none fixed z-[60]"
+        className="pointer-events-none fixed z-[60] rounded-2xl animate-coachmark-pulse"
         style={{
           top: rect.top - PAD,
           left: rect.left - PAD,
           width: rect.width + PAD * 2,
           height: rect.height + PAD * 2,
+          transition: "top 360ms cubic-bezier(0.22, 1, 0.36, 1), left 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
-      >
-        <span className="absolute inset-0 rounded-2xl ring-2 ring-primary shadow-[0_0_0_4px_hsl(var(--primary)/0.25)] animate-[coachmark-pulse_1.6s_ease-out_infinite]" />
-      </div>
+      />
 
       {/* Bubble */}
       <div

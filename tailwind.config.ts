@@ -173,9 +173,8 @@ export default {
   				'100%': { transform: 'translateX(400%)' }
   			},
   			'coachmark-pulse': {
-  				'0%': { transform: 'scale(1)', opacity: '0.9' },
-  				'70%': { transform: 'scale(1.08)', opacity: '0.2' },
-  				'100%': { transform: 'scale(1.12)', opacity: '0' }
+  				'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.45), 0 0 0 6px hsl(var(--primary) / 0.18)' },
+  				'50%': { boxShadow: '0 0 0 4px hsl(var(--primary) / 0.30), 0 0 0 14px hsl(var(--primary) / 0.06)' }
   			}
   		},
   		animation: {
@@ -183,7 +182,8 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
-  			shimmer: 'shimmer 3s ease-in-out infinite'
+  			shimmer: 'shimmer 3s ease-in-out infinite',
+  			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite'
   		}
   	}
   },
