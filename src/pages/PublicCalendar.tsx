@@ -78,6 +78,7 @@ export default function PublicCalendar() {
   const [isLoading, setIsLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
   // Resolve branch from URL slug, or from custom domain context
   useEffect(() => {
