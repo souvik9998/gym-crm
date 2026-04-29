@@ -103,6 +103,7 @@ export const AdminHeader = ({
   };
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const refreshStartRef = useRef<number>(0);
 
   const handleRefresh = async () => {
