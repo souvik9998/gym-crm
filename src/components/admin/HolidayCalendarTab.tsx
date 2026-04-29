@@ -627,7 +627,7 @@ const HolidayCalendarTab = () => {
                     {/* Top row: date + today badge */}
                     <div className="flex items-center justify-between leading-none gap-0.5">
                       <span className={cn(
-                        "text-[11px] sm:text-xs lg:text-sm leading-none",
+                        "text-[10px] sm:text-xs lg:text-sm leading-none",
                         isCurrentDay && !gymHoliday && "text-primary font-bold",
                         gymHoliday && "text-destructive font-semibold",
                         !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
@@ -663,23 +663,23 @@ const HolidayCalendarTab = () => {
                     )}
 
                     {/* Mobile/tablet: indicator dots row */}
-                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5">
+                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5 min-h-2">
                       {gymHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
                       )}
                       {!gymHoliday && nationalHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
                       )}
                     </div>
 
                     {/* Mobile/tablet: tiny holiday text (only if name short enough) */}
                     {gymHoliday && (
-                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
+                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
                         {gymHoliday.holiday_name}
                       </span>
                     )}
                     {!gymHoliday && nationalHoliday && (
-                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
+                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
                         {nationalHoliday}
                       </span>
                     )}
@@ -707,7 +707,7 @@ const HolidayCalendarTab = () => {
 
                   {/* Hover Tooltip (mobile + extra detail) */}
                   {(hasHoliday || hasEvent) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
+                    <div className="hidden lg:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
                       {hasHoliday && (
                         <div className="whitespace-nowrap">
                           <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
