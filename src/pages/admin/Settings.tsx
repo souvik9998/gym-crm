@@ -2159,7 +2159,8 @@ const AdminSettings = () => {
 
       </div>
 
-      <ConfirmDialog
+      <PageTour tourId="settings" steps={SETTINGS_STEPS} autoStart={false} />
+
         open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
         title={confirmDialog.title}
