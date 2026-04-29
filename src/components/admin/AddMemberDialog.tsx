@@ -1507,6 +1507,7 @@ export const AddMemberDialog = ({
                     <Label htmlFor="add-phone" className="flex items-center gap-2 text-sm font-medium">
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number <span className="text-destructive">*</span>
+                      <InfoTip>This becomes the member's login + WhatsApp identity. We auto-detect duplicates.</InfoTip>
                     </Label>
                     <div className="flex relative">
                       <span className="inline-flex items-center px-3 rounded-l-xl border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
