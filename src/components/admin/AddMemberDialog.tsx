@@ -1963,6 +1963,7 @@ export const AddMemberDialog = ({
                         <Label className="flex items-center gap-2 text-sm font-medium">
                           <Calendar className="w-4 h-4 text-accent" />
                           Duration <span className="text-destructive">*</span>
+                          <InfoTip>The plan defines revenue, expiry date, and renewal reminders.</InfoTip>
                         </Label>
                         <Select value={selectedPackageId} onValueChange={handlePackageChange}>
                           <SelectTrigger className="h-11 text-sm rounded-xl">
