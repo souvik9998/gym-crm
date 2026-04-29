@@ -571,19 +571,20 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1">
+          <div className="grid grid-cols-7 gap-1 lg:gap-1 mb-1.5">
             {WEEKDAYS.map(day => (
-              <div key={day} className="text-center text-[9px] lg:text-xs font-medium text-muted-foreground py-1 lg:py-1.5">
-                {day}
+              <div key={day} className="text-center text-[10px] lg:text-xs font-semibold text-muted-foreground/80 py-1 lg:py-1.5 uppercase tracking-wider">
+                <span className="lg:hidden">{day.charAt(0)}</span>
+                <span className="hidden lg:inline">{day}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar Grid */}
-          <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
+          <div className="grid grid-cols-7 gap-1 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[44px] sm:min-h-[58px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[68px] sm:min-h-[72px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
