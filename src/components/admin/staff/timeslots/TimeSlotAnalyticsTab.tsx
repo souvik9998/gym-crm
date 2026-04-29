@@ -335,32 +335,32 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="border-border/60">
+      <div className="grid gap-3 lg:gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <Card className="border-border/60 overflow-hidden">
           <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
             <CardTitle className="text-sm lg:text-base">Top occupied slots</CardTitle>
             <CardDescription className="text-[11px] lg:text-sm">Most used time slots with trainer names and utilization.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.busiestSlots.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No occupied slots yet.</p>
+              <p className="text-xs text-muted-foreground lg:text-sm">No occupied slots yet.</p>
             ) : (
               analytics.busiestSlots.map((slot, index) => (
-                <div key={slot.id} className="rounded-lg border border-border/70 p-3">
+                <div key={slot.id} className="rounded-lg border border-border/70 p-2.5 lg:p-3">
                   <div className="flex flex-wrap items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">#{index + 1}</Badge>
-                        <p className="font-medium text-foreground">{slot.label}</p>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Badge variant="outline" className="shrink-0 text-[10px] lg:text-xs">#{index + 1}</Badge>
+                        <p className="truncate text-xs font-medium text-foreground lg:text-sm">{slot.label}</p>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{slot.trainer}</p>
+                      <p className="mt-1 truncate text-[11px] text-muted-foreground lg:text-xs">{slot.trainer}</p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold text-foreground">{slot.members} members</p>
-                      <p className="text-xs text-muted-foreground">{slot.utilization}% utilized</p>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-semibold text-foreground lg:text-sm">{slot.members} members</p>
+                      <p className="text-[11px] text-muted-foreground lg:text-xs">{slot.utilization}% utilized</p>
                     </div>
                   </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+                  <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-muted lg:mt-3 lg:h-2">
                     <div className="h-full rounded-full bg-primary" style={{ width: `${slot.utilization}%` }} />
                   </div>
                 </div>
@@ -369,21 +369,21 @@ export const TimeSlotAnalyticsTab = ({
           </CardContent>
         </Card>
 
-        <Card className="border-border/60">
+        <Card className="border-border/60 overflow-hidden">
           <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
             <CardTitle className="text-sm lg:text-base">Window breakdown</CardTitle>
             <CardDescription className="text-[11px] lg:text-sm">How many slots are available in each part of the day.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.peakHours.map((window) => (
-              <div key={window.bucket} className="rounded-lg border border-border/70 p-3">
+              <div key={window.bucket} className="rounded-lg border border-border/70 p-2.5 lg:p-3">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="font-medium text-foreground">{window.label}</p>
-                  <Badge variant="secondary">{window.slots} slots</Badge>
+                  <p className="truncate text-xs font-medium text-foreground lg:text-sm">{window.label}</p>
+                  <Badge variant="secondary" className="shrink-0 text-[10px] lg:text-xs">{window.slots} slots</Badge>
                 </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{window.members} members</span>
-                  <span>{window.avgUtilization}% avg utilization</span>
+                <div className="mt-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground lg:text-xs">
+                  <span className="truncate">{window.members} members</span>
+                  <span className="shrink-0">{window.avgUtilization}% avg</span>
                 </div>
               </div>
             ))}
