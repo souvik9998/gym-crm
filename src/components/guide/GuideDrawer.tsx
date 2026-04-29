@@ -227,8 +227,10 @@ export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
 
   const handleReplay = () => {
     resetAllCoachmarks();
-    toast.success("Tour reset", {
-      description: "Helpful tips will appear again the next time you visit each page.",
+    // Re-trigger the guided dashboard tour immediately
+    window.dispatchEvent(new Event("gymkloud:tour:dashboard:replay"));
+    toast.success("Tour restarted", {
+      description: "The guided dashboard tour and tips will appear again.",
     });
     onOpenChange(false);
   };

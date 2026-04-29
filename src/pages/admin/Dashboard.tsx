@@ -46,7 +46,7 @@ import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
-import { Coachmark } from "@/components/guide/Coachmark";
+import { DashboardTour } from "@/components/guide/DashboardTour";
 
 // Memoized stat card component
 const StatCard = memo(({ 
@@ -359,13 +359,17 @@ const AdminDashboard = () => {
     <Fragment>
       <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
         {/* Recommended Next Step (auto-hides when setup is complete) */}
-        {canManageMembers && <RecommendedNextStep />}
+        {canManageMembers && (
+          <div data-tour="next-step">
+            <RecommendedNextStep />
+          </div>
+        )}
 
         {/* Stats Grid */}
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
+          <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
@@ -410,7 +414,7 @@ const AdminDashboard = () => {
                 {/* Top Row - Tabs (Desktop), Search Bar (Desktop), and Actions (Desktop) */}
                 <div className="hidden lg:flex flex-row items-center gap-3">
                   {/* Tabs - With icons and text on desktop */}
-                  <TabsList className="bg-muted/50 p-1 h-10">
+                  <TabsList data-tour="tabs-list" className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
                       value="members" 
                       className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
@@ -438,7 +442,7 @@ const AdminDashboard = () => {
                   
                   {/* Search Bar - Desktop (between tabs and actions) */}
                   {(activeTab === "members" || activeTab === "daily_pass") && (
-                    <div className="flex-1 max-w-md">
+                    <div data-tour="search" className="flex-1 max-w-md">
                       <SearchInput
                         placeholder="Search by name or phone..."
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
@@ -458,6 +462,7 @@ const AdminDashboard = () => {
                     
                     {/* Download/Export Button */}
                     <Button 
+                      data-tour="export"
                       variant="outline" 
                       size="icon"
                       className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
@@ -471,29 +476,22 @@ const AdminDashboard = () => {
                     
                     {/* Add Member Button - Only for admins or staff with can_manage_members */}
                     {canManageMembers && (
-                      <Coachmark
-                        id="members.add"
-                        title="Add your first member"
-                        description="Opens a quick 4-step wizard. Phone is collected first to detect duplicates."
-                        side="bottom"
-                        disabled={isAddMemberOpen}
+                      <Button
+                        data-tour="add-member"
+                        size="sm"
+                        onClick={() => setIsAddMemberOpen(true)}
+                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
                       >
-                        <Button
-                          size="sm"
-                          onClick={() => setIsAddMemberOpen(true)}
-                          className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
-                        >
-                          <PlusIcon className="w-4 h-4" />
-                          <span>Add Member</span>
-                        </Button>
-                      </Coachmark>
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Add Member</span>
+                      </Button>
                     )}
                   </div>
                 </div>
 
                 {/* Mobile/Tablet: Text-only Tabs */}
                 <div className="lg:hidden">
-                  <TabsList className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
+                  <TabsList data-tour="tabs-list" className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
                     <TabsTrigger 
                       value="members" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
@@ -523,7 +521,7 @@ const AdminDashboard = () => {
                 {/* Search Bar - Mobile/Tablet only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="flex items-center gap-1.5 lg:hidden">
-                    <div className="flex-1">
+                    <div data-tour="search" className="flex-1">
                       <SearchInput
                         placeholder="Search by name or phone..."
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
@@ -539,6 +537,7 @@ const AdminDashboard = () => {
                     {/* Tablet-only inline action buttons next to search */}
                     <div className="hidden md:flex lg:hidden items-center gap-1.5">
                       <Button 
+                        data-tour="export"
                         variant="outline" 
                         size="icon"
                         className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
@@ -550,6 +549,7 @@ const AdminDashboard = () => {
                       
                       {canManageMembers && (
                         <Button 
+                          data-tour="add-member"
                           size="sm"
                           onClick={() => setIsAddMemberOpen(true)} 
                           className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 whitespace-nowrap"
@@ -568,7 +568,7 @@ const AdminDashboard = () => {
                 {/* Mobile/Tablet: Filter + Action Buttons Row */}
                 <div className="md:hidden flex items-center gap-1.5">
                   {/* Member Filter Dropdown (includes trainer/slot filters inside) */}
-                  <div className="flex-1 min-w-0">
+                  <div data-tour="filters" className="flex-1 min-w-0">
                     <MemberFilter 
                       value={memberFilter} 
                       onChange={handleMemberFilterChange}
@@ -655,6 +655,7 @@ const AdminDashboard = () => {
                     {/* Add Member */}
                     {canManageMembers && (
                       <Button 
+                        data-tour="add-member"
                         size="sm"
                         onClick={() => setIsAddMemberOpen(true)} 
                         className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 rounded-xl active:scale-95 transition-all duration-200 shadow-sm whitespace-nowrap"
@@ -667,7 +668,7 @@ const AdminDashboard = () => {
                 </div>
 
                 {/* Desktop/Tablet: Inline Member Filter Chips */}
-                <div className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
+                <div data-tour="filters" className="hidden md:flex md:items-center md:gap-2 md:flex-wrap">
                   <MemberFilter 
                     value={memberFilter} 
                     onChange={handleMemberFilterChange}
@@ -732,6 +733,9 @@ const AdminDashboard = () => {
         onOpenChange={setIsAddMemberOpen}
         onSuccess={handleMemberSuccess}
       />
+
+      {/* First-time guided tour across the dashboard */}
+      <DashboardTour />
 
     </Fragment>
   );
