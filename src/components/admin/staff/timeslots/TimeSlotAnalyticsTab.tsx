@@ -260,9 +260,9 @@ export const TimeSlotAnalyticsTab = ({
 
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Peak hours</CardTitle>
-            <CardDescription>Member volume and average utilization by time window.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Peak hours</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Member volume and average utilization by time window.</CardDescription>
           </CardHeader>
           <CardContent className="px-2 pb-3 sm:px-4 sm:pb-4">
             <ChartContainer
