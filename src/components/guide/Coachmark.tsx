@@ -102,8 +102,10 @@ export const Coachmark = ({
             side={side}
             title={title}
             description={description}
+            stepLabel={stepLabel}
             onDismiss={dismiss}
-            onSkipAll={handleSkipAll}
+            onSkipStep={handleSkipStep}
+            onEndTour={handleEndTour}
           />,
           document.body
         )}
@@ -116,11 +118,13 @@ interface BubbleProps {
   side: "top" | "bottom" | "left" | "right";
   title: string;
   description: string;
+  stepLabel?: string;
   onDismiss: () => void;
-  onSkipAll: () => void;
+  onSkipStep: () => void;
+  onEndTour: () => void;
 }
 
-const CoachmarkBubble = ({ rect, side, title, description, onDismiss, onSkipAll }: BubbleProps) => {
+const CoachmarkBubble = ({ rect, side, title, description, stepLabel, onDismiss, onSkipStep, onEndTour }: BubbleProps) => {
   // Bubble dimensions guess — clamp to viewport
   const BUBBLE_W = 260;
   const GAP = 12;
