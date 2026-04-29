@@ -298,6 +298,65 @@ const HolidayCalendarTab = () => {
     }
   }, [formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime, formNotify, generateWhatsAppMessage]);
 
+  // Fetch members when notify section becomes active
+  useEffect(() => {
+    const fetchNotifyMembers = async () => {
+      if (!isDialogOpen || !formNotify || !currentBranch?.id || notifyMembers.length > 0) return;
+      setNotifyLoadingMembers(true);
+      try {
+        const { data, error } = await supabase
+          .from("members")
+          .select("id, name, phone, subscriptions(status)")
+          .eq("branch_id", currentBranch.id)
+          .order("name", { ascending: true });
+        if (!error && data) {
+          setNotifyMembers(
+            data.map((m: any) => {
+              const subs = m.subscriptions || [];
+              const isActive = subs.some(
+                (s: any) => s.status === "active" || s.status === "expiring_soon"
+              );
+              return {
+                id: m.id,
+                name: m.name,
+                phone: m.phone,
+                status: (isActive ? "active" : "inactive") as "active" | "inactive",
+              };
+            })
+          );
+        }
+      } finally {
+        setNotifyLoadingMembers(false);
+      }
+    };
+    fetchNotifyMembers();
+  }, [isDialogOpen, formNotify, currentBranch?.id, notifyMembers.length]);
+
+  const filteredNotifyMembers = useMemo(() => {
+    const q = notifySearch.trim().toLowerCase();
+    if (!q) return notifyMembers;
+    return notifyMembers.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.phone.toLowerCase().includes(q)
+    );
+  }, [notifyMembers, notifySearch]);
+
+  const notifyTargetMemberIds = useMemo(() => {
+    if (notifyAudience === "all") return notifyMembers.map((m) => m.id);
+    if (notifyAudience === "all_active")
+      return notifyMembers.filter((m) => m.status === "active").map((m) => m.id);
+    return Array.from(notifySelectedIds);
+  }, [notifyAudience, notifyMembers, notifySelectedIds]);
+
+  const toggleNotifyMember = (id: string) => {
+    setNotifySelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+
   const openAddDialog = (date: Date, prefillName?: string) => {
     setEditingHoliday(null);
     setSelectedDate(date);
