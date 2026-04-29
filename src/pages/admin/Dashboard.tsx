@@ -46,7 +46,7 @@ import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
 import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
-import { Coachmark } from "@/components/guide/Coachmark";
+import { DashboardTour } from "@/components/guide/DashboardTour";
 
 // Memoized stat card component
 const StatCard = memo(({ 
@@ -359,13 +359,17 @@ const AdminDashboard = () => {
     <Fragment>
       <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
         {/* Recommended Next Step (auto-hides when setup is complete) */}
-        {canManageMembers && <RecommendedNextStep />}
+        {canManageMembers && (
+          <div data-tour="next-step">
+            <RecommendedNextStep />
+          </div>
+        )}
 
         {/* Stats Grid */}
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
+          <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
