@@ -491,7 +491,7 @@ const AdminDashboard = () => {
 
                 {/* Mobile/Tablet: Text-only Tabs */}
                 <div className="lg:hidden">
-                  <TabsList className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
+                  <TabsList data-tour="tabs-list" className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
                     <TabsTrigger 
                       value="members" 
                       className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
@@ -521,7 +521,7 @@ const AdminDashboard = () => {
                 {/* Search Bar - Mobile/Tablet only */}
                 {(activeTab === "members" || activeTab === "daily_pass") && (
                   <div className="flex items-center gap-1.5 lg:hidden">
-                    <div className="flex-1">
+                    <div data-tour="search" className="flex-1">
                       <SearchInput
                         placeholder="Search by name or phone..."
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
@@ -537,6 +537,7 @@ const AdminDashboard = () => {
                     {/* Tablet-only inline action buttons next to search */}
                     <div className="hidden md:flex lg:hidden items-center gap-1.5">
                       <Button 
+                        data-tour="export"
                         variant="outline" 
                         size="icon"
                         className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
@@ -548,6 +549,7 @@ const AdminDashboard = () => {
                       
                       {canManageMembers && (
                         <Button 
+                          data-tour="add-member"
                           size="sm"
                           onClick={() => setIsAddMemberOpen(true)} 
                           className="gap-1 h-9 bg-foreground text-background hover:bg-foreground/90 text-xs px-3 whitespace-nowrap"
