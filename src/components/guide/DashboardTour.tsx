@@ -16,13 +16,14 @@ interface Step {
 
 const STEPS: Step[] = [
   {
-    selector: "[data-tour='next-step']",
-    title: "Setup checklist",
+    selector: "[data-tour='stats-grid']",
+    title: "Live gym stats",
     description:
-      "Tracks your onboarding progress — Plan, Trainer, First Member. Click the action to jump straight to the missing step.",
+      "At-a-glance counts: Total members, Active, Expiring Soon (7 days), and this month's revenue. Tap a card to filter.",
     side: "bottom",
   },
   {
+    _skip: true,
     selector: "[data-tour='stats-grid']",
     title: "Live gym stats",
     description:
