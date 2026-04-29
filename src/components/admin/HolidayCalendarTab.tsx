@@ -518,18 +518,18 @@ const HolidayCalendarTab = () => {
   };
 
   return (
-    <div className="space-y-4 lg:space-y-6">
+    <div className="space-y-3 lg:space-y-6 overflow-x-hidden">
       {/* Calendar Card */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex-shrink-0">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 lg:gap-3">
+            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+              <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-orange-500/10 text-orange-600 dark:text-orange-400 flex-shrink-0">
                 <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
               </div>
               <div className="min-w-0">
-                <CardTitle className="text-base lg:text-xl">Calendar</CardTitle>
-                <CardDescription className="text-xs lg:text-sm">Holidays & events at a glance — tap any date to manage</CardDescription>
+                <CardTitle className="text-sm lg:text-xl">Calendar</CardTitle>
+                <CardDescription className="text-[11px] lg:text-sm leading-snug">Holidays & events at a glance — tap any date to manage</CardDescription>
               </div>
             </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -558,9 +558,9 @@ const HolidayCalendarTab = () => {
           </div>
         </CardHeader>
 
-        <CardContent className="p-4 lg:p-6 pt-2 lg:pt-2">
+        <CardContent className="p-3 lg:p-6 pt-1 lg:pt-2">
           {/* Month Navigation */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2.5 lg:mb-4">
             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
               <ChevronLeftIcon className="w-4 h-4" />
             </Button>
@@ -571,9 +571,9 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Weekday Headers */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
+          <div className="grid grid-cols-7 gap-0.5 lg:gap-1 mb-1">
             {WEEKDAYS.map(day => (
-              <div key={day} className="text-center text-[10px] lg:text-xs font-medium text-muted-foreground py-1.5">
+              <div key={day} className="text-center text-[9px] lg:text-xs font-medium text-muted-foreground py-1 lg:py-1.5">
                 {day}
               </div>
             ))}
@@ -583,7 +583,7 @@ const HolidayCalendarTab = () => {
           <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
             {/* Empty cells for padding */}
             {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-              <div key={`pad-${i}`} className="min-h-[52px] sm:min-h-[68px] lg:min-h-[100px]" />
+              <div key={`pad-${i}`} className="min-h-[44px] sm:min-h-[58px] lg:min-h-[100px]" />
             ))}
 
             {calendarDays.days.map((day, idx) => {
@@ -606,7 +606,7 @@ const HolidayCalendarTab = () => {
                   <button
                     onClick={() => handleDayClick(day)}
                     className={cn(
-                      "w-full min-h-[52px] sm:min-h-[68px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                      "w-full min-h-[44px] sm:min-h-[58px] lg:min-h-[100px] rounded-md lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                       "border border-transparent",
                       "transition-all duration-200 ease-out",
                       "active:scale-95 lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10",
@@ -627,7 +627,7 @@ const HolidayCalendarTab = () => {
                     {/* Top row: date + today badge */}
                     <div className="flex items-center justify-between leading-none gap-0.5">
                       <span className={cn(
-                        "text-[11px] sm:text-xs lg:text-sm leading-none",
+                        "text-[10px] sm:text-xs lg:text-sm leading-none",
                         isCurrentDay && !gymHoliday && "text-primary font-bold",
                         gymHoliday && "text-destructive font-semibold",
                         !gymHoliday && nationalHoliday && "text-orange-600 dark:text-orange-400 font-semibold",
@@ -663,23 +663,23 @@ const HolidayCalendarTab = () => {
                     )}
 
                     {/* Mobile/tablet: indicator dots row */}
-                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5">
+                    <div className="lg:hidden flex items-center justify-center gap-0.5 mt-auto pt-0.5 min-h-2">
                       {gymHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-destructive flex-shrink-0" />
                       )}
                       {!gymHoliday && nationalHoliday && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 flex-shrink-0" />
                       )}
                     </div>
 
                     {/* Mobile/tablet: tiny holiday text (only if name short enough) */}
                     {gymHoliday && (
-                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
+                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium px-0.5">
                         {gymHoliday.holiday_name}
                       </span>
                     )}
                     {!gymHoliday && nationalHoliday && (
-                      <span className="lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
+                      <span className="hidden sm:block lg:hidden text-[8px] leading-tight text-center line-clamp-1 text-orange-500/90 font-medium px-0.5">
                         {nationalHoliday}
                       </span>
                     )}
@@ -707,7 +707,7 @@ const HolidayCalendarTab = () => {
 
                   {/* Hover Tooltip (mobile + extra detail) */}
                   {(hasHoliday || hasEvent) && (
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
+                    <div className="hidden lg:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
                       {hasHoliday && (
                         <div className="whitespace-nowrap">
                           <span className="font-medium">{gymHoliday?.holiday_name || nationalHoliday}</span>
@@ -731,21 +731,21 @@ const HolidayCalendarTab = () => {
           </div>
 
           {/* Legend */}
-          <div className="flex items-center gap-4 mt-4 pt-3 border-t border-border/30 flex-wrap">
+          <div className="flex items-center gap-x-3 gap-y-2 mt-3 lg:mt-4 pt-2.5 lg:pt-3 border-t border-border/30 flex-wrap">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-blue-500" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-blue-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Event</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-red-500" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Gym Holiday</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full bg-orange-400" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">National Holiday</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full ring-2 ring-primary/30 bg-primary/20" />
+              <div className="w-2 h-2 lg:w-2.5 lg:h-2.5 rounded-full ring-2 ring-primary/30 bg-primary/20" />
               <span className="text-[10px] lg:text-xs text-muted-foreground">Today</span>
             </div>
           </div>
@@ -754,18 +754,18 @@ const HolidayCalendarTab = () => {
 
       {/* Upcoming Events */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex-shrink-0">
               <TicketIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
-            <div>
-              <CardTitle className="text-base lg:text-xl">Upcoming Events</CardTitle>
-              <CardDescription className="text-xs lg:text-sm">Events scheduled at this branch</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm lg:text-xl">Upcoming Events</CardTitle>
+              <CardDescription className="text-[11px] lg:text-sm leading-snug">Events scheduled at this branch</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
           {isLoading ? (
             <div className="space-y-3">
               {[0, 1].map(i => (
@@ -786,17 +786,17 @@ const HolidayCalendarTab = () => {
                   <button
                     key={ev.id}
                     onClick={() => navigate(`/admin/events/${ev.id}`)}
-                    className="w-full flex items-center justify-between gap-3 p-3 lg:p-4 rounded-xl border border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-left"
+                    className="w-full flex items-center justify-between gap-2 lg:gap-3 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border border-border/30 hover:border-primary/30 hover:bg-primary/5 transition-all duration-200 text-left overflow-hidden"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-blue-500/10 text-blue-600 flex-shrink-0">
+                    <div className="flex items-center gap-2.5 lg:gap-3 min-w-0 flex-1">
+                      <div className="flex flex-col items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl bg-blue-500/10 text-blue-600 flex-shrink-0">
                         <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
                         <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-sm truncate">{ev.title}</p>
-                        <div className="flex items-center gap-2 mt-0.5 text-[11px] text-muted-foreground">
-                          <span>{format(date, "EEE, h:mm a")}</span>
+                        <p className="font-medium text-xs lg:text-sm truncate">{ev.title}</p>
+                        <div className="flex items-center gap-1.5 lg:gap-2 mt-0.5 text-[10px] lg:text-[11px] text-muted-foreground min-w-0">
+                          <span className="flex-shrink-0">{format(date, "EEE, h:mm a")}</span>
                           {ev.location && <span className="truncate">· {ev.location}</span>}
                         </div>
                       </div>
@@ -812,18 +812,18 @@ const HolidayCalendarTab = () => {
 
       {/* Upcoming Holidays */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex-shrink-0">
               <SparklesIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
-            <div>
-              <CardTitle className="text-base lg:text-xl">Upcoming Holidays</CardTitle>
-              <CardDescription className="text-xs lg:text-sm">Next scheduled gym closures</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm lg:text-xl">Upcoming Holidays</CardTitle>
+              <CardDescription className="text-[11px] lg:text-sm leading-snug">Next scheduled gym closures</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
           {isLoading ? (
             <div className="space-y-3">
               {[0, 1, 2].map(i => (
@@ -845,21 +845,21 @@ const HolidayCalendarTab = () => {
                   <div
                     key={holiday.id}
                     className={cn(
-                      "flex items-center justify-between p-3 lg:p-4 rounded-xl border border-border/30 transition-all duration-200 hover:shadow-sm hover:border-border/50",
+                      "flex items-center justify-between gap-2 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border border-border/30 transition-all duration-200 hover:shadow-sm hover:border-border/50 overflow-hidden",
                       isUpcoming && "bg-red-500/5 border-red-500/20"
                     )}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2.5 lg:gap-3 min-w-0 flex-1">
                       <div className={cn(
-                        "flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl text-center",
+                        "flex flex-col items-center justify-center w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl text-center flex-shrink-0",
                         isUpcoming ? "bg-red-500/10 text-red-600" : "bg-muted/50 text-muted-foreground"
                       )}>
                         <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
                         <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
                       </div>
-                      <div>
-                        <p className="font-medium text-sm">{holiday.holiday_name}</p>
-                        <div className="flex items-center gap-2 mt-0.5">
+                      <div className="min-w-0">
+                        <p className="font-medium text-xs lg:text-sm truncate">{holiday.holiday_name}</p>
+                        <div className="flex items-center gap-1.5 lg:gap-2 mt-0.5 flex-wrap">
                           <span className={cn(
                             "inline-flex items-center gap-1 text-[10px] lg:text-xs px-1.5 py-0.5 rounded-md",
                             holiday.holiday_type === "full_day"
@@ -884,11 +884,11 @@ const HolidayCalendarTab = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5 lg:gap-1 flex-shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground"
+                        className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-foreground"
                         onClick={() => openEditDialog(holiday)}
                       >
                         <PencilIcon className="w-3.5 h-3.5" />
@@ -896,7 +896,7 @@ const HolidayCalendarTab = () => {
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive"
+                        className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-destructive"
                         onClick={() => handleDelete(holiday)}
                       >
                         <TrashIcon className="w-3.5 h-3.5" />
@@ -912,18 +912,18 @@ const HolidayCalendarTab = () => {
 
       {/* National Holidays Quick-Add */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex-shrink-0">
               <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
-            <div>
-              <CardTitle className="text-base lg:text-xl">National Holidays {currentYear}</CardTitle>
-              <CardDescription className="text-xs lg:text-sm">Quick-add Indian national holidays to your calendar</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm lg:text-xl">National Holidays {currentYear}</CardTitle>
+              <CardDescription className="text-[11px] lg:text-sm leading-snug">Quick-add Indian national holidays to your calendar</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
           <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
             {getNationalHolidays(currentYear)
               .filter(h => !isBefore(parseISO(h.date), startOfDay(new Date())))
@@ -935,18 +935,18 @@ const HolidayCalendarTab = () => {
                     disabled={alreadyAdded}
                     onClick={() => openAddDialog(parseISO(holiday.date), holiday.name)}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl border border-border/30 text-left transition-all duration-200",
+                      "flex items-center gap-2.5 lg:gap-3 p-2.5 lg:p-3 rounded-lg lg:rounded-xl border border-border/30 text-left transition-all duration-200 overflow-hidden",
                       alreadyAdded
                         ? "opacity-50 cursor-not-allowed bg-muted/20"
                         : "hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm active:scale-[0.98]"
                     )}
                   >
-                    <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-orange-500/10 text-orange-600 text-center flex-shrink-0">
+                    <div className="flex flex-col items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-orange-500/10 text-orange-600 text-center flex-shrink-0">
                       <span className="text-[9px] font-medium leading-none">{format(parseISO(holiday.date), "MMM")}</span>
                       <span className="text-sm font-bold leading-tight">{format(parseISO(holiday.date), "d")}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{holiday.name}</p>
+                      <p className="font-medium text-xs lg:text-sm truncate">{holiday.name}</p>
                       <p className="text-[10px] lg:text-xs text-muted-foreground">{format(parseISO(holiday.date), "EEEE")}</p>
                     </div>
                     {alreadyAdded ? (
