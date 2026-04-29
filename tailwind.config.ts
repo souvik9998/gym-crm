@@ -182,7 +182,8 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
-  			shimmer: 'shimmer 3s ease-in-out infinite'
+  			shimmer: 'shimmer 3s ease-in-out infinite',
+  			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite'
   		}
   	}
   },
