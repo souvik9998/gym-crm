@@ -7,6 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -26,6 +28,8 @@ import {
   ClockIcon,
   SparklesIcon,
   ChatBubbleLeftEllipsisIcon,
+  MagnifyingGlassIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
@@ -122,6 +126,14 @@ const HolidayCalendarTab = () => {
   const [formCloseTime, setFormCloseTime] = useState("22:00");
   const [formNotify, setFormNotify] = useState(false);
   const [formWhatsAppMessage, setFormWhatsAppMessage] = useState("");
+
+  // Notify audience picker (mirrors ShareCalendarDialog)
+  type NotifyAudience = "all_active" | "all" | "specific";
+  const [notifyAudience, setNotifyAudience] = useState<NotifyAudience>("all_active");
+  const [notifyMembers, setNotifyMembers] = useState<{ id: string; name: string; phone: string; status: "active" | "inactive" }[]>([]);
+  const [notifyLoadingMembers, setNotifyLoadingMembers] = useState(false);
+  const [notifySelectedIds, setNotifySelectedIds] = useState<Set<string>>(new Set());
+  const [notifySearch, setNotifySearch] = useState("");
 
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -286,6 +298,65 @@ const HolidayCalendarTab = () => {
     }
   }, [formName, selectedDate, formType, formDescription, formOpenTime, formCloseTime, formStartTime, formEndTime, formNotify, generateWhatsAppMessage]);
 
+  // Fetch members when notify section becomes active
+  useEffect(() => {
+    const fetchNotifyMembers = async () => {
+      if (!isDialogOpen || !formNotify || !currentBranch?.id || notifyMembers.length > 0) return;
+      setNotifyLoadingMembers(true);
+      try {
+        const { data, error } = await supabase
+          .from("members")
+          .select("id, name, phone, subscriptions(status)")
+          .eq("branch_id", currentBranch.id)
+          .order("name", { ascending: true });
+        if (!error && data) {
+          setNotifyMembers(
+            data.map((m: any) => {
+              const subs = m.subscriptions || [];
+              const isActive = subs.some(
+                (s: any) => s.status === "active" || s.status === "expiring_soon"
+              );
+              return {
+                id: m.id,
+                name: m.name,
+                phone: m.phone,
+                status: (isActive ? "active" : "inactive") as "active" | "inactive",
+              };
+            })
+          );
+        }
+      } finally {
+        setNotifyLoadingMembers(false);
+      }
+    };
+    fetchNotifyMembers();
+  }, [isDialogOpen, formNotify, currentBranch?.id, notifyMembers.length]);
+
+  const filteredNotifyMembers = useMemo(() => {
+    const q = notifySearch.trim().toLowerCase();
+    if (!q) return notifyMembers;
+    return notifyMembers.filter(
+      (m) => m.name.toLowerCase().includes(q) || m.phone.toLowerCase().includes(q)
+    );
+  }, [notifyMembers, notifySearch]);
+
+  const notifyTargetMemberIds = useMemo(() => {
+    if (notifyAudience === "all") return notifyMembers.map((m) => m.id);
+    if (notifyAudience === "all_active")
+      return notifyMembers.filter((m) => m.status === "active").map((m) => m.id);
+    return Array.from(notifySelectedIds);
+  }, [notifyAudience, notifyMembers, notifySelectedIds]);
+
+  const toggleNotifyMember = (id: string) => {
+    setNotifySelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+
   const openAddDialog = (date: Date, prefillName?: string) => {
     setEditingHoliday(null);
     setSelectedDate(date);
@@ -298,6 +369,9 @@ const HolidayCalendarTab = () => {
     setFormCloseTime("22:00");
     setFormNotify(false);
     setFormWhatsAppMessage("");
+    setNotifyAudience("all_active");
+    setNotifySelectedIds(new Set());
+    setNotifySearch("");
     setIsDialogOpen(true);
   };
 
@@ -313,6 +387,9 @@ const HolidayCalendarTab = () => {
     setFormCloseTime("22:00");
     setFormNotify(holiday.notify_members);
     setFormWhatsAppMessage("");
+    setNotifyAudience("all_active");
+    setNotifySelectedIds(new Set());
+    setNotifySearch("");
     setIsDialogOpen(true);
   };
 
@@ -409,33 +486,56 @@ const HolidayCalendarTab = () => {
   const sendHolidayNotifications = async () => {
     if (!currentBranch?.id || !formWhatsAppMessage.trim()) return;
 
-    const started = whatsAppOverlay.startSending("all active members");
+    let memberIds: string[] = [];
+    let recipientLabel = "all active members";
+
+    if (notifyAudience === "specific") {
+      memberIds = Array.from(notifySelectedIds);
+      recipientLabel = `${memberIds.length} selected member${memberIds.length === 1 ? "" : "s"}`;
+      if (memberIds.length === 0) {
+        toast.error("Select at least one member to notify");
+        return;
+      }
+    } else if (notifyMembers.length > 0) {
+      // Use already-loaded members list
+      const filtered =
+        notifyAudience === "all"
+          ? notifyMembers
+          : notifyMembers.filter((m) => m.status === "active");
+      memberIds = filtered.map((m) => m.id);
+      recipientLabel = notifyAudience === "all" ? "all members" : "all active members";
+    }
+
+    const started = whatsAppOverlay.startSending(recipientLabel);
     if (!started) return;
 
     try {
-      // Fetch all active members for this branch
-      const { data: members, error: membersError } = await supabase
-        .from("members")
-        .select("id, name, phone, subscriptions(status)")
-        .eq("branch_id", currentBranch.id);
+      // Fallback: fetch members if list wasn't preloaded
+      if (memberIds.length === 0 && notifyAudience !== "specific") {
+        const { data: members, error: membersError } = await supabase
+          .from("members")
+          .select("id, name, phone, subscriptions(status)")
+          .eq("branch_id", currentBranch.id);
 
-      if (membersError || !members?.length) {
-        whatsAppOverlay.markError("No members found to notify");
-        return;
+        if (membersError || !members?.length) {
+          whatsAppOverlay.markError("No members found to notify");
+          return;
+        }
+
+        const filtered = notifyAudience === "all"
+          ? members
+          : members.filter((m: any) => {
+              const subs = m.subscriptions || [];
+              return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
+            });
+
+        if (filtered.length === 0) {
+          whatsAppOverlay.markError("No matching members found to notify");
+          return;
+        }
+
+        memberIds = filtered.map((m: any) => m.id);
       }
-
-      // Filter to members with active/expiring_soon subscriptions
-      const activeMembers = members.filter((m: any) => {
-        const subs = m.subscriptions || [];
-        return subs.some((s: any) => s.status === "active" || s.status === "expiring_soon");
-      });
-
-      if (activeMembers.length === 0) {
-        whatsAppOverlay.markError("No active members found to notify");
-        return;
-      }
-
-      const memberIds = activeMembers.map((m: any) => m.id);
 
       // Send via send-whatsapp edge function with custom message
       const { data: { session } } = await supabase.auth.getSession();
@@ -463,7 +563,7 @@ const HolidayCalendarTab = () => {
           toast.info(`Sent to ${successCount} members, ${failCount} failed`);
         } else {
           whatsAppOverlay.markSuccess();
-          toast.success(`Holiday notice sent to ${successCount} active members`);
+          toast.success(`Holiday notice sent to ${successCount} member${successCount === 1 ? "" : "s"}`);
         }
       }
     } catch (err: any) {
@@ -1067,10 +1167,135 @@ const HolidayCalendarTab = () => {
               <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/40 rounded-xl">
                 <div className="space-y-0.5">
                   <p className="font-medium text-sm">Notify Members via WhatsApp</p>
-                  <p className="text-[10px] lg:text-xs text-muted-foreground">Send holiday notice to all active members</p>
+                  <p className="text-[10px] lg:text-xs text-muted-foreground">Send holiday notice to selected members</p>
                 </div>
                 <Switch checked={formNotify} onCheckedChange={setFormNotify} />
               </div>
+
+              {/* Audience picker — mirrors Share Calendar */}
+              {formNotify && (
+                <div className="space-y-2 animate-fade-in">
+                  <Label className="text-xs font-medium">Send To</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {([
+                      { key: "all_active", label: "All Active", desc: "Active members" },
+                      { key: "all", label: "All Members", desc: "Everyone" },
+                      { key: "specific", label: "Specific", desc: "Pick members" },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        onClick={() => setNotifyAudience(opt.key)}
+                        className={cn(
+                          "p-2.5 rounded-xl border text-left transition-all duration-200",
+                          notifyAudience === opt.key
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                            : "border-border/40 hover:border-border hover:bg-muted/30"
+                        )}
+                      >
+                        <p className="font-medium text-xs lg:text-sm">{opt.label}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Specific member picker */}
+              {formNotify && notifyAudience === "specific" && (
+                <div className="space-y-2 animate-fade-in">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-medium">Select Members</Label>
+                    <div className="flex items-center gap-2 text-[11px]">
+                      {notifySelectedIds.size > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setNotifySelectedIds(new Set())}
+                          className="text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          Clear ({notifySelectedIds.size})
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setNotifySelectedIds((prev) => {
+                            const next = new Set(prev);
+                            filteredNotifyMembers.forEach((m) => next.add(m.id));
+                            return next;
+                          });
+                        }}
+                        className="text-primary hover:underline"
+                      >
+                        Select all visible
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Search by name or phone…"
+                      value={notifySearch}
+                      onChange={(e) => setNotifySearch(e.target.value)}
+                      className="pl-9 h-9 text-sm"
+                    />
+                  </div>
+
+                  <div className="border border-border/40 rounded-xl overflow-hidden">
+                    <ScrollArea className="h-[200px]">
+                      {notifyLoadingMembers ? (
+                        <div className="p-3 space-y-2">
+                          {[0, 1, 2, 3].map((i) => (
+                            <div key={i} className="h-10 bg-muted/30 rounded-lg animate-pulse" />
+                          ))}
+                        </div>
+                      ) : filteredNotifyMembers.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                          <UsersIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                          <p className="text-sm text-muted-foreground">
+                            {notifySearch ? "No members match your search" : "No members found"}
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="divide-y divide-border/30">
+                          {filteredNotifyMembers.map((m) => {
+                            const isSelected = notifySelectedIds.has(m.id);
+                            return (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => toggleNotifyMember(m.id)}
+                                className={cn(
+                                  "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                                  isSelected ? "bg-primary/5" : "hover:bg-muted/40"
+                                )}
+                              >
+                                <Checkbox checked={isSelected} className="pointer-events-none" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium truncate">{m.name}</p>
+                                  <p className="text-[11px] text-muted-foreground">{m.phone}</p>
+                                </div>
+                                {m.status === "active" && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-600">
+                                    Active
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <UsersIcon className="w-3 h-3" />
+                    <span>
+                      {notifyTargetMemberIds.length} recipient{notifyTargetMemberIds.length === 1 ? "" : "s"}
+                    </span>
+                  </div>
+                </div>
+              )}
 
               {/* WhatsApp Message Preview */}
               {formNotify && formWhatsAppMessage && (
@@ -1088,7 +1313,11 @@ const HolidayCalendarTab = () => {
                     className="min-h-[120px] rounded-lg text-xs bg-background/80 font-mono leading-relaxed resize-y"
                   />
                   <p className="text-[9px] text-muted-foreground">
-                    This message will be sent to all active members via WhatsApp. You can customize it above.
+                    {notifyAudience === "specific"
+                      ? `This message will be sent to ${notifyTargetMemberIds.length} selected member${notifyTargetMemberIds.length === 1 ? "" : "s"} via WhatsApp.`
+                      : notifyAudience === "all"
+                        ? "This message will be sent to ALL members via WhatsApp."
+                        : "This message will be sent to all active members via WhatsApp."}
                   </p>
                 </div>
               )}
