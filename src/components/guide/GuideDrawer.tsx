@@ -18,11 +18,13 @@ import {
 import {
   UsersIcon,
   UserGroupIcon,
-  CreditCardIcon,
+  Cog6ToothIcon,
   ClockIcon,
   ChartBarIcon,
+  ClipboardDocumentListIcon,
   ArrowPathIcon,
   ArrowRightIcon,
+  PlayCircleIcon,
   SparklesIcon,
   LightBulbIcon,
   CheckBadgeIcon,
@@ -47,44 +49,74 @@ interface GuideSection {
   title: string;
   summary: string;
   href?: string;
+  /** If set, dispatches `gymkloud:tour:{tourEvent}:replay` after navigation. */
+  tourEvent?: string;
   steps: GuideStep[];
   tip?: string;
 }
 
 const SECTIONS: GuideSection[] = [
   {
+    id: "dashboard",
+    icon: ChartBarIcon,
+    title: "Dashboard",
+    summary: "Live KPIs, member table, payments, and quick actions.",
+    href: "/admin/dashboard",
+    tourEvent: "dashboard",
+    steps: [
+      {
+        title: "Read the four KPI tiles",
+        body: "Total Members · Active · Expiring Soon (next 7 days) · This Month's Revenue. Refreshes every 30s — tap a card to filter the table below.",
+      },
+      {
+        title: "Switch tabs to manage what you need",
+        body: "Members are full subscribers. Daily Pass tracks walk-ins (excluded from member counts). Payments lists every transaction. Daily Activity shows check-ins.",
+      },
+      {
+        title: "Search & filter to slice your list",
+        body: "Search by name or 10-digit phone (fuzzy matching). Filter by status, trainer, time slot or time-of-day bucket — combine for precise lists.",
+      },
+      {
+        title: "Add a member in 4 steps",
+        body: "Phone (login id) → personal details → plan & PT → payment mode. Phone duplicates are auto-detected. Hits your plan cap? You'll see an upgrade dialog.",
+      },
+      {
+        title: "Export anything to Excel",
+        body: "The download icon at top-right exports the active tab as an .xlsx, respecting current filters and search — perfect for accounting.",
+      },
+    ],
+    tip: "Click 'Take me there' to jump to the Dashboard and replay the full guided spotlight tour.",
+  },
+  {
     id: "members",
     icon: UsersIcon,
     title: "Members",
     summary: "Add, renew, search, and manage every member.",
     href: "/admin/dashboard?tab=members",
+    tourEvent: "dashboard",
     steps: [
       {
         title: "Open the Members tab",
-        body: "Dashboard → Members. You'll see every active, expired, and expiring-soon member with status pills, plan name, and remaining days. Use the search bar to find anyone by name or 10-digit phone instantly — fuzzy match is enabled.",
+        body: "Dashboard → Members. Status pills show Active / Expiring / Expired with remaining days. The search bar matches name or phone instantly.",
       },
       {
         title: "Click 'Add Member' to launch the 4-step wizard",
-        body: "Step 1 captures phone, name, gender (pill selector) and DOB (segmented input). Step 2 collects address (min 3 chars), email, and optional emergency contact. Step 3 picks the plan + start date. Step 4 confirms payment mode (Cash, UPI, or Razorpay link).",
+        body: "Step 1 captures phone, name, gender (pill selector) and DOB (segmented input). Step 2 collects address (min 3 chars), email, optional emergency contact. Step 3 picks plan + start date. Step 4 confirms payment mode.",
       },
       {
         title: "Phone is identity — used for login & WhatsApp",
-        body: "Members log in to /member with this phone. We auto-detect duplicates across the branch. Phone must be exactly 10 digits — international prefixes are added automatically when sending WhatsApp.",
+        body: "Members log in to /member with this phone. Duplicates are detected per branch. International prefixes are added automatically when sending WhatsApp.",
       },
       {
         title: "Plan defines revenue, expiry, and reminders",
-        body: "Plan duration sets the expiry date (existing_end_date + 1 for renewals). Price hits the ledger as Income. Expiring-Soon badge fires within 7 days. After 30 days past expiry, status flips to Inactive automatically.",
+        body: "Plan duration sets the expiry (existing_end_date + 1 for renewals). Price hits the ledger as Income. Expiring-Soon badge fires within 7 days. After 30 days past expiry, status flips to Inactive automatically.",
       },
       {
         title: "Renew, edit, or assign a trainer",
-        body: "Click any member row to open Profile → Renew (same wizard, plan-only), Edit details, Assign Personal Trainer (replace mode deactivates existing PT subscription), view full payment history, or send a manual WhatsApp.",
-      },
-      {
-        title: "Export to Excel anytime",
-        body: "Use the download icon at the top-right of the Members table. Exports respect the current search filter and date range.",
+        body: "Click any member row to open Profile → Renew (plan-only wizard), Edit details, Assign Personal Trainer (replace mode deactivates existing PT), view payment history, or send a manual WhatsApp.",
       },
     ],
-    tip: "Members appear instantly via optimistic UI. If you hit your plan's member cap, the Add Member button shows a clear limit-reached dialog with upgrade options.",
+    tip: "Hit your plan's member cap? The Add Member button surfaces a clear limit-reached dialog with upgrade options.",
   },
   {
     id: "staff",
@@ -92,67 +124,73 @@ const SECTIONS: GuideSection[] = [
     title: "Staff Control",
     summary: "Trainers, managers, permissions, and revenue splits.",
     href: "/admin/staff",
+    tourEvent: "staff",
     steps: [
       {
         title: "Add a staff member",
-        body: "Staff → Add Staff. Capture name, phone (login identity), role (Trainer / Manager / Receptionist), and an initial password. Staff sign in at /admin/login — no separate portal.",
+        body: "Staff → Add Staff. Capture name, phone (login identity), role (Trainer / Manager / Receptionist) and an initial password. Staff sign in at /admin/login.",
       },
       {
         title: "Configure 9 granular permission modules",
-        body: "Per-staff toggles for: Members (view/edit), Payments, Daily Pass, Time Slots, Settings, Ledger, WhatsApp send, Analytics, and Member Access scope (All vs Assigned-only). Changes apply on the staff's next page load.",
+        body: "Per-staff toggles: Members (view/edit), Payments, Daily Pass, Time Slots, Settings, Ledger, WhatsApp send, Analytics, and Member Access scope (All vs Assigned-only). Changes apply on next page load.",
       },
       {
         title: "Assigned-only access for trainers",
-        body: "Set Member Access to 'Assigned' so a trainer only sees members linked to them via PT subscription. Their dashboard, search, and analytics are filtered automatically — strict tenant isolation enforced server-side.",
+        body: "Set Member Access to 'Assigned' so a trainer only sees members linked to them via PT subscription. Their dashboard, search, and analytics are filtered server-side.",
       },
       {
         title: "Set the trainer revenue split %",
-        body: "On the trainer card, configure their cut on PT subscriptions (e.g. 60%). Each PT payment auto-creates a ledger entry for the trainer's earnings — no manual reconciliation needed.",
+        body: "On the trainer card, configure their cut on PT subscriptions (e.g. 60%). Each PT payment auto-creates a ledger entry — no manual reconciliation needed.",
       },
       {
         title: "Multi-branch staff",
-        body: "If the same phone exists in multiple branches, the staff member can switch branches from the header dropdown. Permissions are scoped per branch.",
+        body: "Same phone in multiple branches? The staff member can switch branches from the header dropdown. Permissions are scoped per branch.",
       },
       {
         title: "Edit, deactivate, or delete",
-        body: "Deletion preserves activity logs (ON DELETE SET NULL). Trainer assignments cascade — members with that PT will need a new trainer assigned.",
+        body: "Deletion preserves activity logs (ON DELETE SET NULL). Trainer assignments cascade — members with that PT need a new trainer assigned.",
       },
     ],
-    tip: "WhatsApp send is opt-in per staff (can_send_whatsapp). Useful for receptionists who handle reminders without full member-edit access.",
+    tip: "WhatsApp send is opt-in per staff (can_send_whatsapp). Useful for receptionists handling reminders without full member-edit access.",
   },
   {
-    id: "plans",
-    icon: CreditCardIcon,
-    title: "Plans, Payments & Ledger",
-    summary: "Pricing, transactions, taxes, and full books.",
-    href: "/admin/settings?tab=packages",
+    id: "settings",
+    icon: Cog6ToothIcon,
+    title: "Settings",
+    summary: "Plans, registration, WhatsApp, gym profile, coupons, backup.",
+    href: "/admin/settings",
+    tourEvent: "settings",
     steps: [
       {
-        title: "Create monthly & custom plans",
-        body: "Settings → Packages. Set name, duration (months or custom days), price, optional joining fee, and active/inactive flag. Plans appear in the Add Member wizard and in public registration.",
+        title: "Packages — your pricing engine",
+        body: "Settings → Packages. Create monthly or custom-day plans, set price + joining fee, toggle active state. Plans surface in the Add Member wizard and public registration.",
       },
       {
-        title: "Track payments in real time",
-        body: "Dashboard → Payments tab lists every transaction with date (IST), mode (Cash/UPI/Razorpay), member, plan, and invoice number (CASH-[Short-ID] for offline, RZP-[id] for Razorpay).",
+        title: "Registration fields",
+        body: "Settings → Registration. Toggle which fields appear during member self-registration. Includes the 'Member Self-Select Trainer' switch for PT-led signups.",
       },
       {
-        title: "Razorpay auto-reconciles via webhook",
-        body: "Once Razorpay credentials are added in Super Admin, online payments sync automatically. Test mode supports ₹1 orders. No manual entry required.",
+        title: "Assessment fields",
+        body: "Settings → Assessment. Configure the on-onboarding fitness assessment captured per member — height, weight, goals, medical notes.",
       },
       {
-        title: "Open the Ledger for full books",
-        body: "Sidebar → Ledger. Branch-scoped Income / Expense view with trainer-split breakdown. Add expenses (rent, electricity, equipment) directly. Reverse-calculated tax on every entry.",
+        title: "WhatsApp automations",
+        body: "Settings → WhatsApp. Pick templates, set the daily reminder time (default 9 AM IST), and choose which events auto-trigger a message: registration, renewal, expiry, payment.",
       },
       {
-        title: "Configure auto-invoicing & WhatsApp",
-        body: "Settings → Notifications. Toggle whether payment_details + invoice PDF are sent automatically before the registration confirmation message.",
+        title: "Gym profile (General)",
+        body: "Settings → General. Branch name, logo, contact, address. This data appears on invoices, public registration, and WhatsApp messages.",
       },
       {
-        title: "Export reports",
-        body: "Members and Payments tables both support Excel export. Automated daily reports email/WhatsApp at 9 AM IST when configured in Super Admin.",
+        title: "Coupons & discounts",
+        body: "Settings → Coupons. Create promo codes (percentage or flat off) with validity windows and usage caps. Members enter them at checkout.",
+      },
+      {
+        title: "Subscription & Backup",
+        body: "Subscription tab shows your platform plan, member cap and renewal date. Backup & Restore (when enabled) lets you export/import the full branch dataset as a zip.",
       },
     ],
-    tip: "All times shown are IST (Asia/Kolkata). Ledger entries are immutable once created — corrections require an offsetting entry.",
+    tip: "Each tab saves independently — there's no global Save button. View-only staff see a banner explaining their access.",
   },
   {
     id: "timeslots",
@@ -160,74 +198,124 @@ const SECTIONS: GuideSection[] = [
     title: "Time Slots",
     summary: "Gym hours, trainer assignments, and bookings.",
     href: "/admin/time-slots",
+    tourEvent: "timeslots",
     steps: [
       {
         title: "Create a slot",
-        body: "Time Slots → Add Slot. Pick start/end time (12-hour picker), capacity (max members), and the assigned trainer. Slots can repeat daily or on specific weekdays.",
+        body: "Time Slots → Add Slot. Pick start/end (12-hour picker), capacity, and assigned trainer. Slots can repeat daily or on specific weekdays.",
       },
       {
-        title: "Assign exactly one trainer per slot",
+        title: "Exactly one trainer per slot",
         body: "Each slot belongs to one trainer. Members pick the slot during PT signup — the trainer is auto-linked to their PT subscription (single source of truth).",
       },
       {
         title: "Capacity caps bookings",
-        body: "Once a slot fills, members can't pick it. Adjust capacity anytime — existing bookings are preserved. Use Slot Members tab to see who's in each window.",
+        body: "Once a slot fills, members can't pick it. Adjust capacity anytime — existing bookings are preserved. Use Slot Members to see who's in each window.",
       },
       {
         title: "Notify members of changes",
-        body: "Use 'Notify Members' on the Holiday Calendar or Slot detail to send a WhatsApp blast. Pick all members in the slot or use checkboxes to select specific people.",
+        body: "Use 'Notify Members' on the Holiday Calendar or Slot detail to send a WhatsApp blast. Pick all members in the slot or use checkboxes.",
       },
       {
-        title: "Track attendance per slot",
-        body: "Slot Members tab shows booked members + their check-in status. Combined with biometric/QR attendance for verified presence.",
+        title: "Track utilisation",
+        body: "The Analytics sub-tab visualises which slots fill up vs underused so you can rebalance capacity or trainer assignments.",
+      },
+      {
+        title: "Time Filters power dashboard chips",
+        body: "Define Morning / Afternoon / Evening windows in Time Filters. They appear as filter chips on the dashboard so you can segment members by training time.",
       },
     ],
-    tip: "If you change a trainer on a slot, existing PT subscriptions stay linked to the original trainer until manually re-assigned via the member's profile.",
+    tip: "Changing a trainer on a slot keeps existing PT subscriptions linked to the original trainer until manually re-assigned via the member's profile.",
   },
   {
-    id: "dashboard",
+    id: "analytics",
     icon: ChartBarIcon,
-    title: "Dashboard & Analytics",
-    summary: "Live KPIs, growth charts, and smart insights.",
-    href: "/admin/dashboard",
+    title: "Analytics",
+    summary: "Smart KPIs, growth charts, and AI insights.",
+    href: "/admin/analytics",
+    tourEvent: "analytics",
     steps: [
       {
-        title: "Read the four KPI tiles",
-        body: "Total Members · Active · Expiring Soon (next 7 days) · This Month's Revenue. Refreshed live with 30-second cache. Click the refresh icon (top right) to force a re-pull.",
+        title: "Pick the time window",
+        body: "The sticky period selector at the top drives every KPI and chart. Choose 7d / 30d / 90d / YTD or set a custom date range.",
       },
       {
-        title: "Recommended Next Step widget",
-        body: "Appears for new accounts when setup is incomplete (no plan, trainer, or first member). Shows progress 1/3, 2/3, 3/3 and disappears once you finish — or hide/skip it manually.",
+        title: "Smart metric cards",
+        body: "Revenue · Total Members · Active · Avg Monthly. Each card carries a sparkline and a delta vs the previous period.",
       },
       {
-        title: "Switch dashboard tabs",
-        body: "Members · Payments · Daily Pass · Daily Activity. All four share the same date-range selector at the top. Daily Pass uses a separate table and is excluded from member stats.",
+        title: "AI insights panel",
+        body: "Auto-generated highlights: best intervals, anomalies, retention rate. Updates live with the period filter.",
       },
       {
-        title: "Deep analytics",
-        body: "Sidebar → Analytics. Member growth chart, revenue trends, package sales mix, trainer performance, and AI-powered Insights Panel highlighting anomalies.",
+        title: "Revenue trend",
+        body: "Line chart of revenue across the window. Hover for the exact bucket total and member-pay split.",
       },
       {
-        title: "Branch Analytics (Super Admin)",
-        body: "Multi-branch owners get a cross-branch comparison view — revenue, headcount, and renewal rates side-by-side.",
+        title: "Member growth & new joins",
+        body: "Cumulative growth on the left, fresh joins per interval on the right — spot stagnation or campaign spikes immediately.",
+      },
+      {
+        title: "Trainer & package mix",
+        body: "Trainer Performance compares revenue and client headcount per trainer. Package Sales shows your subscription mix over time.",
       },
     ],
-    tip: "Optimistic toggles update the UI instantly and revert on server error. Caching: static data 1hr, dynamic 30s — refresh icon bypasses cache.",
+    tip: "Charts lazy-load as you scroll for performance. Caching: 30 seconds for live data — use the period selector to refetch.",
+  },
+  {
+    id: "logs",
+    icon: ClipboardDocumentListIcon,
+    title: "Logs",
+    summary: "Audit trails for admin, members, staff, and WhatsApp.",
+    href: "/admin/logs",
+    tourEvent: "logs",
+    steps: [
+      {
+        title: "Four audit trails",
+        body: "Admin / User (member) / Staff / WhatsApp. Every event is timestamped in IST and tied to a user agent + IP for compliance.",
+      },
+      {
+        title: "Admin activity",
+        body: "Logins, member edits, payments collected, plan changes, settings updates, WhatsApp blasts. Use this for compliance and debugging.",
+      },
+      {
+        title: "Member activity",
+        body: "Self-registration, renewals, profile views, check-ins. Ideal for tracing a specific member's journey end-to-end.",
+      },
+      {
+        title: "Staff activity",
+        body: "Who edited which member, who collected which payment, who sent which message. Per-staff filter helps narrow quickly.",
+      },
+      {
+        title: "WhatsApp logs",
+        body: "Every outgoing message: template, recipient, status (sent / delivered / failed), and the sender (admin or staff). Useful when reconciling delivery issues.",
+      },
+    ],
+    tip: "Logs are read-only and immutable. Filter by date range to keep result sets fast.",
   },
 ];
 
 export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
   const navigate = useNavigate();
 
-  const handleGo = (href?: string) => {
-    if (!href) return;
+  const handleGoAndTour = (section: GuideSection) => {
+    if (!section.href) return;
     onOpenChange(false);
-    setTimeout(() => navigate(href), 80);
+    setTimeout(() => {
+      navigate(section.href!);
+      if (section.tourEvent) {
+        // Wait for the destination page to mount, then fire the replay event.
+        setTimeout(() => {
+          window.dispatchEvent(
+            new Event(`gymkloud:tour:${section.tourEvent}:replay`)
+          );
+        }, 450);
+      }
+    }, 80);
   };
 
   const handleReplay = () => {
     resetAllCoachmarks();
-    // Re-trigger the guided dashboard tour immediately
     window.dispatchEvent(new Event("gymkloud:tour:dashboard:replay"));
     toast.success("Tour restarted", {
       description: "The guided dashboard tour and tips will appear again.",
@@ -266,7 +354,7 @@ export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
         {/* Body */}
         <ScrollArea className="flex-1">
           <div className="px-4 py-4 space-y-3">
-            <Accordion type="single" collapsible defaultValue="members" className="space-y-2">
+            <Accordion type="single" collapsible defaultValue="dashboard" className="space-y-2">
               {SECTIONS.map((section, idx) => {
                 const Icon = section.icon;
                 return (
@@ -274,7 +362,7 @@ export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
                     key={section.id}
                     value={section.id}
                     className={cn(
-                      "rounded-xl border border-border/40 bg-card overflow-hidden",
+                      "rounded-lg border border-border/40 bg-card overflow-hidden",
                       "data-[state=open]:border-primary/30 data-[state=open]:shadow-sm",
                       "transition-all duration-200"
                     )}
@@ -337,11 +425,20 @@ export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => handleGo(section.href)}
+                          onClick={() => handleGoAndTour(section)}
                           className="mt-3 h-8 w-full gap-1.5 rounded-lg text-xs"
                         >
-                          Take me there
-                          <ArrowRightIcon className="h-3 w-3" />
+                          {section.tourEvent ? (
+                            <>
+                              <PlayCircleIcon className="h-3.5 w-3.5" />
+                              Take me there & start tour
+                            </>
+                          ) : (
+                            <>
+                              Take me there
+                              <ArrowRightIcon className="h-3 w-3" />
+                            </>
+                          )}
                         </Button>
                       )}
                     </AccordionContent>
@@ -351,7 +448,7 @@ export const GuideDrawer = ({ open, onOpenChange }: GuideDrawerProps) => {
             </Accordion>
 
             {/* Footer card */}
-            <div className="mt-4 rounded-xl border border-border/40 bg-muted/30 p-3">
+            <div className="mt-4 rounded-lg border border-border/40 bg-muted/30 p-3">
               <div className="flex items-start gap-2.5">
                 <CheckBadgeIcon className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
                 <div className="min-w-0 flex-1">
