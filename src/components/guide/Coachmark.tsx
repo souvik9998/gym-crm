@@ -88,6 +88,7 @@ export const Coachmark = ({
             title={title}
             description={description}
             onDismiss={dismiss}
+            onSkipAll={handleSkipAll}
           />,
           document.body
         )}
@@ -101,9 +102,10 @@ interface BubbleProps {
   title: string;
   description: string;
   onDismiss: () => void;
+  onSkipAll: () => void;
 }
 
-const CoachmarkBubble = ({ rect, side, title, description, onDismiss }: BubbleProps) => {
+const CoachmarkBubble = ({ rect, side, title, description, onDismiss, onSkipAll }: BubbleProps) => {
   // Bubble dimensions guess — clamp to viewport
   const BUBBLE_W = 260;
   const GAP = 12;
@@ -176,12 +178,18 @@ const CoachmarkBubble = ({ rect, side, title, description, onDismiss }: BubblePr
             <XMarkIcon className="h-3.5 w-3.5" />
           </button>
         </div>
-        <div className="mt-2 flex items-center justify-between">
-          <span className="text-[10px] font-medium uppercase tracking-wide text-primary/80">Quick tip</span>
+        <div className="mt-2 flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onSkipAll}
+            className="text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Skip tour
+          </button>
           <button
             type="button"
             onClick={onDismiss}
-            className="text-[11px] font-medium text-primary hover:underline"
+            className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-semibold text-primary-foreground shadow-sm hover:bg-primary/90 transition-colors"
           >
             Got it
           </button>
