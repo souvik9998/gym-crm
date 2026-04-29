@@ -45,6 +45,8 @@ import { useDebounce } from "@/hooks/useDebounce";
 import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { useDashboardStore } from "@/stores/dashboardStore";
 import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
+import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
+import { Coachmark } from "@/components/guide/Coachmark";
 
 // Memoized stat card component
 const StatCard = memo(({ 
@@ -356,6 +358,9 @@ const AdminDashboard = () => {
   return (
     <Fragment>
       <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
+        {/* Recommended Next Step (auto-hides when setup is complete) */}
+        {canManageMembers && <RecommendedNextStep />}
+
         {/* Stats Grid */}
         {statsLoading && !stats ? (
           <DashboardStatsSkeleton />
@@ -466,14 +471,22 @@ const AdminDashboard = () => {
                     
                     {/* Add Member Button - Only for admins or staff with can_manage_members */}
                     {canManageMembers && (
-                      <Button 
-                        size="sm"
-                        onClick={() => setIsAddMemberOpen(true)} 
-                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                      <Coachmark
+                        id="members.add"
+                        title="Add your first member"
+                        description="Opens a quick 4-step wizard. Phone is collected first to detect duplicates."
+                        side="bottom"
+                        disabled={isAddMemberOpen}
                       >
-                        <PlusIcon className="w-4 h-4" />
-                        <span>Add Member</span>
-                      </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => setIsAddMemberOpen(true)}
+                          className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                        >
+                          <PlusIcon className="w-4 h-4" />
+                          <span>Add Member</span>
+                        </Button>
+                      </Coachmark>
                     )}
                   </div>
                 </div>

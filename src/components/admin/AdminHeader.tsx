@@ -13,6 +13,7 @@ import {
   Cog6ToothIcon,
   Bars3Icon,
   BuildingStorefrontIcon,
+  SparklesIcon,
 } from "@heroicons/react/24/outline";
 import {
   DropdownMenu,
@@ -28,6 +29,7 @@ import { BranchSelector } from "./BranchSelector";
 import { Badge } from "@/components/ui/badge";
 import { NotificationCenter } from "./NotificationCenter";
 import { BranchLogo } from "./BranchLogo";
+import { GuideDrawer } from "@/components/guide/GuideDrawer";
 
 interface AdminHeaderProps {
   title?: string;
@@ -101,6 +103,7 @@ export const AdminHeader = ({
   };
 
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isGuideOpen, setIsGuideOpen] = useState(false);
   const refreshStartRef = useRef<number>(0);
 
   const handleRefresh = async () => {
@@ -130,6 +133,7 @@ export const AdminHeader = ({
     : "Admin";
 
   return (
+    <>
     <header
       className={cn(
         "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-12 md:h-14 lg:h-16 flex items-center px-3 md:px-4 lg:px-6",
@@ -274,10 +278,26 @@ export const AdminHeader = ({
                   <DropdownMenuSeparator className="my-1" />
                 </>
               )}
-              
+
+              {/* Guide — available to everyone */}
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setIsGuideOpen(true);
+                }}
+                className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground transition-colors"
+              >
+                <SparklesIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">Guide</span>
+                <span className="ml-auto text-[10px] font-medium text-muted-foreground group-hover:text-primary-foreground/80">
+                  Tips
+                </span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator className="my-1" />
+
               {/* Sign Out */}
-              <DropdownMenuItem 
-                onClick={handleSignOut} 
+              <DropdownMenuItem
+                onClick={handleSignOut}
                 className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-md text-destructive hover:bg-destructive/10 focus:bg-destructive/10 focus:text-destructive transition-colors"
               >
                 <ArrowRightOnRectangleIcon className="w-4 h-4" />
@@ -288,6 +308,8 @@ export const AdminHeader = ({
         </div>
       </div>
     </header>
+    <GuideDrawer open={isGuideOpen} onOpenChange={setIsGuideOpen} />
+    </>
   );
 };
 

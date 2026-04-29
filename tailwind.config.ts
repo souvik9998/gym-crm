@@ -171,6 +171,11 @@ export default {
   			'refresh-sweep': {
   				'0%': { transform: 'translateX(-100%)' },
   				'100%': { transform: 'translateX(400%)' }
+  			},
+  			'coachmark-pulse': {
+  				'0%': { transform: 'scale(1)', opacity: '0.9' },
+  				'70%': { transform: 'scale(1.08)', opacity: '0.2' },
+  				'100%': { transform: 'scale(1.12)', opacity: '0' }
   			}
   		},
   		animation: {

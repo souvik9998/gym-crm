@@ -41,6 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DobInput } from "@/components/ui/dob-input";
 import { cn } from "@/lib/utils";
+import { InfoTip } from "@/components/guide/InfoTip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
@@ -1506,6 +1507,7 @@ export const AddMemberDialog = ({
                     <Label htmlFor="add-phone" className="flex items-center gap-2 text-sm font-medium">
                       <Phone className="w-4 h-4 text-accent" />
                       Phone Number <span className="text-destructive">*</span>
+                      <InfoTip>This becomes the member's login + WhatsApp identity. We auto-detect duplicates.</InfoTip>
                     </Label>
                     <div className="flex relative">
                       <span className="inline-flex items-center px-3 rounded-l-xl border-2 border-r-0 border-input bg-muted text-muted-foreground text-sm font-medium">
@@ -1961,6 +1963,7 @@ export const AddMemberDialog = ({
                         <Label className="flex items-center gap-2 text-sm font-medium">
                           <Calendar className="w-4 h-4 text-accent" />
                           Duration <span className="text-destructive">*</span>
+                          <InfoTip>The plan defines revenue, expiry date, and renewal reminders.</InfoTip>
                         </Label>
                         <Select value={selectedPackageId} onValueChange={handlePackageChange}>
                           <SelectTrigger className="h-11 text-sm rounded-xl">
