@@ -258,10 +258,10 @@ const TourBubble = ({
     <>
       {/* Cutout scrim — dims everything EXCEPT the spotlight rectangle */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-[55] animate-fade-in">
-        <div className="absolute left-0 right-0 top-0 bg-foreground/40" style={{ height: cutTop }} />
-        <div className="absolute left-0 right-0 bottom-0 bg-foreground/40" style={{ top: cutBottom }} />
-        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }} />
-        <div className="absolute bg-foreground/40" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
+        <div className="absolute left-0 right-0 top-0 bg-foreground/45 transition-[height] duration-300 ease-out" style={{ height: cutTop }} />
+        <div className="absolute left-0 right-0 bottom-0 bg-foreground/45 transition-[top] duration-300 ease-out" style={{ top: cutBottom }} />
+        <div className="absolute bg-foreground/45 transition-all duration-300 ease-out" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }} />
+        <div className="absolute bg-foreground/45 transition-all duration-300 ease-out" style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }} />
       </div>
 
       {/* Spotlight glow around the anchor — soft, breathing, no jarring border */}
