@@ -2161,6 +2161,7 @@ const AdminSettings = () => {
 
       <PageTour tourId="settings" steps={SETTINGS_STEPS} autoStart={false} />
 
+      <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={(open) => setConfirmDialog((prev) => ({ ...prev, open }))}
         title={confirmDialog.title}
