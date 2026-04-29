@@ -986,59 +986,6 @@ export const SlotMembersTab = ({
                               {!actionsEnabled && <Badge variant="outline" className="bg-background/60 text-[10px] md:text-xs">View only</Badge>}
                             </div>
                           </div>
-
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground">{member.trainer_name}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">Assigned trainer</p>
-                            </div>
-
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground">{member.slot_label}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">{member.slot_member_count}/{member.slot_capacity} members</p>
-                            </div>
-
-                            <div className="flex items-center justify-end gap-1">
-                              {actionsEnabled && canAssign && member.current_pt_trainer_id && member.hasSlotMemberRow && (
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 px-2 text-xs hover:bg-primary/5"
-                                      onClick={() =>
-                                        setMoveSlot({
-                                          rowId: member.id,
-                                          memberId: member.member_id,
-                                          memberName: member.member_name,
-                                          trainerId: member.current_pt_trainer_id!,
-                                          trainerName: member.current_pt_trainer_name || member.trainer_name,
-                                          currentSlotId: member.slot_id,
-                                        })
-                                      }
-                                    >
-                                      <ArrowsRightLeftIcon className="h-3.5 w-3.5" />
-                                      <span className="hidden sm:inline">Transfer</span>
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="top">
-                                    <p className="text-xs">Move to another slot under <strong>{member.current_pt_trainer_name}</strong></p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              )}
-                              {actionsEnabled && canRemove && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                                  onClick={() => setRemoveConfirm({ id: member.id, name: member.member_name, memberId: member.member_id, slotId: member.slot_id })}
-                                >
-                                  <XMarkIcon className="h-3.5 w-3.5" />
-                                  <span className="hidden sm:inline">Remove</span>
-                                </Button>
-                              )}
-                              {!actionsEnabled && <Badge variant="outline" className="bg-background/60">View only</Badge>}
-                            </div>
-                          </div>
                         );
                       })}
                     </div>
