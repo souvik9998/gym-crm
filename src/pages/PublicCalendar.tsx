@@ -251,9 +251,9 @@ export default function PublicCalendar() {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
               {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-                <div key={`pad-${i}`} className="min-h-[58px] lg:min-h-[100px]" />
+                <div key={`pad-${i}`} className="min-h-[68px] sm:min-h-[76px] lg:min-h-[100px]" />
               ))}
               {calendarDays.days.map((day, idx) => {
                 const dateStr = format(day, "yyyy-MM-dd");
