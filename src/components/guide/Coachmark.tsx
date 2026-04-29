@@ -2,7 +2,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { XMarkIcon, SparklesIcon } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
-import { useCoachmark } from "@/hooks/useCoachmarks";
+import { useCoachmark, skipAllCoachmarks } from "@/hooks/useCoachmarks";
 
 interface CoachmarkProps {
   /** Stable id (e.g. "members.add") used for localStorage dismissal */
@@ -33,6 +33,10 @@ export const Coachmark = ({
   disabled = false,
 }: CoachmarkProps) => {
   const { visible, dismiss } = useCoachmark(id);
+  const handleSkipAll = () => {
+    skipAllCoachmarks();
+    dismiss();
+  };
   const wrapperRef = useRef<HTMLSpanElement | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
