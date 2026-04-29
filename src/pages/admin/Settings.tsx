@@ -58,6 +58,8 @@ import { BackupRestoreTab } from "@/components/admin/backup/BackupRestoreTab";
 
 import { BrandLogoSettings } from "@/components/admin/BrandLogoSettings";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageTour } from "@/components/guide/PageTour";
+import { SETTINGS_STEPS } from "@/components/guide/tourSteps";
 
 interface CustomPackage {
   id: string;
