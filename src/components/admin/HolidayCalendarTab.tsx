@@ -127,6 +127,14 @@ const HolidayCalendarTab = () => {
   const [formNotify, setFormNotify] = useState(false);
   const [formWhatsAppMessage, setFormWhatsAppMessage] = useState("");
 
+  // Notify audience picker (mirrors ShareCalendarDialog)
+  type NotifyAudience = "all_active" | "all" | "specific";
+  const [notifyAudience, setNotifyAudience] = useState<NotifyAudience>("all_active");
+  const [notifyMembers, setNotifyMembers] = useState<{ id: string; name: string; phone: string; status: "active" | "inactive" }[]>([]);
+  const [notifyLoadingMembers, setNotifyLoadingMembers] = useState(false);
+  const [notifySelectedIds, setNotifySelectedIds] = useState<Set<string>>(new Set());
+  const [notifySearch, setNotifySearch] = useState("");
+
   // Confirm dialog
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
