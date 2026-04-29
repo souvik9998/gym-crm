@@ -467,9 +467,16 @@ export const TimeSlotsTab = ({
           <p className="text-xs lg:text-sm text-muted-foreground">Manage trainer time slots and capacity</p>
         </div>
         {canCreate && (
-          <Button size="sm" onClick={handleOpenCreate} className="gap-1">
-            <PlusIcon className="w-4 h-4" /> Add Slot
-          </Button>
+          <Coachmark
+            id="timeslots.add"
+            title="Create your first slot"
+            description="Define a time window and assign it to a trainer. Members pick slots when joining PT."
+            side="bottom"
+          >
+            <Button size="sm" onClick={handleOpenCreate} className="gap-1">
+              <PlusIcon className="w-4 h-4" /> Add Slot
+            </Button>
+          </Coachmark>
         )}
       </div>
 
