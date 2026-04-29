@@ -805,12 +805,12 @@ export const SlotMembersTab = ({
                 </div>
               )}
 
-              <div className="flex flex-wrap gap-2">
-                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-foreground">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
-                <Badge variant="outline" className="border-accent/20 bg-accent/5 text-foreground">{filteredMembers.length} member{filteredMembers.length === 1 ? "" : "s"}</Badge>
-                <Badge variant="outline" className="border-success/20 bg-success/5 text-foreground">{visibleUtilization}% utilization</Badge>
+              <div className="flex flex-wrap gap-1.5 lg:gap-2">
+                <Badge variant="outline" className="border-primary/20 bg-primary/5 text-foreground text-[10px] lg:text-xs">{filteredSlots.length} slot{filteredSlots.length === 1 ? "" : "s"}</Badge>
+                <Badge variant="outline" className="border-accent/20 bg-accent/5 text-foreground text-[10px] lg:text-xs">{filteredMembers.length} member{filteredMembers.length === 1 ? "" : "s"}</Badge>
+                <Badge variant="outline" className="border-success/20 bg-success/5 text-foreground text-[10px] lg:text-xs">{visibleUtilization}% utilization</Badge>
                 {selectedSlotData && (
-                  <Badge variant="secondary" className="border border-primary/20 bg-primary/12 text-foreground">
+                  <Badge variant="secondary" className="border border-primary/20 bg-primary/12 text-foreground text-[10px] lg:text-xs">
                     {selectedSlotData.trainer_name} • {formatTimeLabel(selectedSlotData.start_time)} – {formatTimeLabel(selectedSlotData.end_time)}
                   </Badge>
                 )}
