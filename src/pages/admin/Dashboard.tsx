@@ -414,7 +414,7 @@ const AdminDashboard = () => {
                 {/* Top Row - Tabs (Desktop), Search Bar (Desktop), and Actions (Desktop) */}
                 <div className="hidden lg:flex flex-row items-center gap-3">
                   {/* Tabs - With icons and text on desktop */}
-                  <TabsList className="bg-muted/50 p-1 h-10">
+                  <TabsList data-tour="tabs-list" className="bg-muted/50 p-1 h-10">
                     <TabsTrigger 
                       value="members" 
                       className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
@@ -442,7 +442,7 @@ const AdminDashboard = () => {
                   
                   {/* Search Bar - Desktop (between tabs and actions) */}
                   {(activeTab === "members" || activeTab === "daily_pass") && (
-                    <div className="flex-1 max-w-md">
+                    <div data-tour="search" className="flex-1 max-w-md">
                       <SearchInput
                         placeholder="Search by name or phone..."
                         value={activeTab === "members" ? searchInput : dailyPassSearchInput}
@@ -462,6 +462,7 @@ const AdminDashboard = () => {
                     
                     {/* Download/Export Button */}
                     <Button 
+                      data-tour="export"
                       variant="outline" 
                       size="icon"
                       className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
@@ -475,22 +476,15 @@ const AdminDashboard = () => {
                     
                     {/* Add Member Button - Only for admins or staff with can_manage_members */}
                     {canManageMembers && (
-                      <Coachmark
-                        id="members.add"
-                        title="Add your first member"
-                        description="Opens a quick 4-step wizard. Phone is collected first to detect duplicates."
-                        side="bottom"
-                        disabled={isAddMemberOpen}
+                      <Button
+                        data-tour="add-member"
+                        size="sm"
+                        onClick={() => setIsAddMemberOpen(true)}
+                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
                       >
-                        <Button
-                          size="sm"
-                          onClick={() => setIsAddMemberOpen(true)}
-                          className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
-                        >
-                          <PlusIcon className="w-4 h-4" />
-                          <span>Add Member</span>
-                        </Button>
-                      </Coachmark>
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Add Member</span>
+                      </Button>
                     )}
                   </div>
                 </div>
