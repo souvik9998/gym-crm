@@ -218,41 +218,41 @@ export const TimeSlotAnalyticsTab = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4">
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-primary/10 p-2 text-primary"><ClockIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total slots</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.totalSlots}</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-primary/10 p-1.5 text-primary lg:p-2"><ClockIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Total slots</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.totalSlots}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-accent/20 p-2 text-accent-foreground"><UserGroupIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Assigned members</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.totalMembers}</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-accent/20 p-1.5 text-accent-foreground lg:p-2"><UserGroupIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Assigned members</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.totalMembers}</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-secondary p-2 text-secondary-foreground"><ChartBarIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Avg utilization</p>
-              <p className="text-2xl font-semibold text-foreground">{analytics.avgUtilization}%</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-secondary p-1.5 text-secondary-foreground lg:p-2"><ChartBarIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Avg utilization</p>
+              <p className="text-lg font-semibold text-foreground lg:text-2xl">{analytics.avgUtilization}%</p>
             </div>
           </CardContent>
         </Card>
         <Card className="border-border/60 bg-card">
-          <CardContent className="flex items-center gap-3 p-4">
-            <div className="rounded-md bg-muted p-2 text-foreground"><BoltIcon className="h-5 w-5" /></div>
-            <div>
-              <p className="text-xs text-muted-foreground">Peak window</p>
-              <p className="text-lg font-semibold text-foreground">{analytics.peakWindow.label}</p>
-              <p className="text-xs text-muted-foreground">{analytics.peakWindow.members} active members</p>
+          <CardContent className="flex items-center gap-2 p-3 lg:gap-3 lg:p-4">
+            <div className="rounded-md bg-muted p-1.5 text-foreground lg:p-2"><BoltIcon className="h-4 w-4 lg:h-5 lg:w-5" /></div>
+            <div className="min-w-0">
+              <p className="text-[11px] text-muted-foreground lg:text-xs">Peak window</p>
+              <p className="text-sm font-semibold text-foreground lg:text-lg">{analytics.peakWindow.label}</p>
+              <p className="text-[10px] text-muted-foreground lg:text-xs">{analytics.peakWindow.members} active</p>
             </div>
           </CardContent>
         </Card>
@@ -260,9 +260,9 @@ export const TimeSlotAnalyticsTab = ({
 
       <div className="grid gap-4 xl:grid-cols-[1.3fr_1fr]">
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Peak hours</CardTitle>
-            <CardDescription>Member volume and average utilization by time window.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Peak hours</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Member volume and average utilization by time window.</CardDescription>
           </CardHeader>
           <CardContent className="px-2 pb-3 sm:px-4 sm:pb-4">
             <ChartContainer
@@ -290,11 +290,11 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
 
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Quick insights</CardTitle>
-            <CardDescription>Use these signals to tune staffing and slot creation.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Quick insights</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Use these signals to tune staffing and slot creation.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             <div className="rounded-lg border border-border/70 bg-muted/20 p-3">
               <div className="flex items-center justify-between gap-2">
                 <div>
@@ -337,11 +337,11 @@ export const TimeSlotAnalyticsTab = ({
 
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Top occupied slots</CardTitle>
-            <CardDescription>Most used time slots with trainer names and utilization.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Top occupied slots</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">Most used time slots with trainer names and utilization.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.busiestSlots.length === 0 ? (
               <p className="text-sm text-muted-foreground">No occupied slots yet.</p>
             ) : (
@@ -370,11 +370,11 @@ export const TimeSlotAnalyticsTab = ({
         </Card>
 
         <Card className="border-border/60">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base">Window breakdown</CardTitle>
-            <CardDescription>How many slots are available in each part of the day.</CardDescription>
+          <CardHeader className="p-3 pb-2 lg:p-6 lg:pb-2">
+            <CardTitle className="text-sm lg:text-base">Window breakdown</CardTitle>
+            <CardDescription className="text-[11px] lg:text-sm">How many slots are available in each part of the day.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-2.5 p-3 pt-0 lg:space-y-3 lg:p-6 lg:pt-0">
             {analytics.peakHours.map((window) => (
               <div key={window.bucket} className="rounded-lg border border-border/70 p-3">
                 <div className="flex items-center justify-between gap-2">
