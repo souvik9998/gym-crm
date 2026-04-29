@@ -29,6 +29,7 @@ import { BranchSelector } from "./BranchSelector";
 import { Badge } from "@/components/ui/badge";
 import { NotificationCenter } from "./NotificationCenter";
 import { BranchLogo } from "./BranchLogo";
+import { GuideDrawer } from "@/components/guide/GuideDrawer";
 
 interface AdminHeaderProps {
   title?: string;
