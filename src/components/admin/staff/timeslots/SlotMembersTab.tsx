@@ -48,6 +48,7 @@ import {
   type TimeBucket,
 } from "./timeSlotUtils";
 import { TimeBucketChips } from "@/components/admin/TimeBucketChips";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 
 interface SlotMembersTabProps {
