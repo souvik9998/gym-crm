@@ -890,17 +890,17 @@ export const SlotMembersTab = ({
                         return (
                           <div
                             key={`${member.slot_id}-${member.member_id}`}
-                            className="grid gap-3 rounded-lg border border-border/70 bg-background/70 p-3 backdrop-blur-sm md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
+                            className="grid gap-2 rounded-lg border border-border/70 bg-background/70 p-2.5 backdrop-blur-sm md:gap-3 md:p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
                           >
                             <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <p className="truncate text-sm font-medium text-foreground">{member.member_name}</p>
+                              <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
+                                <p className="truncate text-[13px] font-medium text-foreground md:text-sm">{member.member_name}</p>
                                 {getPtBadge(member.pt_status)}
                                 {getSubBadge(member.subscription_status)}
                                 {member.is_trainer_replaced && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <Badge variant="outline" className="cursor-help bg-background/60">Trainer replaced</Badge>
+                                      <Badge variant="outline" className="cursor-help bg-background/60 text-[10px] md:text-xs">Trainer replaced</Badge>
                                     </TooltipTrigger>
                                     <TooltipContent side="top" className="max-w-[260px]">
                                       <p className="text-xs">
@@ -910,7 +910,7 @@ export const SlotMembersTab = ({
                                   </Tooltip>
                                 )}
                               </div>
-                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground md:text-xs">
                                 <span>{member.member_phone}</span>
                                 {member.pt_end_date && (
                                   <span className="inline-flex items-center gap-1">
@@ -920,24 +920,38 @@ export const SlotMembersTab = ({
                               </div>
                             </div>
 
-                            <div className="min-w-0">
+                            {/* Mobile: trainer + slot in one compact row */}
+                            <div className="grid grid-cols-2 gap-2 border-t border-border/50 pt-2 md:hidden">
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Trainer</p>
+                                <p className="truncate text-[13px] font-medium text-foreground">{member.trainer_name}</p>
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">{member.slot_label}</p>
+                                <p className="truncate text-[12px] text-muted-foreground">{member.slot_member_count}/{member.slot_capacity} members</p>
+                              </div>
+                            </div>
+
+                            {/* Desktop trainer column */}
+                            <div className="hidden min-w-0 md:block">
                               <p className="text-sm font-medium text-foreground">{member.trainer_name}</p>
                               <p className="mt-1 text-xs text-muted-foreground">Assigned trainer</p>
                             </div>
 
-                            <div className="min-w-0">
+                            {/* Desktop slot column */}
+                            <div className="hidden min-w-0 md:block">
                               <p className="text-sm font-medium text-foreground">{member.slot_label}</p>
                               <p className="mt-1 text-xs text-muted-foreground">{member.slot_member_count}/{member.slot_capacity} members</p>
                             </div>
 
-                            <div className="flex items-center justify-end gap-1">
+                            <div className="flex items-center justify-end gap-1 border-t border-border/50 pt-2 md:border-0 md:pt-0">
                               {actionsEnabled && canAssign && member.current_pt_trainer_id && member.hasSlotMemberRow && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="h-8 px-2 text-xs hover:bg-primary/5"
+                                      className="h-7 px-2 text-[11px] hover:bg-primary/5 md:h-8 md:text-xs"
                                       onClick={() =>
                                         setMoveSlot({
                                           rowId: member.id,
@@ -950,7 +964,7 @@ export const SlotMembersTab = ({
                                       }
                                     >
                                       <ArrowsRightLeftIcon className="h-3.5 w-3.5" />
-                                      <span className="hidden sm:inline">Transfer</span>
+                                      <span className="ml-1 sm:inline">Transfer</span>
                                     </Button>
                                   </TooltipTrigger>
                                   <TooltipContent side="top">
@@ -962,14 +976,14 @@ export const SlotMembersTab = ({
                                 <Button
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 px-2 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                                  className="h-7 px-2 text-[11px] text-destructive hover:bg-destructive/10 hover:text-destructive md:h-8 md:text-xs"
                                   onClick={() => setRemoveConfirm({ id: member.id, name: member.member_name, memberId: member.member_id, slotId: member.slot_id })}
                                 >
                                   <XMarkIcon className="h-3.5 w-3.5" />
-                                  <span className="hidden sm:inline">Remove</span>
+                                  <span className="ml-1 sm:inline">Remove</span>
                                 </Button>
                               )}
-                              {!actionsEnabled && <Badge variant="outline" className="bg-background/60">View only</Badge>}
+                              {!actionsEnabled && <Badge variant="outline" className="bg-background/60 text-[10px] md:text-xs">View only</Badge>}
                             </div>
                           </div>
                         );
