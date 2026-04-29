@@ -719,28 +719,28 @@ export const SlotMembersTab = ({
       ) : (
         <>
           <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65">
-            <CardContent className="space-y-4 p-4">
+            <CardContent className="space-y-3 p-3 lg:space-y-4 lg:p-4">
               <div className="flex items-center gap-2">
-                <div className="rounded-md bg-primary/10 p-2 text-primary">
-                  <FunnelIcon className="h-4 w-4" />
+                <div className="rounded-md bg-primary/10 p-1.5 text-primary lg:p-2">
+                  <FunnelIcon className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-foreground">Time-based filters</p>
+                    <p className="text-xs font-medium text-foreground lg:text-sm">Time-based filters</p>
                     {isSlotsFetching && <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
                   </div>
-                  <p className="text-xs text-muted-foreground">Mix time, trainer, availability, and a specific slot when needed.</p>
+                  <p className="text-[11px] text-muted-foreground lg:text-xs">Mix time, trainer, availability, and a specific slot when needed.</p>
                 </div>
               </div>
 
               <TimeBucketChips value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
 
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+              <div className="grid gap-2 sm:grid-cols-2 lg:gap-3 xl:grid-cols-5">
                 {!restrictedTrainerId && (
                   <div className="space-y-1">
-                    <label className="text-xs font-medium text-muted-foreground">Trainer</label>
+                    <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Trainer</label>
                     <Select value={filterTrainer} onValueChange={setFilterTrainer}>
-                      <SelectTrigger className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm"><SelectValue placeholder="All trainers" /></SelectTrigger>
+                      <SelectTrigger className="h-8 border-border/70 bg-background/70 text-xs backdrop-blur-sm lg:h-9 lg:text-sm"><SelectValue placeholder="All trainers" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All trainers</SelectItem>
                         {trainers.filter((trainer) => trainer.is_active).map((trainer) => (
@@ -752,9 +752,9 @@ export const SlotMembersTab = ({
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Availability</label>
+                  <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Availability</label>
                   <Select value={filterAvailability} onValueChange={(value) => setFilterAvailability(value as SlotAvailability)}>
-                    <SelectTrigger className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm"><SelectValue /></SelectTrigger>
+                    <SelectTrigger className="h-8 border-border/70 bg-background/70 text-xs backdrop-blur-sm lg:h-9 lg:text-sm"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {AVAILABILITY_OPTIONS.map((option) => (
                         <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
@@ -763,23 +763,23 @@ export const SlotMembersTab = ({
                   </Select>
                 </div>
 
-                <div className="space-y-1 xl:col-span-2">
-                  <label className="text-xs font-medium text-muted-foreground">Search slot or trainer</label>
+                <div className="space-y-1 sm:col-span-2 xl:col-span-2">
+                  <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Search slot or trainer</label>
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       placeholder="Search by trainer or time..."
                       value={slotSearch}
                       onChange={(e) => setSlotSearch(e.target.value)}
-                      className="h-9 border-border/70 bg-background/70 pl-8 text-sm backdrop-blur-sm"
+                      className="h-8 border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm lg:h-9 lg:text-sm"
                     />
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-medium text-muted-foreground">Exact slot</label>
+                <div className="space-y-1 sm:col-span-2 xl:col-span-1">
+                  <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Exact slot</label>
                   <Select value={selectedSlot || "all"} onValueChange={(value) => setSelectedSlot(value === "all" ? "" : value)}>
-                    <SelectTrigger className="h-9 border-border/70 bg-background/70 text-sm backdrop-blur-sm"><SelectValue placeholder="All filtered slots" /></SelectTrigger>
+                    <SelectTrigger className="h-8 border-border/70 bg-background/70 text-xs backdrop-blur-sm lg:h-9 lg:text-sm"><SelectValue placeholder="All filtered slots" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All filtered slots</SelectItem>
                       {filteredSlots.map((slot) => (
