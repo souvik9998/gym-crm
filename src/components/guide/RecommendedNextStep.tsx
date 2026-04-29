@@ -13,6 +13,9 @@ import {
   SparklesIcon,
 } from "@heroicons/react/24/outline";
 import { cn } from "@/lib/utils";
+import { isFirstTimeUser, markFirstRunSeen } from "@/hooks/useCoachmarks";
+
+const DISMISS_KEY = "gymkloud:nextstep:dismissed";
 
 interface SetupState {
   hasPlan: boolean;
