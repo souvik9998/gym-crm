@@ -1253,7 +1253,7 @@ const AdminSettings = () => {
 
 
           {/* Mobile: dropdown tab selector */}
-          <div className="lg:hidden relative mb-4" ref={menuRef}>
+          <div className="lg:hidden relative mb-4" ref={menuRef} data-tour="settings-tabs">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(prev => !prev)}
