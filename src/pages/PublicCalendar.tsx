@@ -251,9 +251,9 @@ export default function PublicCalendar() {
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+            <div className="grid grid-cols-7 gap-0.5 sm:gap-1 lg:gap-1.5">
               {Array.from({ length: calendarDays.startPadding }).map((_, i) => (
-                <div key={`pad-${i}`} className="min-h-[58px] lg:min-h-[100px]" />
+                <div key={`pad-${i}`} className="min-h-[68px] sm:min-h-[76px] lg:min-h-[100px]" />
               ))}
               {calendarDays.days.map((day, idx) => {
                 const dateStr = format(day, "yyyy-MM-dd");
@@ -280,17 +280,17 @@ export default function PublicCalendar() {
                     <Wrapper
                       {...wrapperProps}
                       className={cn(
-                        "block w-full min-h-[58px] lg:min-h-[100px] rounded-xl flex flex-col items-stretch p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
+                        "block w-full min-h-[68px] sm:min-h-[76px] lg:min-h-[100px] rounded-lg lg:rounded-xl flex flex-col items-stretch p-1 sm:p-1.5 lg:p-2 relative text-xs lg:text-sm overflow-hidden",
                         "border border-transparent transition-all duration-200 ease-out",
-                        (singleEvent || hasEvent) && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                        (singleEvent || hasEvent) && "cursor-pointer lg:hover:scale-[1.02] lg:hover:shadow-md lg:hover:z-10 active:scale-95",
                         isPast && "opacity-50",
                         // Normal day
                         !holiday && !isCurrent && !hasEvent && "bg-muted/20",
-                        !holiday && !isCurrent && hasEvent && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                        !holiday && !isCurrent && hasEvent && "bg-blue-500/8 lg:hover:bg-blue-500/12 lg:hover:border-blue-500/30",
                         // Today
                         isCurrent && !holiday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
                         // Holiday
-                        holiday && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                        holiday && "bg-destructive/8 lg:hover:bg-destructive/14 border-destructive/20",
                         // Sunday text
                         isSunday && !holiday && "text-destructive/60",
                       )}
@@ -298,7 +298,7 @@ export default function PublicCalendar() {
                       {/* Date number row */}
                       <div className="flex items-center justify-between leading-none">
                         <span className={cn(
-                          "text-xs lg:text-sm leading-none",
+                          "text-[11px] sm:text-xs lg:text-sm leading-none",
                           isCurrent && !holiday && "text-primary font-bold",
                           holiday && "text-destructive font-semibold",
                           !holiday && !isCurrent && "font-medium",
@@ -309,9 +309,6 @@ export default function PublicCalendar() {
                           <span className="hidden lg:inline-block text-[8px] uppercase tracking-wide font-bold text-primary bg-primary/15 px-1 py-0.5 rounded leading-none">
                             Today
                           </span>
-                        )}
-                        {hasEvent && (
-                          <span className="lg:hidden inline-flex items-center justify-center w-1.5 h-1.5 rounded-full bg-blue-500" />
                         )}
                       </div>
 
@@ -327,12 +324,27 @@ export default function PublicCalendar() {
                         </span>
                       )}
 
-                      {/* Holiday label (mobile) */}
-                      {holiday && (
-                        <span className="lg:hidden text-[7px] leading-tight text-center line-clamp-1 text-destructive/80 font-medium mt-0.5">
-                          {holiday.holiday_name}
-                        </span>
-                      )}
+                      {/* Mobile/tablet: in-cell name pills (no overlay tooltip) */}
+                      <div className="lg:hidden flex flex-col gap-0.5 mt-0.5 min-w-0">
+                        {holiday && (
+                          <span className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-destructive/15 text-destructive font-semibold truncate text-center">
+                            {holiday.holiday_name}
+                          </span>
+                        )}
+                        {hasEvent && dayEvents.slice(0, holiday ? 1 : 2).map((ev) => (
+                          <span
+                            key={ev.id}
+                            className="text-[8px] sm:text-[9px] leading-tight px-1 py-0.5 rounded bg-blue-500/15 text-blue-700 dark:text-blue-300 font-medium truncate text-center"
+                          >
+                            {ev.title}
+                          </span>
+                        ))}
+                        {hasEvent && dayEvents.length > (holiday ? 1 : 2) && (
+                          <span className="text-[8px] leading-tight text-blue-600 dark:text-blue-400 font-semibold text-center">
+                            +{dayEvents.length - (holiday ? 1 : 2)}
+                          </span>
+                        )}
+                      </div>
 
                       {/* Event pills (desktop) */}
                       {hasEvent && (
@@ -357,9 +369,9 @@ export default function PublicCalendar() {
                       )}
                     </Wrapper>
 
-                    {/* Hover Tooltip */}
+                    {/* Hover Tooltip (desktop only) */}
                     {(holiday || hasEvent) && (
-                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
+                      <div className="hidden lg:block absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2.5 py-1.5 bg-foreground text-background text-[10px] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none z-30 shadow-lg max-w-[240px] animate-fade-in">
                         {holiday && (
                           <div className="whitespace-nowrap">
                             <span className="font-medium">{holiday.holiday_name}</span>
