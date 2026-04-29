@@ -912,18 +912,18 @@ const HolidayCalendarTab = () => {
 
       {/* National Holidays Quick-Add */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
-        <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+            <div className="flex items-center justify-center w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex-shrink-0">
               <CalendarDaysIcon className="w-4 h-4 lg:w-5 lg:h-5" />
             </div>
-            <div>
-              <CardTitle className="text-base lg:text-xl">National Holidays {currentYear}</CardTitle>
-              <CardDescription className="text-xs lg:text-sm">Quick-add Indian national holidays to your calendar</CardDescription>
+            <div className="min-w-0">
+              <CardTitle className="text-sm lg:text-xl">National Holidays {currentYear}</CardTitle>
+              <CardDescription className="text-[11px] lg:text-sm leading-snug">Quick-add Indian national holidays to your calendar</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0">
+        <CardContent className="p-3 lg:p-6 pt-0 lg:pt-0">
           <div className="grid gap-2 grid-cols-1 sm:grid-cols-2">
             {getNationalHolidays(currentYear)
               .filter(h => !isBefore(parseISO(h.date), startOfDay(new Date())))
@@ -935,18 +935,18 @@ const HolidayCalendarTab = () => {
                     disabled={alreadyAdded}
                     onClick={() => openAddDialog(parseISO(holiday.date), holiday.name)}
                     className={cn(
-                      "flex items-center gap-3 p-3 rounded-xl border border-border/30 text-left transition-all duration-200",
+                      "flex items-center gap-2.5 lg:gap-3 p-2.5 lg:p-3 rounded-lg lg:rounded-xl border border-border/30 text-left transition-all duration-200 overflow-hidden",
                       alreadyAdded
                         ? "opacity-50 cursor-not-allowed bg-muted/20"
                         : "hover:border-primary/30 hover:bg-primary/5 hover:shadow-sm active:scale-[0.98]"
                     )}
                   >
-                    <div className="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-orange-500/10 text-orange-600 text-center flex-shrink-0">
+                    <div className="flex flex-col items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-lg bg-orange-500/10 text-orange-600 text-center flex-shrink-0">
                       <span className="text-[9px] font-medium leading-none">{format(parseISO(holiday.date), "MMM")}</span>
                       <span className="text-sm font-bold leading-tight">{format(parseISO(holiday.date), "d")}</span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">{holiday.name}</p>
+                      <p className="font-medium text-xs lg:text-sm truncate">{holiday.name}</p>
                       <p className="text-[10px] lg:text-xs text-muted-foreground">{format(parseISO(holiday.date), "EEEE")}</p>
                     </div>
                     {alreadyAdded ? (
