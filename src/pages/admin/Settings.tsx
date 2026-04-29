@@ -1283,12 +1283,13 @@ const AdminSettings = () => {
           </div>
 
           {/* Desktop: horizontal tabs */}
-          <div className="hidden lg:block border-b border-border/60 mb-6">
+          <div className="hidden lg:block border-b border-border/60 mb-6" data-tour="settings-tabs">
             <TabsList className="inline-flex h-auto bg-transparent p-0 gap-1 -mb-px">
               {settingsTabs.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
+                  data-tour={`settings-tab-${tab.value}`}
                   className={cn(
                     "px-5 py-2.5 text-sm font-medium whitespace-nowrap rounded-none border-b-2 border-transparent",
                     "text-muted-foreground hover:text-foreground transition-colors duration-200",
