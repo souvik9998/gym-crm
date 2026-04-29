@@ -115,10 +115,14 @@ export async function verifyQstashSignature(
     return { ok: false, reason: `subject-mismatch:${payload.sub}` };
   }
 
-  // Body hash claim
+  // Body hash claim. Normalize both sides (base64url charset, strip "=" padding) before
+  // comparing — QStash includes trailing "=" padding while our digest does not, which would
+  // otherwise cause a false body-hash-mismatch.
   if (typeof payload.body === "string") {
-    const expectedBodyHash = await sha256Base64Url(rawBody);
-    if (!timingSafeEqual(payload.body, expectedBodyHash)) {
+    const normalize = (s: string) => s.replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+    const expectedBodyHash = normalize(await sha256Base64Url(rawBody));
+    const claimedBodyHash = normalize(payload.body);
+    if (!timingSafeEqual(claimedBodyHash, expectedBodyHash)) {
       return { ok: false, reason: "body-hash-mismatch" };
     }
   }
