@@ -259,13 +259,18 @@ export default function Invoice() {
 
     const items: Array<{ description: string; duration: string; amount: number; qty?: number }> = [];
 
+    const rangeLabel = (start: string | null, end: string | null) =>
+      start && end ? `${formatDate(start)} – ${formatDate(end)}` : "-";
+
+    const gymStart = invoice.gym_start_date || invoice.start_date;
+    const gymEnd = invoice.gym_end_date || invoice.end_date;
+    const ptStart = invoice.pt_start_date || invoice.start_date;
+    const ptEnd = invoice.pt_end_date || invoice.end_date;
+
     if (invoice.gym_fee > 0) {
       items.push({
         description: invoice.package_name || "Gym Membership",
-        duration:
-          invoice.start_date && invoice.end_date
-            ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
-            : "-",
+        duration: rangeLabel(gymStart, gymEnd),
         amount: Number(invoice.gym_fee),
         qty: 1,
       });
@@ -277,11 +282,10 @@ export default function Invoice() {
 
     if (invoice.trainer_fee > 0) {
       items.push({
-        description: "Personal Training Fee",
-        duration:
-          invoice.start_date && invoice.end_date
-            ? `${formatDate(invoice.start_date)} – ${formatDate(invoice.end_date)}`
-            : "-",
+        description: invoice.pt_trainer_name
+          ? `Personal Training Fee — ${invoice.pt_trainer_name}`
+          : "Personal Training Fee",
+        duration: rangeLabel(ptStart, ptEnd),
         amount: Number(invoice.trainer_fee),
         qty: 1,
       });
