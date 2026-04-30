@@ -213,44 +213,39 @@ const TourBubble = ({
   }
   if (top < padding) top = padding;
 
-  // Cutout-style scrim — match UI radius (rounded-xl, ~12px).
+  // Single-element cutout via massive box-shadow — eliminates seam artifacts.
   const PAD = 6;
-  const cutTop = Math.max(0, rect.top - PAD);
-  const cutBottom = Math.min(window.innerHeight, rect.bottom + PAD);
-  const cutLeft = Math.max(0, rect.left - PAD);
-  const cutRight = Math.min(window.innerWidth, rect.right + PAD);
+  const spotTop = rect.top - PAD;
+  const spotLeft = rect.left - PAD;
+  const spotW = rect.width + PAD * 2;
+  const spotH = rect.height + PAD * 2;
 
   return (
     <>
-      {/* Cutout scrim */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-[55] animate-fade-in">
-        <div
-          className="absolute left-0 right-0 top-0 bg-foreground/45 transition-[height] duration-300 ease-out"
-          style={{ height: cutTop }}
-        />
-        <div
-          className="absolute left-0 right-0 bottom-0 bg-foreground/45 transition-[top] duration-300 ease-out"
-          style={{ top: cutBottom }}
-        />
-        <div
-          className="absolute bg-foreground/45 transition-all duration-300 ease-out"
-          style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: 0, width: cutLeft }}
-        />
-        <div
-          className="absolute bg-foreground/45 transition-all duration-300 ease-out"
-          style={{ top: cutTop, bottom: window.innerHeight - cutBottom, left: cutRight, right: 0 }}
-        />
-      </div>
+      {/* Spotlight cutout — one element, no seams */}
+      <div
+        aria-hidden
+        className="pointer-events-none fixed z-[55] rounded-xl animate-fade-in"
+        style={{
+          top: spotTop,
+          left: spotLeft,
+          width: spotW,
+          height: spotH,
+          boxShadow: "0 0 0 9999px hsl(var(--foreground) / 0.45)",
+          transition:
+            "top 360ms cubic-bezier(0.22, 1, 0.36, 1), left 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      />
 
-      {/* Spotlight glow — softer radius matches UI */}
+      {/* Spotlight pulse ring */}
       <div
         aria-hidden
         className="pointer-events-none fixed z-[60] rounded-xl animate-coachmark-pulse"
         style={{
-          top: rect.top - PAD,
-          left: rect.left - PAD,
-          width: rect.width + PAD * 2,
-          height: rect.height + PAD * 2,
+          top: spotTop,
+          left: spotLeft,
+          width: spotW,
+          height: spotH,
           transition:
             "top 360ms cubic-bezier(0.22, 1, 0.36, 1), left 360ms cubic-bezier(0.22, 1, 0.36, 1), width 360ms cubic-bezier(0.22, 1, 0.36, 1), height 360ms cubic-bezier(0.22, 1, 0.36, 1)",
         }}
