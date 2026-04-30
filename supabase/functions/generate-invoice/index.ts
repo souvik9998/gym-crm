@@ -673,14 +673,30 @@ Deno.serve(async (req) => {
     const gymFee = isPersonalTrainingPayment(payment.payment_type) ? 0 : Math.max(subtotalBeforeTax - trainerFee, 0);
 
     const eventDetails = eventRegistration?.events as any;
-    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date || eventDetails?.event_date;
-    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date || eventDetails?.event_end_date || eventDetails?.event_date;
-    const startDate = rawStartDate
-      ? new Date(rawStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-      : paymentDate;
-    const endDate = rawEndDate
-      ? new Date(rawEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-      : "-";
+    const formatDateLabel = (value: any) =>
+      value
+        ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        : "";
+
+    // Gym membership period (only meaningful when there is a gym fee)
+    const rawGymStart = subscription?.start_date || dailyPassSubscription?.start_date || eventDetails?.event_date || null;
+    const rawGymEnd = subscription?.end_date || dailyPassSubscription?.end_date || eventDetails?.event_end_date || eventDetails?.event_date || null;
+
+    // PT period (only meaningful when there is a trainer fee)
+    const rawPtStart = linkedPtSubscription?.start_date || subscription?.pt_start_date || null;
+    const rawPtEnd = linkedPtSubscription?.end_date || subscription?.pt_end_date || null;
+
+    // Legacy single-period fallback used by the table when one side is missing
+    const rawStartDate = rawGymStart || rawPtStart;
+    const rawEndDate = rawGymEnd || rawPtEnd;
+    const startDate = rawStartDate ? formatDateLabel(rawStartDate) : paymentDate;
+    const endDate = rawEndDate ? formatDateLabel(rawEndDate) : "-";
+
+    const gymStartLabel = rawGymStart ? formatDateLabel(rawGymStart) : "";
+    const gymEndLabel = rawGymEnd ? formatDateLabel(rawGymEnd) : "";
+    const ptStartLabel = rawPtStart ? formatDateLabel(rawPtStart) : "";
+    const ptEndLabel = rawPtEnd ? formatDateLabel(rawPtEnd) : "";
+    const ptTrainerName = linkedPtSubscription?.personal_trainers?.name || null;
 
     let packageName = dailyPassSubscription?.package_name || labelPaymentType(payment.payment_type);
     if (payment.payment_type === "event_registration" && eventDetails?.title) {
