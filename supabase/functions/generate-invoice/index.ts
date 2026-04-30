@@ -29,6 +29,11 @@ async function generateInvoicePDF(data: {
   packageName: string;
   startDate: string;
   endDate: string;
+  gymStartDate?: string;
+  gymEndDate?: string;
+  ptStartDate?: string;
+  ptEndDate?: string;
+  ptTrainerName?: string;
   joiningFee: number;
   trainerFee: number;
   gymFee: number;
@@ -232,9 +237,18 @@ async function generateInvoicePDF(data: {
   drawTopText(col5 - 38, 301, "Amount", 9, rgb(textR, textG, textB), true);
 
   const items: Array<{ description: string; duration: string; qty: string; amount: string }> = [];
-  if (data.gymFee > 0) items.push({ description: data.packageName || "Gym Membership", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.gymFee.toLocaleString("en-IN")}` });
+  const gymRange = (data.gymStartDate || data.startDate) && (data.gymEndDate || data.endDate)
+    ? `${data.gymStartDate || data.startDate} - ${data.gymEndDate || data.endDate}`
+    : "-";
+  const ptRange = (data.ptStartDate || data.startDate) && (data.ptEndDate || data.endDate)
+    ? `${data.ptStartDate || data.startDate} - ${data.ptEndDate || data.endDate}`
+    : "-";
+  if (data.gymFee > 0) items.push({ description: data.packageName || "Gym Membership", duration: gymRange, qty: "1", amount: `Rs.${data.gymFee.toLocaleString("en-IN")}` });
   if (data.joiningFee > 0) items.push({ description: "Joining Fee", duration: "-", qty: "1", amount: `Rs.${data.joiningFee.toLocaleString("en-IN")}` });
-  if (data.trainerFee > 0) items.push({ description: "Personal Training Fee", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.trainerFee.toLocaleString("en-IN")}` });
+  if (data.trainerFee > 0) {
+    const ptLabel = data.ptTrainerName ? `Personal Training Fee - ${data.ptTrainerName}` : "Personal Training Fee";
+    items.push({ description: ptLabel, duration: ptRange, qty: "1", amount: `Rs.${data.trainerFee.toLocaleString("en-IN")}` });
+  }
   if (items.length === 0) items.push({ description: data.packageName || "Payment", duration: "-", qty: "1", amount: `Rs.${data.amount.toLocaleString("en-IN")}` });
 
   items.forEach((item, index) => {
@@ -659,14 +673,30 @@ Deno.serve(async (req) => {
     const gymFee = isPersonalTrainingPayment(payment.payment_type) ? 0 : Math.max(subtotalBeforeTax - trainerFee, 0);
 
     const eventDetails = eventRegistration?.events as any;
-    const rawStartDate = linkedPtSubscription?.start_date || dailyPassSubscription?.start_date || subscription?.start_date || eventDetails?.event_date;
-    const rawEndDate = linkedPtSubscription?.end_date || dailyPassSubscription?.end_date || subscription?.pt_end_date || subscription?.end_date || eventDetails?.event_end_date || eventDetails?.event_date;
-    const startDate = rawStartDate
-      ? new Date(rawStartDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-      : paymentDate;
-    const endDate = rawEndDate
-      ? new Date(rawEndDate).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
-      : "-";
+    const formatDateLabel = (value: any) =>
+      value
+        ? new Date(value).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })
+        : "";
+
+    // Gym membership period (only meaningful when there is a gym fee)
+    const rawGymStart = subscription?.start_date || dailyPassSubscription?.start_date || eventDetails?.event_date || null;
+    const rawGymEnd = subscription?.end_date || dailyPassSubscription?.end_date || eventDetails?.event_end_date || eventDetails?.event_date || null;
+
+    // PT period (only meaningful when there is a trainer fee)
+    const rawPtStart = linkedPtSubscription?.start_date || subscription?.pt_start_date || null;
+    const rawPtEnd = linkedPtSubscription?.end_date || subscription?.pt_end_date || null;
+
+    // Legacy single-period fallback used by the table when one side is missing
+    const rawStartDate = rawGymStart || rawPtStart;
+    const rawEndDate = rawGymEnd || rawPtEnd;
+    const startDate = rawStartDate ? formatDateLabel(rawStartDate) : paymentDate;
+    const endDate = rawEndDate ? formatDateLabel(rawEndDate) : "-";
+
+    const gymStartLabel = rawGymStart ? formatDateLabel(rawGymStart) : "";
+    const gymEndLabel = rawGymEnd ? formatDateLabel(rawGymEnd) : "";
+    const ptStartLabel = rawPtStart ? formatDateLabel(rawPtStart) : "";
+    const ptEndLabel = rawPtEnd ? formatDateLabel(rawPtEnd) : "";
+    const ptTrainerName = linkedPtSubscription?.personal_trainers?.name || null;
 
     let packageName = dailyPassSubscription?.package_name || labelPaymentType(payment.payment_type);
     if (payment.payment_type === "event_registration" && eventDetails?.title) {
@@ -716,6 +746,11 @@ Deno.serve(async (req) => {
       packageName,
       startDate,
       endDate,
+      gymStartDate: gymStartLabel,
+      gymEndDate: gymEndLabel,
+      ptStartDate: ptStartLabel,
+      ptEndDate: ptEndLabel,
+      ptTrainerName: ptTrainerName || undefined,
       joiningFee: 0,
       trainerFee,
       gymFee: gymFee > 0 ? gymFee : 0,
@@ -791,6 +826,11 @@ Deno.serve(async (req) => {
       package_name: packageName,
       start_date: toDateOnly(rawStartDate),
       end_date: toDateOnly(rawEndDate),
+      gym_start_date: toDateOnly(rawGymStart),
+      gym_end_date: toDateOnly(rawGymEnd),
+      pt_start_date: toDateOnly(rawPtStart),
+      pt_end_date: toDateOnly(rawPtEnd),
+      pt_trainer_name: ptTrainerName,
       payment_mode: payment.payment_mode,
       payment_date: payment.created_at,
       transaction_id: transactionId,
