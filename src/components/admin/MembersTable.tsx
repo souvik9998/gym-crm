@@ -1187,6 +1187,25 @@ export const MembersTable = ({
       );
     }
 
+    // If filters are active OR there are members in the system but filtered list is empty,
+    // show a "no results for filter" state instead of the onboarding/welcome UI.
+    if (isAnyFilterActive || totalCount > 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-fade-in">
+          <div className="relative mb-5">
+            <div className="absolute inset-0 rounded-2xl bg-muted/40 blur-xl" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+              <Filter className="h-7 w-7 text-muted-foreground" />
+            </div>
+          </div>
+          <h3 className="text-base font-semibold text-foreground">No members match these filters</h3>
+          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            Try adjusting or clearing the filters to see more members.
+          </p>
+        </div>
+      );
+    }
+
     const handleStartAdd = () => {
       const btn = document.querySelector<HTMLElement>('[data-tour="add-member"]');
       if (btn) {
