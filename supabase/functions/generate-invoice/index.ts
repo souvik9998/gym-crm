@@ -29,6 +29,11 @@ async function generateInvoicePDF(data: {
   packageName: string;
   startDate: string;
   endDate: string;
+  gymStartDate?: string;
+  gymEndDate?: string;
+  ptStartDate?: string;
+  ptEndDate?: string;
+  ptTrainerName?: string;
   joiningFee: number;
   trainerFee: number;
   gymFee: number;
