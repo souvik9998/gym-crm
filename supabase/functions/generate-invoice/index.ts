@@ -237,9 +237,18 @@ async function generateInvoicePDF(data: {
   drawTopText(col5 - 38, 301, "Amount", 9, rgb(textR, textG, textB), true);
 
   const items: Array<{ description: string; duration: string; qty: string; amount: string }> = [];
-  if (data.gymFee > 0) items.push({ description: data.packageName || "Gym Membership", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.gymFee.toLocaleString("en-IN")}` });
+  const gymRange = (data.gymStartDate || data.startDate) && (data.gymEndDate || data.endDate)
+    ? `${data.gymStartDate || data.startDate} - ${data.gymEndDate || data.endDate}`
+    : "-";
+  const ptRange = (data.ptStartDate || data.startDate) && (data.ptEndDate || data.endDate)
+    ? `${data.ptStartDate || data.startDate} - ${data.ptEndDate || data.endDate}`
+    : "-";
+  if (data.gymFee > 0) items.push({ description: data.packageName || "Gym Membership", duration: gymRange, qty: "1", amount: `Rs.${data.gymFee.toLocaleString("en-IN")}` });
   if (data.joiningFee > 0) items.push({ description: "Joining Fee", duration: "-", qty: "1", amount: `Rs.${data.joiningFee.toLocaleString("en-IN")}` });
-  if (data.trainerFee > 0) items.push({ description: "Personal Training Fee", duration: data.startDate && data.endDate ? `${data.startDate} - ${data.endDate}` : "-", qty: "1", amount: `Rs.${data.trainerFee.toLocaleString("en-IN")}` });
+  if (data.trainerFee > 0) {
+    const ptLabel = data.ptTrainerName ? `Personal Training Fee - ${data.ptTrainerName}` : "Personal Training Fee";
+    items.push({ description: ptLabel, duration: ptRange, qty: "1", amount: `Rs.${data.trainerFee.toLocaleString("en-IN")}` });
+  }
   if (items.length === 0) items.push({ description: data.packageName || "Payment", duration: "-", qty: "1", amount: `Rs.${data.amount.toLocaleString("en-IN")}` });
 
   items.forEach((item, index) => {
