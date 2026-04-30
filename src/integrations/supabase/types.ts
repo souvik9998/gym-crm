@@ -3618,10 +3618,12 @@ export type Database = {
           footer_message: string
           gym_address: string
           gym_email: string
+          gym_end_date: string
           gym_fee: number
           gym_gst: string
           gym_name: string
           gym_phone: string
+          gym_start_date: string
           has_pdf: boolean
           id: string
           invoice_brand_name: string
@@ -3635,6 +3637,9 @@ export type Database = {
           payment_date: string
           payment_id: string
           payment_mode: string
+          pt_end_date: string
+          pt_start_date: string
+          pt_trainer_name: string
           public_token: string
           start_date: string
           subtotal: number
