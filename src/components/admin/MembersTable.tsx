@@ -65,17 +65,34 @@ interface MembersTableProps {
 type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
 
-const FeatureHint = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
-  <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-card/60 p-3 text-left backdrop-blur-sm">
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-      {icon}
+const FeatureHint = ({
+  icon,
+  title,
+  desc,
+  tone = "accent",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  tone?: "accent" | "success" | "warning";
+}) => {
+  const toneClasses = {
+    accent: "bg-accent/10 text-accent",
+    success: "bg-success/10 text-success",
+    warning: "bg-warning/15 text-warning",
+  }[tone];
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md">
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", toneClasses)}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
+      </div>
     </div>
-    <div className="min-w-0">
-      <p className="text-xs font-semibold text-foreground">{title}</p>
-      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
-    </div>
-  </div>
-);
+  );
+};
 
 export const MembersTable = ({ 
   searchQuery, 
