@@ -30,6 +30,11 @@ interface InvoiceData {
   package_name: string | null;
   start_date: string | null;
   end_date: string | null;
+  gym_start_date: string | null;
+  gym_end_date: string | null;
+  pt_start_date: string | null;
+  pt_end_date: string | null;
+  pt_trainer_name: string | null;
   payment_mode: string | null;
   payment_date: string | null;
   transaction_id: string | null;
