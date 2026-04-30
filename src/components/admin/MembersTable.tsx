@@ -1154,50 +1154,20 @@ export const MembersTable = ({
     }
   };
 
+  // Show skeleton while loading - this must come first to prevent "No data" flash
+  if (showLoading) {
+    return <TableSkeleton rows={8} columns={6} />;
+  }
+
+  // Only show empty state when we have confirmed data is empty (not loading, not fetching, data exists but is empty)
+  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && sortedMembers.length === 0;
+  
   const isAnyFilterActive =
     filterValue !== "all" ||
     ptFilterActive ||
     !!trainerFilter ||
     !!timeSlotFilter ||
     (timeBucketFilter && timeBucketFilter !== "all");
-
-  // When a filter is active but the currently-loaded pages produce zero matches,
-  // and more pages exist on the server, keep fetching so we don't falsely show
-  // the "No members match" empty state. Filters are applied client-side, so the
-  // matching members may live on later pages (especially after switching back
-  // from another tab where only the first page was loaded).
-  useEffect(() => {
-    if (
-      !isLoading &&
-      !isFetching &&
-      !isFetchingNextPage &&
-      hasNextPage &&
-      isAnyFilterActive &&
-      sortedMembers.length === 0
-    ) {
-      fetchNextPage();
-    }
-  }, [
-    isLoading,
-    isFetching,
-    isFetchingNextPage,
-    hasNextPage,
-    isAnyFilterActive,
-    sortedMembers.length,
-    fetchNextPage,
-  ]);
-
-  // Show skeleton while loading - this must come first to prevent "No data" flash.
-  // Also keep skeleton visible while we're auto-fetching more pages to satisfy an
-  // active filter (avoids flashing "no results" before later pages arrive).
-  const isAutoFetchingForFilter =
-    isAnyFilterActive && sortedMembers.length === 0 && (isFetchingNextPage || hasNextPage);
-  if (showLoading || isAutoFetchingForFilter) {
-    return <TableSkeleton rows={8} columns={6} />;
-  }
-
-  // Only show empty state when we have confirmed data is empty (not loading, not fetching, data exists but is empty)
-  const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && sortedMembers.length === 0;
 
   if (isDataConfirmedEmpty) {
     if (searchQuery) {
