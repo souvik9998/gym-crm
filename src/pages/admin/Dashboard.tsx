@@ -415,31 +415,19 @@ const AdminDashboard = () => {
                 {/* Top Row - Tabs (Desktop), Search Bar (Desktop), and Actions (Desktop) */}
                 <div className="hidden lg:flex flex-row items-center gap-3">
                   {/* Tabs - With icons and text on desktop */}
-                  <TabsList data-tour="tabs-list" className="bg-muted/50 p-1 h-10">
-                    <TabsTrigger 
-                      value="members" 
-                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                    >
-                      <UsersIcon className="w-4 h-4" />
-                      <span>Members</span>
-                    </TabsTrigger>
+                  <AnimatedTabsList data-tour="tabs-list">
+                    <AnimatedTabsTrigger value="members" icon={UsersIcon}>
+                      Members
+                    </AnimatedTabsTrigger>
                     {isDailyPassEnabled && (
-                    <TabsTrigger 
-                      value="daily_pass" 
-                      className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                    >
-                      <ClockIcon className="w-4 h-4" />
-                      <span>Daily Passes</span>
-                    </TabsTrigger>
+                      <AnimatedTabsTrigger value="daily_pass" icon={ClockIcon}>
+                        Daily Passes
+                      </AnimatedTabsTrigger>
                     )}
-                    <TabsTrigger 
-                      value="payments" 
-                      className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                    >
-                      <CreditCardIcon className="w-4 h-4" />
-                      <span>Payments</span>
-                    </TabsTrigger>
-                  </TabsList>
+                    <AnimatedTabsTrigger value="payments" icon={CreditCardIcon}>
+                      Payments
+                    </AnimatedTabsTrigger>
+                  </AnimatedTabsList>
                   
                   {/* Search Bar - Desktop (between tabs and actions) */}
                   {(activeTab === "members" || activeTab === "daily_pass") && (
