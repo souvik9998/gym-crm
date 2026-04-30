@@ -91,7 +91,7 @@ const AnimatedTabsList = React.forwardRef<
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1 bottom-1 rounded-lg bg-background shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]",
+          "pointer-events-none absolute top-1.5 bottom-1.5 rounded-lg bg-background shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]",
           "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           indicator.ready ? "opacity-100" : "opacity-0",
         )}
