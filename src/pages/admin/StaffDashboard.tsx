@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchInput } from "@/components/ui/search-input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
+import { AnimatedTabsList, AnimatedTabsTrigger } from "@/components/ui/animated-tabs";
 import {
   UsersIcon,
   CreditCardIcon,
@@ -239,31 +240,19 @@ const StaffDashboard = () => {
                 <div className="flex flex-col gap-2 lg:gap-4">
                   {/* Desktop: Tabs + Search + Actions in one row */}
                   <div className="hidden lg:flex flex-row items-center gap-3">
-                    <TabsList className="bg-muted/50 p-1 h-10">
-                      <TabsTrigger 
-                        value="members" 
-                        className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                      >
-                        <UsersIcon className="w-4 h-4" />
-                        <span>Members</span>
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="daily_pass" 
-                        className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                      >
-                        <ClockIcon className="w-4 h-4" />
-                        <span>Daily Passes</span>
-                      </TabsTrigger>
+                    <AnimatedTabsList>
+                      <AnimatedTabsTrigger value="members" icon={UsersIcon}>
+                        Members
+                      </AnimatedTabsTrigger>
+                      <AnimatedTabsTrigger value="daily_pass" icon={ClockIcon}>
+                        Daily Passes
+                      </AnimatedTabsTrigger>
                       {canAccessPayments && (
-                        <TabsTrigger 
-                          value="payments" 
-                          className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                        >
-                          <CreditCardIcon className="w-4 h-4" />
-                          <span>Payments</span>
-                        </TabsTrigger>
+                        <AnimatedTabsTrigger value="payments" icon={CreditCardIcon}>
+                          Payments
+                        </AnimatedTabsTrigger>
                       )}
-                    </TabsList>
+                    </AnimatedTabsList>
                     
                     {/* Search Bar - Desktop */}
                     {(activeTab === "members" || activeTab === "daily_pass") && (
@@ -356,31 +345,34 @@ const StaffDashboard = () => {
 
                   {/* Mobile/Tablet: Text-only Tabs */}
                   <div className="lg:hidden">
-                    <TabsList className="bg-muted/40 p-0.5 h-9 md:h-10 w-full rounded-xl">
-                      <TabsTrigger 
-                        value="members" 
-                        className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                    <AnimatedTabsList fullWidth size="sm" className="md:h-10">
+                      <AnimatedTabsTrigger
+                        value="members"
+                        icon={UsersIcon}
+                        fullWidth
+                        className="text-xs md:text-sm"
                       >
-                        <UsersIcon className="w-3.5 h-3.5 hidden md:inline" />
                         Members
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="daily_pass" 
-                        className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                      </AnimatedTabsTrigger>
+                      <AnimatedTabsTrigger
+                        value="daily_pass"
+                        icon={ClockIcon}
+                        fullWidth
+                        className="text-xs md:text-sm"
                       >
-                        <ClockIcon className="w-3.5 h-3.5 hidden md:inline" />
                         Daily Passes
-                      </TabsTrigger>
+                      </AnimatedTabsTrigger>
                       {canAccessPayments && (
-                        <TabsTrigger 
-                          value="payments" 
-                          className="flex-1 text-xs md:text-sm leading-tight px-2 py-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:font-semibold transition-all duration-200 gap-1.5"
+                        <AnimatedTabsTrigger
+                          value="payments"
+                          icon={CreditCardIcon}
+                          fullWidth
+                          className="text-xs md:text-sm"
                         >
-                          <CreditCardIcon className="w-3.5 h-3.5 hidden md:inline" />
                           Payments
-                        </TabsTrigger>
+                        </AnimatedTabsTrigger>
                       )}
-                    </TabsList>
+                    </AnimatedTabsList>
                   </div>
                   
                   {/* Search Bar - Mobile/Tablet */}
