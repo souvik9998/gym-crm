@@ -65,17 +65,34 @@ interface MembersTableProps {
 type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
 
-const FeatureHint = ({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) => (
-  <div className="flex items-start gap-2.5 rounded-xl border border-border/60 bg-card/60 p-3 text-left backdrop-blur-sm">
-    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-      {icon}
+const FeatureHint = ({
+  icon,
+  title,
+  desc,
+  tone = "accent",
+}: {
+  icon: React.ReactNode;
+  title: string;
+  desc: string;
+  tone?: "accent" | "success" | "warning";
+}) => {
+  const toneClasses = {
+    accent: "bg-accent/10 text-accent",
+    success: "bg-success/10 text-success",
+    warning: "bg-warning/15 text-warning",
+  }[tone];
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl border border-border bg-card p-3 text-left shadow-sm transition-shadow hover:shadow-md">
+      <div className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", toneClasses)}>
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-foreground">{title}</p>
+        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
+      </div>
     </div>
-    <div className="min-w-0">
-      <p className="text-xs font-semibold text-foreground">{title}</p>
-      <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{desc}</p>
-    </div>
-  </div>
-);
+  );
+};
 
 export const MembersTable = ({ 
   searchQuery, 
@@ -1172,57 +1189,61 @@ export const MembersTable = ({
     };
 
     return (
-      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background animate-fade-in">
-        {/* Decorative background blobs */}
-        <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full bg-primary/10 blur-3xl" />
-        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 h-60 w-60 rounded-full bg-primary/5 blur-3xl" />
+      <div className="relative overflow-hidden rounded-xl border border-border bg-card animate-fade-in">
+        {/* Decorative accent blobs (subtle, on-brand) */}
+        <div aria-hidden className="pointer-events-none absolute -top-24 -right-20 h-56 w-56 rounded-full bg-accent/10 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-20 h-56 w-56 rounded-full bg-success/10 blur-3xl" />
 
-        <div className="relative flex flex-col items-center px-6 py-12 text-center sm:py-16">
-          {/* Animated illustration */}
-          <div className="relative mb-6">
-            <div className="absolute inset-0 animate-coachmark-pulse rounded-3xl" />
-            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
-              <UserPlus className="h-9 w-9 text-primary-foreground" strokeWidth={2.2} />
-              <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-md ring-1 ring-border">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <div className="relative flex flex-col items-center px-6 py-12 text-center sm:py-14">
+          {/* Icon tile — matches the page's Add Member button (primary/foreground) */}
+          <div className="relative mb-5">
+            <div className="absolute inset-0 animate-coachmark-pulse rounded-xl" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-md">
+              <UserPlus className="h-8 w-8" strokeWidth={2} />
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-card shadow-sm ring-1 ring-border">
+                <Sparkles className="h-3 w-3 text-accent" />
               </span>
             </div>
           </div>
 
-          <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">
             Welcome! Let's add your first member
           </h3>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
-            Your members list is empty. Add a member to start tracking subscriptions, attendance, payments and personal training assignments — all in one place.
+          <p className="mt-1.5 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Your members list is empty. Add a member to start tracking subscriptions, attendance, payments and personal training — all in one place.
           </p>
 
-          {/* CTA */}
-          <button
+          {/* CTA — uses the app's standard Button so styles match exactly */}
+          <Button
             type="button"
             onClick={handleStartAdd}
-            className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-lg shadow-foreground/10 transition-all hover:shadow-xl hover:shadow-foreground/20 hover:-translate-y-0.5 active:translate-y-0"
+            className="group mt-5 gap-2"
+            size="default"
           >
             <UserPlus className="h-4 w-4" />
             Add your first member
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-          </button>
+          </Button>
 
-          {/* Feature hints */}
-          <div className="mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Feature hints — match other card surfaces in the app */}
+          <div className="mt-8 grid w-full max-w-2xl grid-cols-1 gap-2.5 sm:grid-cols-3">
             <FeatureHint
               icon={<Zap className="h-4 w-4" />}
               title="Quick onboarding"
               desc="Add members in under a minute"
+              tone="warning"
             />
             <FeatureHint
               icon={<ShieldCheck className="h-4 w-4" />}
               title="Auto invoicing"
               desc="Invoices & WhatsApp on signup"
+              tone="success"
             />
             <FeatureHint
               icon={<Sparkles className="h-4 w-4" />}
               title="Smart insights"
               desc="Track renewals & attendance"
+              tone="accent"
             />
           </div>
         </div>
