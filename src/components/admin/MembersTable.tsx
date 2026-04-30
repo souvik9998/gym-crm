@@ -1162,6 +1162,13 @@ export const MembersTable = ({
   // Only show empty state when we have confirmed data is empty (not loading, not fetching, data exists but is empty)
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && sortedMembers.length === 0;
   
+  const isAnyFilterActive =
+    filterValue !== "all" ||
+    ptFilterActive ||
+    !!trainerFilter ||
+    !!timeSlotFilter ||
+    (timeBucketFilter && timeBucketFilter !== "all");
+
   if (isDataConfirmedEmpty) {
     if (searchQuery) {
       return (
