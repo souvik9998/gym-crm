@@ -1355,10 +1355,12 @@ export type Database = {
           footer_message: string | null
           gym_address: string | null
           gym_email: string | null
+          gym_end_date: string | null
           gym_fee: number
           gym_gst: string | null
           gym_name: string
           gym_phone: string | null
+          gym_start_date: string | null
           id: string
           invoice_brand_name: string | null
           invoice_logo_url: string | null
@@ -1373,6 +1375,9 @@ export type Database = {
           payment_mode: string | null
           pdf_storage_path: string | null
           pdf_url: string | null
+          pt_end_date: string | null
+          pt_start_date: string | null
+          pt_trainer_name: string | null
           public_token: string
           start_date: string | null
           subtotal: number
@@ -1394,10 +1399,12 @@ export type Database = {
           footer_message?: string | null
           gym_address?: string | null
           gym_email?: string | null
+          gym_end_date?: string | null
           gym_fee?: number
           gym_gst?: string | null
           gym_name: string
           gym_phone?: string | null
+          gym_start_date?: string | null
           id?: string
           invoice_brand_name?: string | null
           invoice_logo_url?: string | null
@@ -1412,6 +1419,9 @@ export type Database = {
           payment_mode?: string | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
+          pt_end_date?: string | null
+          pt_start_date?: string | null
+          pt_trainer_name?: string | null
           public_token?: string
           start_date?: string | null
           subtotal?: number
@@ -1433,10 +1443,12 @@ export type Database = {
           footer_message?: string | null
           gym_address?: string | null
           gym_email?: string | null
+          gym_end_date?: string | null
           gym_fee?: number
           gym_gst?: string | null
           gym_name?: string
           gym_phone?: string | null
+          gym_start_date?: string | null
           id?: string
           invoice_brand_name?: string | null
           invoice_logo_url?: string | null
@@ -1451,6 +1463,9 @@ export type Database = {
           payment_mode?: string | null
           pdf_storage_path?: string | null
           pdf_url?: string | null
+          pt_end_date?: string | null
+          pt_start_date?: string | null
+          pt_trainer_name?: string | null
           public_token?: string
           start_date?: string | null
           subtotal?: number
