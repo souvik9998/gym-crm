@@ -80,7 +80,7 @@ const AnimatedTabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={localRef}
       className={cn(
-        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1 text-muted-foreground max-w-full",
+        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1 text-muted-foreground max-w-full overflow-hidden",
         size === "sm" ? "h-9" : "h-10",
         fullWidth && "w-full",
         className,
@@ -96,8 +96,8 @@ const AnimatedTabsList = React.forwardRef<
           indicator.ready ? "opacity-100" : "opacity-0",
         )}
         style={{
-          width: Math.max(0, indicator.width - 4),
-          transform: `translateX(${indicator.left + 2}px)`,
+          width: indicator.width,
+          transform: `translateX(${indicator.left}px)`,
         }}
       />
       {children}
