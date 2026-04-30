@@ -88,37 +88,6 @@ const SECTIONS: GuideSection[] = [
     tip: "Click 'Take me there' to jump to the Dashboard and replay the full guided spotlight tour.",
   },
   {
-    id: "members",
-    icon: UsersIcon,
-    title: "Members",
-    summary: "Add, renew, search, and manage every member.",
-    href: "/admin/dashboard?tab=members",
-    tourEvent: "dashboard",
-    steps: [
-      {
-        title: "Open the Members tab",
-        body: "Dashboard → Members. Status pills show Active / Expiring / Expired with remaining days. The search bar matches name or phone instantly.",
-      },
-      {
-        title: "Click 'Add Member' to launch the 4-step wizard",
-        body: "Step 1 captures phone, name, gender (pill selector) and DOB (segmented input). Step 2 collects address (min 3 chars), email, optional emergency contact. Step 3 picks plan + start date. Step 4 confirms payment mode.",
-      },
-      {
-        title: "Phone is identity — used for login & WhatsApp",
-        body: "Members log in to /member with this phone. Duplicates are detected per branch. International prefixes are added automatically when sending WhatsApp.",
-      },
-      {
-        title: "Plan defines revenue, expiry, and reminders",
-        body: "Plan duration sets the expiry (existing_end_date + 1 for renewals). Price hits the ledger as Income. Expiring-Soon badge fires within 7 days. After 30 days past expiry, status flips to Inactive automatically.",
-      },
-      {
-        title: "Renew, edit, or assign a trainer",
-        body: "Click any member row to open Profile → Renew (plan-only wizard), Edit details, Assign Personal Trainer (replace mode deactivates existing PT), view payment history, or send a manual WhatsApp.",
-      },
-    ],
-    tip: "Hit your plan's member cap? The Add Member button surfaces a clear limit-reached dialog with upgrade options.",
-  },
-  {
     id: "staff",
     icon: UserGroupIcon,
     title: "Staff Control",

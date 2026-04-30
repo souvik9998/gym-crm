@@ -173,8 +173,8 @@ export default {
   				'100%': { transform: 'translateX(400%)' }
   			},
   			'coachmark-pulse': {
-  				'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.45), 0 0 0 6px hsl(var(--primary) / 0.18)' },
-  				'50%': { boxShadow: '0 0 0 4px hsl(var(--primary) / 0.30), 0 0 0 14px hsl(var(--primary) / 0.06)' }
+  				'0%, 100%': { boxShadow: '0 0 0 1px hsl(var(--primary) / 0.35), 0 0 16px 2px hsl(var(--primary) / 0.20)' },
+  				'50%': { boxShadow: '0 0 0 1px hsl(var(--primary) / 0.55), 0 0 28px 6px hsl(var(--primary) / 0.30)' }
   			}
   		},
   		animation: {
