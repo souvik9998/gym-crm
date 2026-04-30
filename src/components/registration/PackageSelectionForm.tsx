@@ -355,12 +355,17 @@ const PackageSelectionForm = ({
   }, [packageType, selectedMonthlyPackage, selectedCustomPackage, selectedStartDate]);
 
   const ptStartDate = useMemo(() => {
-    if (propPtStartDate) {
-      return parseDateOnly(propPtStartDate) ?? selectedStartDate;
+    const gymStart = new Date(selectedStartDate);
+    gymStart.setHours(0, 0, 0, 0);
+    // When the user is renewing gym + PT together, PT must always align
+    // with the (new) gym membership start date — never start before it,
+    // and never start from a stale existing-PT-end date that pre-dates
+    // the chosen gym start. This guarantees PT end ≤ gym end (capped below).
+    const propStart = propPtStartDate ? parseDateOnly(propPtStartDate) : null;
+    if (propStart && propStart.getTime() > gymStart.getTime()) {
+      return propStart;
     }
-    const start = new Date(selectedStartDate);
-    start.setHours(0, 0, 0, 0);
-    return start;
+    return gymStart;
   }, [propPtStartDate, selectedStartDate]);
 
   const ptDurationOptions = useMemo((): PTDurationOption[] => {
