@@ -80,7 +80,7 @@ const AnimatedTabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={localRef}
       className={cn(
-        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1 text-muted-foreground",
+        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1 text-muted-foreground max-w-full",
         size === "sm" ? "h-9" : "h-10",
         fullWidth && "w-full",
         className,
@@ -96,8 +96,8 @@ const AnimatedTabsList = React.forwardRef<
           indicator.ready ? "opacity-100" : "opacity-0",
         )}
         style={{
-          width: indicator.width,
-          transform: `translateX(${indicator.left}px)`,
+          width: Math.max(0, indicator.width - 4),
+          transform: `translateX(${indicator.left + 2}px)`,
         }}
       />
       {children}
@@ -119,14 +119,14 @@ const AnimatedTabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "group relative z-10 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm font-medium",
+      "group relative z-10 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-lg px-2.5 sm:px-3 py-1.5 text-xs sm:text-sm font-medium",
       "text-muted-foreground transition-colors duration-200 ease-out",
       "hover:text-foreground/80",
       "data-[state=active]:text-foreground data-[state=active]:font-semibold",
       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
       "disabled:pointer-events-none disabled:opacity-50",
       "active:scale-[0.97] transition-transform",
-      fullWidth && "flex-1",
+      fullWidth && "flex-1 min-w-0",
       className,
     )}
     {...props}
