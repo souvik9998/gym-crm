@@ -1134,12 +1134,86 @@ export const MembersTable = ({
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && sortedMembers.length === 0;
   
   if (isDataConfirmedEmpty) {
+    if (searchQuery) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 px-4 text-center animate-fade-in">
+          <div className="relative mb-5">
+            <div className="absolute inset-0 rounded-2xl bg-muted/40 blur-xl" />
+            <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+              <Search className="h-7 w-7 text-muted-foreground" />
+            </div>
+          </div>
+          <h3 className="text-base font-semibold text-foreground">No matches found</h3>
+          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+            We couldn't find any members matching <span className="font-medium text-foreground">"{searchQuery}"</span>. Try a different name or phone number.
+          </p>
+        </div>
+      );
+    }
+
+    const handleStartAdd = () => {
+      const btn = document.querySelector<HTMLElement>('[data-tour="add-member"]');
+      if (btn) {
+        btn.scrollIntoView({ behavior: "smooth", block: "center" });
+        setTimeout(() => btn.click(), 250);
+      }
+    };
+
     return (
-      <div className="text-center py-12">
-        <User className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
-        <p className="text-muted-foreground">
-          {searchQuery ? "No members found matching your search" : "No members yet"}
-        </p>
+      <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-primary/5 via-background to-background animate-fade-in">
+        {/* Decorative background blobs */}
+        <div aria-hidden className="pointer-events-none absolute -top-20 -right-20 h-60 w-60 rounded-full bg-primary/10 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-24 -left-16 h-60 w-60 rounded-full bg-primary/5 blur-3xl" />
+
+        <div className="relative flex flex-col items-center px-6 py-12 text-center sm:py-16">
+          {/* Animated illustration */}
+          <div className="relative mb-6">
+            <div className="absolute inset-0 animate-coachmark-pulse rounded-3xl" />
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/25">
+              <UserPlus className="h-9 w-9 text-primary-foreground" strokeWidth={2.2} />
+              <span className="absolute -top-1.5 -right-1.5 flex h-6 w-6 items-center justify-center rounded-full bg-background shadow-md ring-1 ring-border">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+              </span>
+            </div>
+          </div>
+
+          <h3 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Welcome! Let's add your first member
+          </h3>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+            Your members list is empty. Add a member to start tracking subscriptions, attendance, payments and personal training assignments — all in one place.
+          </p>
+
+          {/* CTA */}
+          <button
+            type="button"
+            onClick={handleStartAdd}
+            className="group mt-6 inline-flex items-center gap-2 rounded-xl bg-foreground px-5 py-2.5 text-sm font-semibold text-background shadow-lg shadow-foreground/10 transition-all hover:shadow-xl hover:shadow-foreground/20 hover:-translate-y-0.5 active:translate-y-0"
+          >
+            <UserPlus className="h-4 w-4" />
+            Add your first member
+            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+          </button>
+
+          {/* Feature hints */}
+          <div className="mt-10 grid w-full max-w-2xl grid-cols-1 gap-3 sm:grid-cols-3">
+            <FeatureHint
+              icon={<Zap className="h-4 w-4" />}
+              title="Quick onboarding"
+              desc="Add members in under a minute"
+            />
+            <FeatureHint
+              icon={<ShieldCheck className="h-4 w-4" />}
+              title="Auto invoicing"
+              desc="Invoices & WhatsApp on signup"
+            />
+            <FeatureHint
+              icon={<Sparkles className="h-4 w-4" />}
+              title="Smart insights"
+              desc="Track renewals & attendance"
+            />
+          </div>
+        </div>
       </div>
     );
   }
