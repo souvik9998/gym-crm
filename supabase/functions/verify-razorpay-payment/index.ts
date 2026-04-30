@@ -779,7 +779,17 @@ Deno.serve(async (req) => {
 
       // Use provided ptStartDate or default to gym start date
       const ptStart = parseDateOnly(ptStartDate) ?? new Date(startDate);
-      const ptEndDate = addDaysUtc(ptStart, customDays);
+      let ptEndDate = addDaysUtc(ptStart, customDays);
+
+      // CAP: PT end date must never exceed the gym membership end date.
+      if (ptEndDate.getTime() > endDate.getTime()) {
+        console.log("Capping PT end date to gym membership end (gym+pt):", {
+          originalPtEnd: toIsoDate(ptEndDate),
+          gymEnd: toIsoDate(endDate),
+        });
+        ptEndDate = new Date(endDate);
+      }
+
       const ptStartIso = toIsoDate(ptStart);
       const ptEndDateIso = toIsoDate(ptEndDate);
 
