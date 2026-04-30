@@ -1,6 +1,19 @@
 import type { TourStep } from "./PageTour";
 
-/** Dashboard — already wired up with `data-tour` anchors. */
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
+/** Click the matching tab trigger so the relevant TabsContent is shown
+ *  before the tour anchor is measured. Safe no-op if not found. */
+const clickTab = (selector: string) => () => {
+  const el = document.querySelector<HTMLElement>(selector);
+  if (el) el.click();
+};
+
+/* ------------------------------------------------------------------ */
+/*  Dashboard                                                          */
+/* ------------------------------------------------------------------ */
 export const DASHBOARD_STEPS: TourStep[] = [
   {
     selector: "[data-tour='stats-grid']",
@@ -46,7 +59,9 @@ export const DASHBOARD_STEPS: TourStep[] = [
   },
 ];
 
-/** Settings — full walk-through of every configurable area. */
+/* ------------------------------------------------------------------ */
+/*  Settings — keep existing detailed walk-through                     */
+/* ------------------------------------------------------------------ */
 export const SETTINGS_STEPS: TourStep[] = [
   {
     selector: "[data-tour='settings-tabs']",
@@ -99,151 +114,208 @@ export const SETTINGS_STEPS: TourStep[] = [
   },
 ];
 
-/** Time Slots — sub-tabs of the dedicated Time Slots page. */
+/* ------------------------------------------------------------------ */
+/*  Time Slots — detailed walkthrough per sub-tab                      */
+/* ------------------------------------------------------------------ */
 export const TIMESLOTS_STEPS: TourStep[] = [
   {
     selector: "[data-tour='timeslots-tabs']",
     title: "Four areas of slot control",
     description:
-      "Time Slots (create/edit) · Slot Members (who's in each slot) · Analytics (utilisation) · Time Filters (peak/off-peak buckets).",
+      "This page is split into four tabs. We'll walk through each one so you know exactly what to manage where — Time Slots, Slot Members, Analytics and Time Filters.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='timeslots-tab-slots']"),
   },
   {
     selector: "[data-tour='timeslots-tab-slots']",
-    title: "Create & manage slots",
+    title: "1 · Time Slots — your schedule",
     description:
-      "Pick start/end time, capacity, and the assigned trainer. Slots can repeat daily or on specific weekdays. Capacity caps bookings automatically.",
+      "This is where you create the actual time blocks (e.g. 6–7 AM Cardio with Trainer Raj). Each slot has a start/end time, a capacity cap and an assigned trainer. Members can only be booked into existing slots.",
+    side: "bottom",
+    beforeShow: clickTab("[data-tour='timeslots-tab-slots']"),
+  },
+  {
+    selector: "[data-tour='timeslots-tab-slots']",
+    title: "Editing & deleting slots",
+    description:
+      "Click any slot to edit its time, capacity or trainer. Deleting a slot is blocked if members are still booked in it — reassign them first from the Slot Members tab.",
     side: "bottom",
   },
   {
     selector: "[data-tour='timeslots-tab-members']",
-    title: "Who's booked into each slot",
+    title: "2 · Slot Members — who trains when",
     description:
-      "See every member booked in a slot, their PT subscription status, and check-in record. Send a WhatsApp blast to the whole slot from here.",
+      "Switch here to see every member booked into each slot. You can move a member between slots, remove them, or send a WhatsApp blast to the whole slot in one click.",
+    side: "bottom",
+    beforeShow: clickTab("[data-tour='timeslots-tab-members']"),
+  },
+  {
+    selector: "[data-tour='timeslots-tab-members']",
+    title: "PT subscription badges",
+    description:
+      "Each member row shows their PT subscription status. Expired PTs appear red — that's your cue to renew them or move them out of trainer-led slots.",
     side: "bottom",
   },
   {
     selector: "[data-tour='timeslots-tab-analytics']",
-    title: "Slot utilisation",
+    title: "3 · Analytics — utilisation & gaps",
     description:
-      "Visualise which slots are filling up vs underused so you can rebalance capacity or trainer assignments.",
+      "See which slots are overflowing and which are half-empty. Use this to spot the right time to add a new slot, increase capacity, or reassign a trainer.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='timeslots-tab-analytics']"),
   },
   {
     selector: "[data-tour='timeslots-tab-filters']",
-    title: "Time-of-day buckets",
+    title: "4 · Time Filters — peak / off-peak buckets",
     description:
-      "Define Morning / Afternoon / Evening windows. These power the filter chips on the dashboard so you can segment members by when they train.",
+      "Define Morning / Afternoon / Evening windows. These power the time-of-day filter chips on the dashboard, so you can quickly segment members by when they train.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='timeslots-tab-filters']"),
   },
 ];
 
-/** Staff Control — Trainers / Other Staff / Overview tabs. */
+/* ------------------------------------------------------------------ */
+/*  Staff Control — detailed walkthrough per tab                       */
+/* ------------------------------------------------------------------ */
 export const STAFF_STEPS: TourStep[] = [
   {
     selector: "[data-tour='staff-tabs']",
     title: "Three views of your team",
     description:
-      "Trainers (PT-eligible) · Other Staff (managers, receptionists) · Overview (totals + payouts). Switch tabs without losing search or filters.",
+      "Trainers (PT-eligible) · Other Staff (managers, receptionists, accountants) · Overview (totals + payouts). Switching tabs preserves all your in-tab state.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='staff-tab-trainers']"),
   },
   {
     selector: "[data-tour='staff-tab-trainers']",
-    title: "Trainers tab",
+    title: "1 · Trainers — your PT roster",
     description:
-      "Add trainers, set their revenue split %, configure 9 granular permissions, and switch their Member Access between 'All' and 'Assigned-only'.",
+      "Add trainers, set their salary type (monthly / per-session / percentage / hybrid) and their revenue split. Only people listed here can be assigned as a PT to a member or a time slot.",
+    side: "bottom",
+    beforeShow: clickTab("[data-tour='staff-tab-trainers']"),
+  },
+  {
+    selector: "[data-tour='staff-tab-trainers']",
+    title: "Permissions & member access",
+    description:
+      "Each trainer has 9 togglable permissions (Members, Payments, Daily Pass, Attendance, WhatsApp, Settings, Time Slots, Analytics, Ledger) plus a Member Access switch — 'All Members' or 'Only Assigned'.",
     side: "bottom",
   },
   {
     selector: "[data-tour='staff-tab-other']",
-    title: "Other staff",
+    title: "2 · Other Staff — non-trainer roles",
     description:
-      "Managers and receptionists. Same permission model as trainers — toggle Members, Payments, Daily Pass, WhatsApp send and Settings access individually.",
+      "Managers, receptionists and accountants live here. Same permission model as trainers — toggle exactly what each role can see and do, without giving anyone full admin rights.",
+    side: "bottom",
+    beforeShow: clickTab("[data-tour='staff-tab-other']"),
+  },
+  {
+    selector: "[data-tour='staff-tab-other']",
+    title: "Login credentials & multi-branch",
+    description:
+      "Set a staff password from the row menu — they log in at /admin/login with their phone. Staff working at multiple branches see all assigned branches in their branch switcher.",
     side: "bottom",
   },
   {
     selector: "[data-tour='staff-tab-overview']",
-    title: "Overview & payouts",
+    title: "3 · Overview — headcount & payouts",
     description:
-      "Headcount totals, total paid out to staff this period, and quick links into each member's payout breakdown.",
+      "Total trainers/staff, total paid-out this period and a per-staff payout breakdown. Click any staff row to drill into the exact sessions and renewals counted toward their pay.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='staff-tab-overview']"),
   },
 ];
 
-/** Analytics — sticky filter bar, KPIs, and chart sections. */
+/* ------------------------------------------------------------------ */
+/*  Analytics — detailed walkthrough                                   */
+/* ------------------------------------------------------------------ */
 export const ANALYTICS_STEPS: TourStep[] = [
   {
     selector: "[data-tour='analytics-period']",
     title: "Pick the time window",
     description:
-      "Every chart and KPI on this page reacts to this period. Pick a preset (7d / 30d / 90d / YTD) or set a custom date range — sticky as you scroll.",
+      "Every chart and KPI on this page reacts to this period. Pick a preset (7d / 30d / 90d / YTD / All time) or set a custom date range. The bar stays sticky as you scroll so you can re-pivot anytime.",
     side: "bottom",
   },
   {
     selector: "[data-tour='analytics-kpis']",
     title: "Smart metric cards",
     description:
-      "Revenue · Total Members · Active Members · Avg Monthly. Each card includes a sparkline and a delta vs the previous period.",
+      "Total Revenue · Total Members · Active Members · Avg Monthly. Each card has a sparkline showing the trend through your selected window plus a delta vs the previous half of the period.",
+    side: "bottom",
+  },
+  {
+    selector: "[data-tour='analytics-kpis']",
+    title: "Active vs Total",
+    description:
+      "Active = currently within their subscription end date. Total = lifetime registrations including expired. The gap between these two is your churn signal — watch it widen or narrow.",
     side: "bottom",
   },
   {
     selector: "[data-tour='analytics-insights']",
-    title: "AI insights",
+    title: "AI insights — auto-generated",
     description:
-      "Auto-generated highlights: best-performing intervals, anomalies, retention rate. Updates live as filters change.",
+      "Up to 4 auto-generated highlights: revenue direction, peak interval, member-acquisition trend and your active-member rate. Updates instantly when you change the period.",
     side: "top",
   },
   {
     selector: "[data-tour='analytics-revenue']",
     title: "Revenue trend",
     description:
-      "Line chart of revenue across the selected window. Hover any point for the exact bucket total and member-pay split.",
+      "Line chart of revenue across the period. Hover any point to see the exact bucket revenue and number of payments. Granularity (day / week / month / year) auto-adjusts to the period length.",
     side: "top",
   },
   {
     selector: "[data-tour='analytics-growth']",
     title: "Member growth & new joins",
     description:
-      "Cumulative growth on the left, fresh joins per interval on the right. Spot stagnation or campaign spikes at a glance.",
+      "Left chart shows cumulative members over time — your overall scale. Right chart shows fresh joins per interval — your acquisition rhythm. Use them together to spot stagnation or campaign spikes.",
     side: "top",
   },
 ];
 
-/** Logs — Admin / User / Staff / WhatsApp activity tabs. */
+/* ------------------------------------------------------------------ */
+/*  Logs — detailed walkthrough                                        */
+/* ------------------------------------------------------------------ */
 export const LOGS_STEPS: TourStep[] = [
   {
     selector: "[data-tour='logs-tabs']",
     title: "Four audit trails",
     description:
-      "Admin actions · User (member) activity · Staff activity · WhatsApp send history. Everything is timestamped in IST and tied to a user agent + IP.",
+      "Admin · User · Staff · WhatsApp. Every entry is timestamped in IST and tied to a user agent + IP — useful for compliance, debugging and reconciling 'who did what'.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='logs-tab-activity']"),
   },
   {
     selector: "[data-tour='logs-tab-activity']",
-    title: "Admin activity",
+    title: "1 · Admin activity",
     description:
-      "Every action you or another admin took: logins, member edits, payments, plan changes, WhatsApp blasts, settings updates. Use for compliance & debugging.",
+      "Every action you or another admin took: logins, member edits, payments collected, plan changes, WhatsApp blasts, settings updates. Filter by date or action type to investigate any change.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='logs-tab-activity']"),
   },
   {
     selector: "[data-tour='logs-tab-user']",
-    title: "Member activity",
+    title: "2 · User (member) activity",
     description:
-      "Member-facing events: self-registration, renewals, profile views, check-ins. Ideal for tracing a specific member's journey.",
+      "Member-facing events: self-registration, online renewals, profile views and check-ins. Open any row to trace a specific member's full timeline with you.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='logs-tab-user']"),
   },
   {
     selector: "[data-tour='logs-tab-staff']",
-    title: "Staff activity",
+    title: "3 · Staff activity",
     description:
-      "What your trainers and receptionists did — who edited which member, who collected which payment, who sent which message.",
+      "What your trainers, receptionists and managers did — who edited which member, who collected which payment, who sent which message. Each entry includes the staff member's resolved name and phone.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='logs-tab-staff']"),
   },
   {
     selector: "[data-tour='logs-tab-whatsapp']",
-    title: "WhatsApp logs",
+    title: "4 · WhatsApp logs",
     description:
-      "Every outgoing message: template used, recipient, status (sent / delivered / failed), and the sender (admin or staff). Useful when reconciling delivery issues.",
+      "Every outgoing message: template used, recipient, sender (admin or staff) and delivery status (sent / delivered / failed). The first place to look when a member says 'I never got the message'.",
     side: "bottom",
+    beforeShow: clickTab("[data-tour='logs-tab-whatsapp']"),
   },
 ];
