@@ -240,31 +240,19 @@ const StaffDashboard = () => {
                 <div className="flex flex-col gap-2 lg:gap-4">
                   {/* Desktop: Tabs + Search + Actions in one row */}
                   <div className="hidden lg:flex flex-row items-center gap-3">
-                    <TabsList className="bg-muted/50 p-1 h-10">
-                      <TabsTrigger 
-                        value="members" 
-                        className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                      >
-                        <UsersIcon className="w-4 h-4" />
-                        <span>Members</span>
-                      </TabsTrigger>
-                      <TabsTrigger 
-                        value="daily_pass" 
-                        className="gap-1 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                      >
-                        <ClockIcon className="w-4 h-4" />
-                        <span>Daily Passes</span>
-                      </TabsTrigger>
+                    <AnimatedTabsList>
+                      <AnimatedTabsTrigger value="members" icon={UsersIcon}>
+                        Members
+                      </AnimatedTabsTrigger>
+                      <AnimatedTabsTrigger value="daily_pass" icon={ClockIcon}>
+                        Daily Passes
+                      </AnimatedTabsTrigger>
                       {canAccessPayments && (
-                        <TabsTrigger 
-                          value="payments" 
-                          className="gap-1.5 px-3 data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-foreground data-[state=active]:font-semibold transition-all"
-                        >
-                          <CreditCardIcon className="w-4 h-4" />
-                          <span>Payments</span>
-                        </TabsTrigger>
+                        <AnimatedTabsTrigger value="payments" icon={CreditCardIcon}>
+                          Payments
+                        </AnimatedTabsTrigger>
                       )}
-                    </TabsList>
+                    </AnimatedTabsList>
                     
                     {/* Search Bar - Desktop */}
                     {(activeTab === "members" || activeTab === "daily_pass") && (
