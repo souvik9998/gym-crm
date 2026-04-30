@@ -14,7 +14,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, UserX, Clock, AlertTriangle, Download, Fingerprint, UserPlus, Sparkles, ArrowRight, Search, Zap, ShieldCheck } from "lucide-react";
+import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, UserX, Clock, AlertTriangle, Download, Fingerprint, UserPlus, Sparkles, ArrowRight, Search, Zap, ShieldCheck, Filter } from "lucide-react";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
   DropdownMenu,
