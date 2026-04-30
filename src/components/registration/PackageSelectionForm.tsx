@@ -781,7 +781,7 @@ const PackageSelectionForm = ({
                 <Switch checked={wantsTrainer} onCheckedChange={setWantsTrainer} />
               </div>
 
-              {parsedExistingPTEndDate && wantsTrainer && (
+              {parsedExistingPTEndDate && wantsTrainer && !existingMembershipEndDate && (
                 <div className="flex items-center gap-2 p-3 bg-accent/10 rounded-lg border border-accent/20 animate-fade-in">
                   <Dumbbell className="w-4 h-4 text-accent" />
                   <span className="text-sm text-muted-foreground">
