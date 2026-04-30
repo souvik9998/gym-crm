@@ -94,34 +94,34 @@ const Renew = () => {
 
       const fetchMemberData = async () => {
         const today = toIsoDate(new Date());
-        
-        const { data: activeSubscription } = await supabase
-          .from("subscriptions")
-          .select("end_date")
-          .eq("member_id", member.id)
-          .eq("status", "active")
-          .gte("end_date", today)
-          .order("end_date", { ascending: false })
-          .limit(1)
-          .maybeSingle();
 
-        if (activeSubscription) {
-          setExistingMembershipEndDate(activeSubscription.end_date);
+        // Use SECURITY DEFINER RPCs so anonymous (public) users on the renew page
+        // can still read the member's most recent subscription end dates.
+        // Direct table queries fail here because subscriptions/pt_subscriptions
+        // RLS only allows tenant owners.
+        const { data: subData } = await supabase.rpc("get_member_subscription_info", {
+          p_member_id: member.id,
+        });
+        const latestSub = subData?.[0];
+        if (
+          latestSub &&
+          (latestSub.status === "active" || latestSub.status === "expiring_soon") &&
+          latestSub.end_date >= today
+        ) {
+          setExistingMembershipEndDate(latestSub.end_date);
         }
 
-        const { data: activePT } = await supabase
-          .from("pt_subscriptions")
-          .select("end_date")
-          .eq("member_id", member.id)
-          .eq("status", "active")
-          .gte("end_date", today)
-          .order("end_date", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (activePT) {
-          setExistingPTEndDate(activePT.end_date);
-          const existingEndDate = parseDateOnly(activePT.end_date);
+        const { data: ptData } = await supabase.rpc("get_member_pt_subscription_info", {
+          p_member_id: member.id,
+        });
+        const latestPT = ptData?.[0];
+        if (
+          latestPT &&
+          (latestPT.status === "active" || latestPT.status === "expiring_soon") &&
+          latestPT.end_date >= today
+        ) {
+          setExistingPTEndDate(latestPT.end_date);
+          const existingEndDate = parseDateOnly(latestPT.end_date);
           if (existingEndDate) {
             existingEndDate.setUTCDate(existingEndDate.getUTCDate() + 1);
             setPtStartDate(toIsoDate(existingEndDate));

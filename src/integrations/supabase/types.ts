@@ -3628,6 +3628,15 @@ export type Database = {
           transaction_id: string
         }[]
       }
+      get_member_pt_subscription_info: {
+        Args: { p_member_id: string }
+        Returns: {
+          end_date: string
+          start_date: string
+          status: string
+          subscription_id: string
+        }[]
+      }
       get_member_subscription_info: {
         Args: { p_member_id: string }
         Returns: {
