@@ -80,8 +80,8 @@ const AnimatedTabsList = React.forwardRef<
     <TabsPrimitive.List
       ref={localRef}
       className={cn(
-        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1 text-muted-foreground max-w-full overflow-hidden",
-        size === "sm" ? "h-9" : "h-10",
+        "relative inline-flex items-center rounded-xl bg-muted/60 backdrop-blur-sm p-1.5 gap-1 text-muted-foreground max-w-full overflow-hidden",
+        size === "sm" ? "h-10" : "h-11",
         fullWidth && "w-full",
         className,
       )}
@@ -91,7 +91,7 @@ const AnimatedTabsList = React.forwardRef<
       <span
         aria-hidden
         className={cn(
-          "pointer-events-none absolute top-1 bottom-1 rounded-lg bg-background shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]",
+          "pointer-events-none absolute top-1.5 bottom-1.5 rounded-lg bg-background shadow-[0_1px_2px_rgba(0,0,0,0.06),0_4px_12px_-2px_rgba(0,0,0,0.08)] ring-1 ring-black/[0.04]",
           "transition-[transform,width,opacity] duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]",
           indicator.ready ? "opacity-100" : "opacity-0",
         )}
