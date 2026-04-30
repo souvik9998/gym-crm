@@ -591,7 +591,34 @@ Deno.serve(async (req) => {
 
       // Use provided ptStartDate or default to today
       const ptStart = parseDateOnly(ptStartDate) ?? new Date(startDate);
-      const endDate = addDaysUtc(ptStart, customDays);
+      let endDate = addDaysUtc(ptStart, customDays);
+
+      // CAP: PT end date must never exceed the member's active gym membership end date.
+      // Fetch the latest active/expiring gym subscription for this member.
+      try {
+        const { data: latestGymSub } = await supabase
+          .from("subscriptions")
+          .select("end_date, status")
+          .eq("member_id", finalMemberId)
+          .in("status", ["active", "expiring_soon"])
+          .order("end_date", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (latestGymSub?.end_date) {
+          const gymEnd = parseDateOnly(latestGymSub.end_date);
+          if (gymEnd && endDate.getTime() > gymEnd.getTime()) {
+            console.log("Capping PT end date to gym membership end:", {
+              originalPtEnd: toIsoDate(endDate),
+              gymEnd: latestGymSub.end_date,
+            });
+            endDate = gymEnd;
+          }
+        }
+      } catch (capError) {
+        console.error("Error fetching gym sub for PT cap (continuing without cap):", capError);
+      }
+
       const ptStartIso = toIsoDate(ptStart);
       const endDateIso = toIsoDate(endDate);
 
