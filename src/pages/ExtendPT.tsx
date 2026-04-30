@@ -145,19 +145,20 @@ const ExtendPT = () => {
 
       // Fetch existing active PT subscription (only on initial load — this is
       // member-specific and not affected by admin package mutations).
+      // Use SECURITY DEFINER RPC so anonymous (public) users can read it —
+      // direct table queries are blocked by RLS for non-tenant users.
       if (!opts.silent) {
         const today = new Date().toISOString().split("T")[0];
-        const { data: existingPT } = await supabase
-          .from("pt_subscriptions")
-          .select("end_date")
-          .eq("member_id", member.id)
-          .gte("end_date", today)
-          .order("end_date", { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (existingPT?.end_date) {
-          setExistingPTEndDate(parseISO(existingPT.end_date));
+        const { data: ptData } = await supabase.rpc("get_member_pt_subscription_info", {
+          p_member_id: member.id,
+        });
+        const latestPT = ptData?.[0];
+        if (
+          latestPT?.end_date &&
+          (latestPT.status === "active" || latestPT.status === "expiring_soon") &&
+          latestPT.end_date >= today
+        ) {
+          setExistingPTEndDate(parseISO(latestPT.end_date));
         }
       }
     } catch (error) {
