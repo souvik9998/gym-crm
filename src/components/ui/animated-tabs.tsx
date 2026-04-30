@@ -35,16 +35,23 @@ const AnimatedTabsList = React.forwardRef<
     if (!active) return;
     const listRect = list.getBoundingClientRect();
     const rect = active.getBoundingClientRect();
-    setIndicator({
+    const next = {
       left: rect.left - listRect.left,
       width: rect.width,
       ready: true,
-    });
+    };
+    setIndicator((prev) =>
+      prev.ready === next.ready &&
+      Math.abs(prev.left - next.left) < 0.5 &&
+      Math.abs(prev.width - next.width) < 0.5
+        ? prev
+        : next,
+    );
   }, []);
 
   React.useLayoutEffect(() => {
     updateIndicator();
-  });
+  }, [updateIndicator, children]);
 
   React.useEffect(() => {
     const list = localRef.current;
