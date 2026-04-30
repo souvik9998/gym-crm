@@ -96,8 +96,8 @@ const AnimatedTabsList = React.forwardRef<
           indicator.ready ? "opacity-100" : "opacity-0",
         )}
         style={{
-          width: indicator.width,
-          transform: `translateX(${indicator.left}px)`,
+          width: Math.max(0, indicator.width - 4),
+          transform: `translateX(${indicator.left + 2}px)`,
         }}
       />
       {children}
