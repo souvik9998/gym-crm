@@ -156,6 +156,29 @@ export const AbsentAnalyticsTab = () => {
 
   const frequentAbsentees = memberStats.filter((m) => m.countedDays >= 3 && m.attendanceRate < 50);
 
+  // Members whose latest gym subscription is expired but who still have
+  // attendance records in this period. Sorted by total check-ins desc so
+  // the most frequently visiting expired members surface first.
+  const expiredMembers = useMemo(() => {
+    return memberStats
+      .filter((m) => memberStatusMap[m.memberId] === "expired")
+      .map((m) => ({
+        ...m,
+        totalCheckins: m.presentDays + m.skippedDays + m.absentDays,
+      }))
+      .sort((a, b) => b.presentDays - a.presentDays || b.totalCheckins - a.totalCheckins);
+  }, [memberStats, memberStatusMap]);
+
+  const expiredSummary = useMemo(() => {
+    let present = 0, absent = 0, skipped = 0;
+    expiredMembers.forEach((m) => {
+      present += m.presentDays;
+      absent += m.absentDays;
+      skipped += m.skippedDays;
+    });
+    return { present, absent, skipped, total: expiredMembers.length };
+  }, [expiredMembers]);
+
   const getAttendanceColor = (rate: number) => {
     if (rate >= 80) return "text-green-600";
     if (rate >= 50) return "text-amber-600";
