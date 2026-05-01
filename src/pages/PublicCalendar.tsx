@@ -728,6 +728,139 @@ export default function PublicCalendar() {
             </CardContent>
           </Card>
         )}
+
+        {/* Past Events (collapsible, non-registerable) */}
+        {pastEvents.length > 0 && (
+          <Card className="border border-border/40 shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPastEvents((v) => !v)}
+              className="w-full flex items-center gap-3 p-4 lg:p-6 text-left hover:bg-muted/30 transition-colors"
+              aria-expanded={showPastEvents}
+            >
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-muted text-muted-foreground">
+                <ArchiveBoxIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base lg:text-xl">Past Events</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">
+                  {pastEvents.length} ended event{pastEvents.length === 1 ? "" : "s"} · Registration closed
+                </CardDescription>
+              </div>
+              <ChevronDownIcon
+                className={cn(
+                  "w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  showPastEvents && "rotate-180",
+                )}
+              />
+            </button>
+            {showPastEvents && (
+              <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 animate-fade-in">
+                <div className="space-y-2">
+                  {pastEvents.map((ev) => {
+                    const start = parseISO(ev.event_date);
+                    return (
+                      <div
+                        key={ev.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-muted/20 cursor-not-allowed"
+                        aria-disabled="true"
+                        title="This event has ended"
+                      >
+                        <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-muted text-muted-foreground">
+                          <span className="text-[10px] lg:text-xs font-medium leading-none">{format(start, "MMM")}</span>
+                          <span className="text-sm lg:text-base font-bold leading-tight">{format(start, "d")}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium text-sm truncate text-muted-foreground line-through">{ev.title}</p>
+                            <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                              Ended
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground/80">
+                            <span className="flex items-center gap-1">
+                              <ClockIcon className="w-3 h-3" />
+                              {format(start, "h:mm a")}
+                            </span>
+                            {ev.location && (
+                              <span className="flex items-center gap-1 truncate">
+                                <MapPinIcon className="w-3 h-3" />
+                                <span className="truncate">{ev.location}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
+        {/* Past Holidays (collapsible) */}
+        {pastHolidays.length > 0 && (
+          <Card className="border border-border/40 shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPastHolidays((v) => !v)}
+              className="w-full flex items-center gap-3 p-4 lg:p-6 text-left hover:bg-muted/30 transition-colors"
+              aria-expanded={showPastHolidays}
+            >
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-muted text-muted-foreground">
+                <ArchiveBoxIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base lg:text-xl">Past Holidays</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">
+                  {pastHolidays.length} previous closure{pastHolidays.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+              <ChevronDownIcon
+                className={cn(
+                  "w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  showPastHolidays && "rotate-180",
+                )}
+              />
+            </button>
+            {showPastHolidays && (
+              <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 animate-fade-in">
+                <div className="space-y-2">
+                  {pastHolidays.map((h) => {
+                    const date = parseISO(h.holiday_date);
+                    return (
+                      <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-muted/20">
+                        <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-muted text-muted-foreground">
+                          <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
+                          <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium text-sm truncate text-muted-foreground line-through">{h.holiday_name}</p>
+                            <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                              Past
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] lg:text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                              {h.holiday_type === "full_day" ? "Full Day" : (
+                                <>
+                                  <ClockIcon className="w-3 h-3" />
+                                  {formatTime12h(h.half_day_start_time)} – {formatTime12h(h.half_day_end_time)}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
       </main>
 
       <PoweredByBadge />
