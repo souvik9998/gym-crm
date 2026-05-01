@@ -181,6 +181,10 @@ export default {
   				'10%, 30%': { transform: 'rotate(14deg)' },
   				'20%, 40%': { transform: 'rotate(-8deg)' },
   				'50%': { transform: 'rotate(10deg)' }
+  			},
+  			'scale-in': {
+  				'0%': { opacity: '0', transform: 'scale(0.95)' },
+  				'100%': { opacity: '1', transform: 'scale(1)' }
   			}
   		},
   		animation: {
