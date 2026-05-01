@@ -452,7 +452,7 @@ Deno.serve(async (req) => {
       category: MessageCategory,
       variables: Record<string, string>,
       bId?: string | null,
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; provider?: string; providerMessageId?: string }> => {
       const result = await sendWhatsAppForTenant(supabase, {
         toPhone,
         category,
@@ -460,7 +460,12 @@ Deno.serve(async (req) => {
         fallbackText,
         branchId: bId ?? null,
       });
-      return { success: result.success, error: result.error };
+      return {
+        success: result.success,
+        error: result.error,
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+      };
     };
 
     // Build the variable map for a member-style message.
