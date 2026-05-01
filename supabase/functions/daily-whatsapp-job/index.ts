@@ -243,8 +243,8 @@ Deno.serve(async (req) => {
       branchId: string,
       category: MessageCategory,
       variables: Record<string, string>,
-    ): Promise<{ ok: boolean; status: number; body: string }> => {
-      const attempt = async (): Promise<{ ok: boolean; status: number; body: string }> => {
+    ): Promise<{ ok: boolean; status: number; body: string; provider?: string; providerMessageId?: string }> => {
+      const attempt = async () => {
         const result = await sendWhatsAppForTenant(supabase, {
           toPhone: chatId,
           category,
@@ -256,6 +256,8 @@ Deno.serve(async (req) => {
           ok: result.success,
           status: result.success ? 200 : 500,
           body: result.error ?? "ok",
+          provider: result.provider,
+          providerMessageId: result.providerMessageId,
         };
       };
 
