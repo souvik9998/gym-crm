@@ -20,6 +20,7 @@ import {
   UserIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
