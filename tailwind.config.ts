@@ -194,7 +194,8 @@ export default {
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 3s ease-in-out infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
-  			wave: 'wave 2.4s ease-in-out 1'
+  			wave: 'wave 2.4s ease-in-out 1',
+  			'scale-in': 'scale-in 0.18s ease-out'
   		}
   	}
   },
