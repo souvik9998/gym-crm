@@ -131,6 +131,67 @@ export default function Events() {
     onError: (err: any) => toast.error("Failed to delete", { description: err.message }),
   });
 
+  // Status mutation: publish / cancel / complete
+  const statusMutation = useMutation({
+    mutationFn: async ({ eventId, newStatus }: { eventId: string; newStatus: string }) => {
+      const { error } = await supabase.from("events").update({ status: newStatus }).eq("id", eventId);
+      if (error) throw error;
+      return { eventId, newStatus };
+    },
+    onSuccess: ({ eventId, newStatus }) => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      const ev = events.find((e: any) => e.id === eventId);
+      if (newStatus === "published") toast.success("Event published");
+      else if (newStatus === "cancelled") toast.success("Event cancelled");
+
+      if (ev) {
+        const action = newStatus === "published" ? "published" : newStatus === "cancelled" ? "cancelled" : `marked as ${newStatus}`;
+        const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} ${action} event "${ev.title}"`;
+        if (isStaffLoggedIn && staffUser) {
+          logStaffActivity({
+            category: "events", type: `event_${newStatus}`, description: desc,
+            entityType: "events", entityName: ev.title,
+            branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+          });
+        } else if (isAdmin) {
+          logAdminActivity({
+            category: "events", type: `event_${newStatus}`, description: desc,
+            entityType: "events", entityName: ev.title, branchId: currentBranch?.id,
+          });
+        }
+      }
+      setCancelEvent(null);
+      setPublishEvent(null);
+    },
+    onError: (err: any) => toast.error("Failed to update event", { description: err.message }),
+  });
+
+  // Auto-mark past published events as completed (one-time per mount)
+  useEffect(() => {
+    if (autoCompleteRanRef.current) return;
+    if (!events.length || !currentBranch?.id) return;
+    const now = new Date();
+    const stale = events.filter((e: any) => {
+      if (e.status !== "published") return false;
+      try {
+        const end = e.event_end_date ? new Date(e.event_end_date) : new Date(e.event_date);
+        return end < now;
+      } catch {
+        return false;
+      }
+    });
+    if (stale.length === 0) {
+      autoCompleteRanRef.current = true;
+      return;
+    }
+    autoCompleteRanRef.current = true;
+    (async () => {
+      const ids = stale.map((e: any) => e.id);
+      const { error } = await supabase.from("events").update({ status: "completed" }).in("id", ids);
+      if (!error) queryClient.invalidateQueries({ queryKey: ["events"] });
+    })();
+  }, [events, currentBranch?.id, queryClient]);
+
   // Status counts (for chip badges) — computed against search-matched events
   const statusCounts = useMemo(() => {
     const q = search.trim().toLowerCase();
