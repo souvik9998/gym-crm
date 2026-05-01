@@ -623,7 +623,14 @@ export const SlotAttendanceTab = () => {
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                 {member.memberName.charAt(0).toUpperCase()}
                               </div>
-                              <p className="text-sm font-medium text-foreground">{member.memberName}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{member.memberName}</p>
+                                {member.subscriptionStatus && SUB_STATUS_META[member.subscriptionStatus] && (
+                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 shrink-0", SUB_STATUS_META[member.subscriptionStatus].className)}>
+                                    {SUB_STATUS_META[member.subscriptionStatus].label}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-sm text-muted-foreground">{member.memberPhone}</td>
