@@ -507,52 +507,104 @@ export default function PublicCalendar() {
                     <p className="text-xs text-muted-foreground text-center py-3">No events or holidays on this day.</p>
                   )}
 
-                  {selHoliday && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 mb-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base leading-none mt-0.5">{selHoliday.holiday_type === "full_day" ? "🚫" : "⏰"}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-destructive leading-tight">{selHoliday.holiday_name}</p>
-                          <p className="text-[11px] text-destructive/80 mt-0.5">
-                            {selHoliday.holiday_type === "full_day"
-                              ? "Gym Closed — Full Day"
-                              : `Half Day · ${formatTime12h(selHoliday.half_day_start_time)} – ${formatTime12h(selHoliday.half_day_end_time)}`}
-                          </p>
-                          {selHoliday.description && (
-                            <p className="text-[11px] text-muted-foreground mt-1">{selHoliday.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selEvents.length > 0 && (
-                    <div className="space-y-1.5">
-                      {selEvents.map((ev) => (
-                        <a
-                          key={ev.id}
-                          href={eventLink(ev)}
-                          className="flex items-center gap-2 p-2 rounded-lg border border-blue-500/20 bg-blue-500/5 active:scale-[0.98] transition-transform"
-                        >
-                          <div className="w-1 h-9 rounded-full bg-blue-500 flex-shrink-0" />
+                  {selHoliday && (() => {
+                    const holPast = isHolidayPast(selHoliday);
+                    return (
+                      <div className={cn(
+                        "rounded-lg border p-2.5 mb-2",
+                        holPast ? "border-border/40 bg-muted/30" : "border-destructive/20 bg-destructive/5",
+                      )}>
+                        <div className="flex items-start gap-2">
+                          <span className={cn("text-base leading-none mt-0.5", holPast && "grayscale opacity-70")}>
+                            {selHoliday.holiday_type === "full_day" ? "🚫" : "⏰"}
+                          </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold truncate text-foreground">{ev.title}</p>
-                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                              <span className="flex items-center gap-0.5">
-                                <ClockIcon className="w-2.5 h-2.5" />
-                                {format(parseISO(ev.event_date), "h:mm a")}
-                              </span>
-                              {ev.location && (
-                                <span className="flex items-center gap-0.5 truncate">
-                                  <MapPinIcon className="w-2.5 h-2.5" />
-                                  <span className="truncate">{ev.location}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={cn(
+                                "text-xs font-semibold leading-tight",
+                                holPast ? "text-muted-foreground line-through" : "text-destructive",
+                              )}>
+                                {selHoliday.holiday_name}
+                              </p>
+                              {holPast && (
+                                <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+                                  Past
                                 </span>
                               )}
                             </div>
+                            <p className={cn("text-[11px] mt-0.5", holPast ? "text-muted-foreground/80" : "text-destructive/80")}>
+                              {selHoliday.holiday_type === "full_day"
+                                ? "Gym Closed — Full Day"
+                                : `Half Day · ${formatTime12h(selHoliday.half_day_start_time)} – ${formatTime12h(selHoliday.half_day_end_time)}`}
+                            </p>
+                            {selHoliday.description && (
+                              <p className="text-[11px] text-muted-foreground mt-1">{selHoliday.description}</p>
+                            )}
                           </div>
-                          <ChevronRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        </a>
-                      ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {selEvents.length > 0 && (
+                    <div className="space-y-1.5">
+                      {selEvents.map((ev) => {
+                        const evPast = isEventPast(ev);
+                        const commonInner = (
+                          <>
+                            <div className={cn("w-1 h-9 rounded-full flex-shrink-0", evPast ? "bg-muted-foreground/40" : "bg-blue-500")} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className={cn(
+                                  "text-xs font-semibold truncate",
+                                  evPast ? "text-muted-foreground line-through" : "text-foreground",
+                                )}>
+                                  {ev.title}
+                                </p>
+                                {evPast && (
+                                  <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                                    Ended
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                                <span className="flex items-center gap-0.5">
+                                  <ClockIcon className="w-2.5 h-2.5" />
+                                  {format(parseISO(ev.event_date), "h:mm a")}
+                                </span>
+                                {ev.location && (
+                                  <span className="flex items-center gap-0.5 truncate">
+                                    <MapPinIcon className="w-2.5 h-2.5" />
+                                    <span className="truncate">{ev.location}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {!evPast && <ChevronRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                          </>
+                        );
+                        if (evPast) {
+                          return (
+                            <div
+                              key={ev.id}
+                              className="flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/30 cursor-not-allowed"
+                              aria-disabled="true"
+                              title="This event has ended"
+                            >
+                              {commonInner}
+                            </div>
+                          );
+                        }
+                        return (
+                          <a
+                            key={ev.id}
+                            href={eventLink(ev)}
+                            className="flex items-center gap-2 p-2 rounded-lg border border-blue-500/20 bg-blue-500/5 active:scale-[0.98] transition-transform"
+                          >
+                            {commonInner}
+                          </a>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
