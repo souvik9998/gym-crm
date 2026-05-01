@@ -28,16 +28,42 @@ import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 
-const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
+const categoryFilters = ["all", "new_member", "event", "expired_checkin", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
 
 const categoryLabels: Record<CategoryFilter, string> = {
   all: "All",
   new_member: "New",
+  event: "Events",
+  expired_checkin: "Expired",
   plan: "Plan",
   limit: "Limits",
   member: "Members",
 };
+
+const SEEN_STORAGE_KEY = "admin_notifications_seen_v1";
+const MAX_SEEN_TRACKED = 200;
+
+function loadSeenIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistSeenIds(ids: Set<string>) {
+  try {
+    const arr = Array.from(ids).slice(-MAX_SEEN_TRACKED);
+    localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(arr));
+  } catch {
+    // ignore quota errors
+  }
+}
 
 function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
   if (type === "danger") return (
