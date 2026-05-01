@@ -487,6 +487,17 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
                     dateTo={dateTo}
                     onDateChange={(from, to) => { setDateFrom(from); setDateTo(to); }}
                   />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => reconcileStatus(false)}
+                    disabled={isSyncing}
+                    title="Sync delivery status with provider"
+                    className="gap-1 h-8 text-[11px] lg:text-sm px-2 lg:px-3 shrink-0"
+                  >
+                    <CheckCircle className={`w-3.5 h-3.5 ${isSyncing ? "animate-pulse" : ""}`} />
+                    <span className="hidden lg:inline">{isSyncing ? "Syncing…" : "Sync status"}</span>
+                  </Button>
                   <Button variant="outline" size="sm" onClick={handleExport} className="gap-1 h-8 text-[11px] lg:text-sm px-2 lg:px-3 shrink-0">
                     <Download className="w-3.5 h-3.5" />
                   </Button>
