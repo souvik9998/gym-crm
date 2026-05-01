@@ -647,13 +647,7 @@ const AdminDashboard = () => {
                       <ArrowDownTrayIcon className="w-4 h-4" />
                     </Button>
 
-                    {/* Time of day filter — icon-only on mobile to keep one row */}
-                    <TimeBucketDropdown
-                      value={timeBucketFilter}
-                      onChange={setTimeBucketFilter}
-                      options={timeBucketOptions}
-                      iconOnly
-                    />
+                    {/* Time-of-day filter is now nested inside the All Members dropdown on mobile */}
                     
                     {/* Add Member */}
                     {canManageMembers && (
