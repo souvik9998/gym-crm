@@ -951,11 +951,16 @@ export const SimpleAttendanceTab = () => {
               <tbody className="divide-y divide-border/20">
                 {filteredList.map((member) => {
                   const currentStatus = localAttendance.get(member.memberId) || "absent";
+                  const isExpired = member.subscriptionStatus === "expired";
                   return (
                     <tr key={member.memberId} className={cn("transition-colors duration-150 hover:bg-muted/10",
+                      isExpired && "bg-red-500/[0.05] dark:bg-red-900/[0.10] hover:bg-red-500/[0.10]",
                       isFutureDate && "opacity-50 pointer-events-none"
                     )}>
-                      <td className="px-3 py-2 sticky left-0 bg-background z-10">
+                      <td className={cn(
+                        "px-3 py-2 sticky left-0 z-10",
+                        isExpired ? "bg-[hsl(var(--background))] [background:linear-gradient(hsl(var(--background)),hsl(var(--background)))_padding-box,linear-gradient(rgba(239,68,68,0.05),rgba(239,68,68,0.05))_padding-box]" : "bg-background"
+                      )}>
                         <div className="flex items-center gap-2">
                           <div className={cn(
                             "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors duration-300",
@@ -966,8 +971,13 @@ export const SimpleAttendanceTab = () => {
                             {member.memberName.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1 min-w-0">
+                            <div className="flex items-center gap-1 min-w-0 flex-wrap">
                               <p className="text-xs font-medium truncate max-w-[100px]">{member.memberName}</p>
+                              {isExpired && (
+                                <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[8px] h-4 px-1 shrink-0 gap-0.5">
+                                  <ExclamationTriangleIcon className="w-2 h-2" />Expired
+                                </Badge>
+                              )}
                               {member.trainerName && (
                                 <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
                                   <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
