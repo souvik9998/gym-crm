@@ -695,6 +695,25 @@ export default function EventDetail() {
         onOpenChange={(open) => !open && setEditOpen(false)}
         editEvent={editOpen ? event : null}
       />
+
+      <ConfirmDialog
+        open={confirmPublish}
+        onOpenChange={setConfirmPublish}
+        title="Publish Event"
+        description={`Publish "${event?.title}"? It will become visible on the public calendar and registrations will open.`}
+        onConfirm={() => statusMutation.mutate("published")}
+        confirmText="Publish"
+      />
+
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title="Cancel Event"
+        description={`Cancel "${event?.title}"? Existing registrations remain, but the event will be hidden from the public calendar and no new registrations will be accepted.`}
+        onConfirm={() => statusMutation.mutate("cancelled")}
+        confirmText="Cancel Event"
+        variant="destructive"
+      />
     </div>
   );
 }
