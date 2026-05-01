@@ -220,14 +220,60 @@ export default function Events() {
         </Button>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search events..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9 rounded-xl"
-        />
+      {/* Search + Sort */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 sm:max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search events..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 rounded-xl h-9 text-xs lg:text-sm"
+          />
+        </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+          <SelectTrigger className="w-full sm:w-[200px] rounded-xl h-9 text-xs lg:text-sm gap-2">
+            <ArrowUpDown className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+            <SelectValue placeholder="Sort by" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="date_desc">Date (Newest first)</SelectItem>
+            <SelectItem value="date_asc">Date (Oldest first)</SelectItem>
+            <SelectItem value="name_asc">Name (A–Z)</SelectItem>
+            <SelectItem value="most_registered">Most registered</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Status filter chips */}
+      <div className="flex items-center gap-2 overflow-x-auto -mx-1 px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {statusFilters.map((f) => {
+          const count = statusCounts[f.value];
+          const active = statusFilter === f.value;
+          return (
+            <button
+              key={f.value}
+              type="button"
+              onClick={() => setStatusFilter(f.value)}
+              className={cn(
+                "flex items-center gap-1.5 px-3 h-8 rounded-full text-xs font-medium transition-all whitespace-nowrap border",
+                active
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-background border-border/60 text-foreground hover:bg-muted/50",
+              )}
+            >
+              <span>{f.label}</span>
+              <span
+                className={cn(
+                  "min-w-[20px] px-1.5 h-5 inline-flex items-center justify-center rounded-full text-[10px] font-semibold",
+                  active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground",
+                )}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {isLoading ? (
