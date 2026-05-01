@@ -143,6 +143,51 @@ const WhatsAppLogsTab = ({ refreshKey }: WhatsAppLogsTabProps) => {
     }
   }, [refreshKey, refetch]);
 
+  // Reconcile delivery status with the WhatsApp provider on mount /
+  // branch change. Some messages are accepted by the provider but later
+  // marked as failed by WhatsApp itself — without this poll the dashboard
+  // would keep showing them as "Sent". Runs in the background; we refetch
+  // the logs and stats once the reconcile completes so any flipped rows
+  // appear immediately.
+  const [isSyncing, setIsSyncing] = useState(false);
+  const reconcileStatus = async (silent = true) => {
+    if (!currentBranch?.id) return;
+    setIsSyncing(true);
+    try {
+      const { data: result, error } = await supabase.functions.invoke(
+        "reconcile-whatsapp-status",
+        { body: { branchId: currentBranch.id } },
+      );
+      if (error) throw error;
+      const updated = (result as { updated?: number } | null)?.updated ?? 0;
+      if (updated > 0) {
+        // Refresh visible data so flipped rows appear immediately.
+        await Promise.all([refetch(), fetchStats()]);
+      }
+      if (!silent) {
+        toast.success(
+          updated > 0
+            ? `Synced — ${updated} message${updated === 1 ? "" : "s"} updated to failed`
+            : "All delivery statuses are up to date",
+        );
+      }
+    } catch (err: any) {
+      console.error("[whatsapp-logs] reconcile failed:", err);
+      if (!silent) {
+        toast.error("Couldn't sync delivery status. Please try again.");
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (currentBranch?.id) {
+      reconcileStatus(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentBranch?.id]);
+
   const fetchStats = async () => {
     if (!currentBranch?.id) return;
     
