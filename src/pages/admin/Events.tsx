@@ -149,13 +149,13 @@ export default function Events() {
         const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} ${action} event "${ev.title}"`;
         if (isStaffLoggedIn && staffUser) {
           logStaffActivity({
-            category: "events", type: `event_${newStatus}`, description: desc,
+            category: "events", type: "event_status_changed", description: desc,
             entityType: "events", entityName: ev.title,
             branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
           });
         } else if (isAdmin) {
           logAdminActivity({
-            category: "events", type: `event_${newStatus}`, description: desc,
+            category: "events", type: "event_status_changed", description: desc,
             entityType: "events", entityName: ev.title, branchId: currentBranch?.id,
           });
         }
