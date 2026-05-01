@@ -181,6 +181,8 @@ Deno.serve(async (req) => {
       is_manual: boolean;
       admin_user_id?: string | null;
       branch_id?: string | null;
+      provider?: string | null;
+      provider_message_id?: string | null;
     }) => {
       try {
         const insertData: any = {
@@ -193,6 +195,8 @@ Deno.serve(async (req) => {
           is_manual: logData.is_manual,
           admin_user_id: logData.admin_user_id || null,
           branch_id: logData.branch_id || null,
+          provider: logData.provider ?? null,
+          provider_message_id: logData.provider_message_id ?? null,
         };
 
         if (logData.member_id) {
