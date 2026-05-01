@@ -463,13 +463,24 @@ export default function Events() {
                   </div>
 
                   <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {event.status === "draft" && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-8 gap-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => setPublishEvent(event)}
+                        title="Publish event"
+                      >
+                        <Send className="w-3.5 h-3.5" /> Publish
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-8 gap-1.5 text-xs disabled:opacity-50"
                       onClick={() => setRegisterEvent(event)}
-                      disabled={ended}
-                      title={ended ? "Registration closed — event has ended" : "Register a member"}
+                      disabled={ended || event.status === "cancelled" || event.status === "draft"}
+                      title={ended ? "Registration closed — event has ended" : event.status === "draft" ? "Publish event before registering" : "Register a member"}
                     >
                       <UserPlus className="w-3.5 h-3.5" /> Register
                     </Button>
@@ -484,7 +495,7 @@ export default function Events() {
                       variant="ghost"
                       className="h-8 gap-1.5 text-xs disabled:opacity-50"
                       onClick={() => setQrEvent(event)}
-                      disabled={ended}
+                      disabled={ended || event.status === "cancelled" || event.status === "draft"}
                       title={ended ? "Registration closed — event has ended" : "Show registration QR"}
                     >
                       <QrCode className="w-3.5 h-3.5" />
@@ -492,6 +503,17 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => copyEventLink(event)}>
                       <Copy className="w-3.5 h-3.5" />
                     </Button>
+                    {event.status !== "cancelled" && event.status !== "completed" && !ended && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 gap-1.5 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                        onClick={() => setCancelEvent(event)}
+                        title="Cancel event"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-destructive" onClick={() => setDeleteEvent(event)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
