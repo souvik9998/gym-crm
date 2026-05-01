@@ -159,6 +159,38 @@ export const AttendanceHistoryTab = () => {
     staleTime: 60_000,
   });
 
+  // Map member → their LATEST gym subscription status. Used to surface
+  // "Expired" markers in the day-detail list and analytics so admins can spot
+  // attendance entries that were marked while the member's membership was
+  // already expired. Pulls a single row per member (highest end_date wins).
+  const monthMemberIds = useMemo(() => {
+    const ids = new Set<string>();
+    rawMonthRecords.forEach((r: any) => { if (r.member_id) ids.add(r.member_id); });
+    return Array.from(ids);
+  }, [rawMonthRecords]);
+
+  const { data: memberStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ["attendance-history-member-statuses", branchId, monthMemberIds.sort().join(",")],
+    queryFn: async () => {
+      if (!branchId || monthMemberIds.length === 0) return {};
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("member_id, status, end_date")
+        .in("member_id", monthMemberIds)
+        .order("end_date", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data || []) as any[]) {
+        if (row.member_id && !map[row.member_id]) {
+          map[row.member_id] = row.status;
+        }
+      }
+      return map;
+    },
+    enabled: !!branchId && monthMemberIds.length > 0,
+    staleTime: 60_000,
+  });
+
   // Resolve a record's effective slot: prefer the row's own time_slot_id
   // (set when marked via slot view), otherwise fall back to the member's
   // currently-active PT slot.
