@@ -216,6 +216,40 @@ export function NotificationCenter() {
         const label = `${sentCount} expiring member${sentCount !== 1 ? "s" : ""}`;
         waOverlay.markSuccess(label);
         await refetch();
+
+        // Activity log: bulk reminder send from notification center
+        try {
+          const activityType = notificationType === "expiring_today"
+            ? "whatsapp_expiry_reminder_sent"
+            : "whatsapp_expiry_reminder_sent";
+          const description = `Sent ${notificationType.replace(/_/g, " ")} WhatsApp reminder to ${sentCount} member${sentCount !== 1 ? "s" : ""} from notification center`;
+          const logPayload = {
+            category: "whatsapp" as const,
+            type: activityType as any,
+            description,
+            entityType: "members",
+            metadata: {
+              source: "notification_center",
+              notification_type: notificationType,
+              recipient_count: sentCount,
+              total_attempted: selectedMemberIds.length,
+              member_ids: selectedMemberIds,
+            },
+            branchId: currentBranch?.id,
+          };
+          if (isStaffLoggedIn && staffUser) {
+            await logStaffActivity({
+              ...logPayload,
+              staffId: staffUser.id,
+              staffName: staffUser.full_name,
+              staffPhone: staffUser.phone,
+            });
+          } else {
+            await logAdminActivity(logPayload);
+          }
+        } catch (logErr) {
+          console.error("Failed to log notification reminder activity:", logErr);
+        }
       } else {
         waOverlay.markError(responseData?.error || responseData?.message || "Failed to send reminders. Please try again.");
       }
