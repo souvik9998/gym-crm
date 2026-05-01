@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
+import type { TimeBucket, TimeBucketOption } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 // Per-option metadata for the rich sub-filter dropdowns. Mirrors the
 // trainer/time-slot dropdown style: icon + title + description + check badge.
@@ -116,6 +118,9 @@ interface MemberFilterProps {
   onTrainerFilterChange?: (value: string | null) => void;
   timeSlotFilter?: string | null;
   onTimeSlotFilterChange?: (value: string | null) => void;
+  timeBucketFilter?: TimeBucket;
+  onTimeBucketFilterChange?: (value: TimeBucket) => void;
+  timeBucketOptions?: TimeBucketOption[];
 }
 
 const filterCategories: {
@@ -200,7 +205,7 @@ const filterCategories: {
   },
 ];
 
-export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false, trainerFilter, onTrainerFilterChange, timeSlotFilter, onTimeSlotFilterChange }: MemberFilterProps) => {
+export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false, trainerFilter, onTrainerFilterChange, timeSlotFilter, onTimeSlotFilterChange, timeBucketFilter, onTimeBucketFilterChange, timeBucketOptions }: MemberFilterProps) => {
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null);
   const [mobileDropdownOpen, setMobileDropdownOpen] = React.useState(false);
   const hoverTimeoutRef = React.useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
@@ -417,7 +422,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           </DropdownMenuItem>
           
           {/* Trainer & Slot Filters - inside dropdown */}
-          {(onTrainerFilterChange || onTimeSlotFilterChange) && (
+          {(onTrainerFilterChange || onTimeSlotFilterChange || onTimeBucketFilterChange) && (
             <>
               <DropdownMenuSeparator className="my-1" />
               <div className="px-2 py-1.5 space-y-1.5">
@@ -438,6 +443,16 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                       onChange={onTimeSlotFilterChange}
                       trainerFilter={trainerFilter}
                       compact={false}
+                    />
+                  </div>
+                )}
+                {onTimeBucketFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TimeBucketDropdown
+                      value={timeBucketFilter ?? "all"}
+                      onChange={onTimeBucketFilterChange}
+                      options={timeBucketOptions}
+                      className="w-full justify-between h-9 text-xs px-3 rounded-xl"
                     />
                   </div>
                 )}
