@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 interface TrainerInfo {
   id: string;
