@@ -411,6 +411,15 @@ export default function EventDetail() {
               {event.description && <p className="text-sm text-muted-foreground max-w-2xl">{event.description}</p>}
             </div>
             <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {event.status === "draft" && (
+                <Button
+                  size="sm"
+                  onClick={() => setConfirmPublish(true)}
+                  className="gap-1.5 rounded-xl h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Send className="w-3.5 h-3.5" /> Publish
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5 rounded-xl h-8 text-xs">
                 <Edit2 className="w-3.5 h-3.5" /> Edit
               </Button>
@@ -420,6 +429,16 @@ export default function EventDetail() {
               <Button size="sm" variant="outline" onClick={copyEventLink} className="gap-1.5 rounded-xl h-8 text-xs">
                 <Copy className="w-3.5 h-3.5" /> Copy Link
               </Button>
+              {event.status !== "cancelled" && event.status !== "completed" && !isPast && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmCancel(true)}
+                  className="gap-1.5 rounded-xl h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-800 dark:hover:bg-amber-950/30"
+                >
+                  <Ban className="w-3.5 h-3.5" /> Cancel Event
+                </Button>
+              )}
             </div>
           </div>
 
