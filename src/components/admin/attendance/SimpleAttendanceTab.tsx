@@ -508,12 +508,15 @@ export const SimpleAttendanceTab = () => {
   // ── Mobile card-based member row ──
   const MobileMemberCard = ({ member }: { member: MemberAttendance }) => {
     const currentStatus = localAttendance.get(member.memberId) || "absent";
+    const isExpired = member.subscriptionStatus === "expired";
     return (
       <div className={cn(
         "bg-card rounded-xl border p-3 transition-all duration-200",
-        currentStatus === "present" ? "border-green-200 dark:border-green-900/40" :
-        currentStatus === "skipped" ? "border-slate-300 dark:border-slate-700/60" :
-        "border-border/40",
+        isExpired
+          ? "border-red-300/60 dark:border-red-900/60 bg-red-500/[0.06] dark:bg-red-900/[0.10]"
+          : currentStatus === "present" ? "border-green-200 dark:border-green-900/40" :
+            currentStatus === "skipped" ? "border-slate-300 dark:border-slate-700/60" :
+            "border-border/40",
         isFutureDate && "opacity-50 pointer-events-none"
       )}>
         <div className="flex items-center justify-between gap-2">
@@ -527,8 +530,13 @@ export const SimpleAttendanceTab = () => {
               {member.memberName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <p className="text-sm font-medium truncate">{member.memberName}</p>
+                {isExpired && (
+                  <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[9px] h-4 px-1.5 shrink-0 gap-0.5">
+                    <ExclamationTriangleIcon className="w-2.5 h-2.5" />Expired
+                  </Badge>
+                )}
                 {member.trainerName && (
                   <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
                     <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
