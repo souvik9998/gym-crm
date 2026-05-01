@@ -866,16 +866,29 @@ export const AttendanceHistoryTab = () => {
                     {selectedRecords.map((r: any, idx: number) => {
                       const isSkipped = r.status === "late" || r.status === "skipped";
                       const isPresent = r.status === "present";
+                      const isExpired = r.member_id && memberStatusMap[r.member_id] === "expired";
                       return (
-                      <div key={r.id} className="flex items-center justify-between px-3 py-2 hover:bg-muted/10 transition-colors animate-fade-in"
+                      <div
+                        key={r.id}
+                        className={cn(
+                          "flex items-center justify-between px-3 py-2 transition-colors animate-fade-in",
+                          isExpired
+                            ? "bg-red-500/[0.06] dark:bg-red-900/[0.10] hover:bg-red-500/[0.10] border-l-2 border-l-red-400/70"
+                            : "hover:bg-muted/10",
+                        )}
                         style={{ animationDelay: `${Math.min(idx * 20, 200)}ms` }}>
                         <div className="flex items-center gap-2 min-w-0">
                           <div className={cn("w-1.5 h-1.5 rounded-full shrink-0 transition-transform group-hover:scale-125",
                             isPresent ? "bg-green-500" : isSkipped ? "bg-slate-500" : "bg-red-500"
                           )} />
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                               <span className="text-xs font-medium truncate">{r.members?.name || "—"}</span>
+                              {isExpired && (
+                                <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[8px] h-4 px-1 shrink-0 gap-0.5">
+                                  <ExclamationTriangleIcon className="w-2 h-2" />Expired
+                                </Badge>
+                              )}
                               {(() => {
                                 const tn = resolveTrainerName(r);
                                 return tn ? (
