@@ -19,6 +19,7 @@ import { Plus, Trash2, GripVertical, Upload, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ButtonSpinner as Spinner } from "@/components/ui/button-spinner";
 import { Badge } from "@/components/ui/badge";
+import { DateTimePicker } from "@/components/ui/datetime-picker";
 
 interface PricingOption {
   id?: string;
