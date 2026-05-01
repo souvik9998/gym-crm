@@ -66,6 +66,40 @@ export default function EventDetail() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [itemFilter, setItemFilter] = useState("all");
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const statusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const { error } = await supabase.from("events").update({ status: newStatus }).eq("id", eventId!);
+      if (error) throw error;
+      return newStatus;
+    },
+    onSuccess: (newStatus) => {
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      if (newStatus === "published") toast.success("Event published");
+      else if (newStatus === "cancelled") toast.success("Event cancelled");
+
+      const action = newStatus === "published" ? "published" : newStatus === "cancelled" ? "cancelled" : `marked as ${newStatus}`;
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} ${action} event "${(event as any)?.title}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_status_changed", description: desc,
+          entityType: "events", entityName: (event as any)?.title,
+          branchId: (event as any)?.branch_id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_status_changed", description: desc,
+          entityType: "events", entityName: (event as any)?.title, branchId: (event as any)?.branch_id,
+        });
+      }
+      setConfirmPublish(false);
+      setConfirmCancel(false);
+    },
+    onError: (err: any) => toast.error("Failed to update event", { description: err.message }),
+  });
 
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["event-detail", eventId],
