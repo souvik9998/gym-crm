@@ -842,7 +842,7 @@ export const AddMemberDialog = ({
     return true;
   })();
 
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptMonthOptions.length > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptOptions.length > 0) : !!selectedPackageId;
 
 
   const goToStep = (step: number) => {
