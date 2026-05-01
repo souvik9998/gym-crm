@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { format, isBefore, parseISO, startOfDay } from "date-fns";
-import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus, ArrowUpDown, Send, Ban } from "lucide-react";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
@@ -81,7 +81,10 @@ export default function Events() {
   const [editEvent, setEditEvent] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
   const [deleteEvent, setDeleteEvent] = useState<any>(null);
+  const [cancelEvent, setCancelEvent] = useState<any>(null);
+  const [publishEvent, setPublishEvent] = useState<any>(null);
   const [registerEvent, setRegisterEvent] = useState<any>(null);
+  const autoCompleteRanRef = useRef(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events", currentBranch?.id],
@@ -127,6 +130,67 @@ export default function Events() {
     },
     onError: (err: any) => toast.error("Failed to delete", { description: err.message }),
   });
+
+  // Status mutation: publish / cancel / complete
+  const statusMutation = useMutation({
+    mutationFn: async ({ eventId, newStatus }: { eventId: string; newStatus: string }) => {
+      const { error } = await supabase.from("events").update({ status: newStatus }).eq("id", eventId);
+      if (error) throw error;
+      return { eventId, newStatus };
+    },
+    onSuccess: ({ eventId, newStatus }) => {
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      const ev = events.find((e: any) => e.id === eventId);
+      if (newStatus === "published") toast.success("Event published");
+      else if (newStatus === "cancelled") toast.success("Event cancelled");
+
+      if (ev) {
+        const action = newStatus === "published" ? "published" : newStatus === "cancelled" ? "cancelled" : `marked as ${newStatus}`;
+        const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} ${action} event "${ev.title}"`;
+        if (isStaffLoggedIn && staffUser) {
+          logStaffActivity({
+            category: "events", type: "event_status_changed", description: desc,
+            entityType: "events", entityName: ev.title,
+            branchId: currentBranch?.id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+          });
+        } else if (isAdmin) {
+          logAdminActivity({
+            category: "events", type: "event_status_changed", description: desc,
+            entityType: "events", entityName: ev.title, branchId: currentBranch?.id,
+          });
+        }
+      }
+      setCancelEvent(null);
+      setPublishEvent(null);
+    },
+    onError: (err: any) => toast.error("Failed to update event", { description: err.message }),
+  });
+
+  // Auto-mark past published events as completed (one-time per mount)
+  useEffect(() => {
+    if (autoCompleteRanRef.current) return;
+    if (!events.length || !currentBranch?.id) return;
+    const now = new Date();
+    const stale = events.filter((e: any) => {
+      if (e.status !== "published") return false;
+      try {
+        const end = e.event_end_date ? new Date(e.event_end_date) : new Date(e.event_date);
+        return end < now;
+      } catch {
+        return false;
+      }
+    });
+    if (stale.length === 0) {
+      autoCompleteRanRef.current = true;
+      return;
+    }
+    autoCompleteRanRef.current = true;
+    (async () => {
+      const ids = stale.map((e: any) => e.id);
+      const { error } = await supabase.from("events").update({ status: "completed" }).in("id", ids);
+      if (!error) queryClient.invalidateQueries({ queryKey: ["events"] });
+    })();
+  }, [events, currentBranch?.id, queryClient]);
 
   // Status counts (for chip badges) — computed against search-matched events
   const statusCounts = useMemo(() => {
@@ -399,13 +463,24 @@ export default function Events() {
                   </div>
 
                   <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap" onClick={(e) => e.stopPropagation()}>
+                    {event.status === "draft" && (
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="h-8 gap-1.5 text-xs rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => setPublishEvent(event)}
+                        title="Publish event"
+                      >
+                        <Send className="w-3.5 h-3.5" /> Publish
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
                       className="h-8 gap-1.5 text-xs disabled:opacity-50"
                       onClick={() => setRegisterEvent(event)}
-                      disabled={ended}
-                      title={ended ? "Registration closed — event has ended" : "Register a member"}
+                      disabled={ended || event.status === "cancelled" || event.status === "draft"}
+                      title={ended ? "Registration closed — event has ended" : event.status === "draft" ? "Publish event before registering" : "Register a member"}
                     >
                       <UserPlus className="w-3.5 h-3.5" /> Register
                     </Button>
@@ -420,7 +495,7 @@ export default function Events() {
                       variant="ghost"
                       className="h-8 gap-1.5 text-xs disabled:opacity-50"
                       onClick={() => setQrEvent(event)}
-                      disabled={ended}
+                      disabled={ended || event.status === "cancelled" || event.status === "draft"}
                       title={ended ? "Registration closed — event has ended" : "Show registration QR"}
                     >
                       <QrCode className="w-3.5 h-3.5" />
@@ -428,6 +503,17 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => copyEventLink(event)}>
                       <Copy className="w-3.5 h-3.5" />
                     </Button>
+                    {event.status !== "cancelled" && event.status !== "completed" && !ended && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 gap-1.5 text-xs text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                        onClick={() => setCancelEvent(event)}
+                        title="Cancel event"
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs text-destructive" onClick={() => setDeleteEvent(event)}>
                       <Trash2 className="w-3.5 h-3.5" />
                     </Button>
@@ -463,6 +549,25 @@ export default function Events() {
         description={`Are you sure you want to delete "${deleteEvent?.title}"? This will also delete all registrations.`}
         onConfirm={() => deleteEvent && deleteMutation.mutate(deleteEvent.id)}
         confirmText="Delete"
+        variant="destructive"
+      />
+
+      <ConfirmDialog
+        open={!!publishEvent}
+        onOpenChange={() => setPublishEvent(null)}
+        title="Publish Event"
+        description={`Publish "${publishEvent?.title}"? It will become visible to members and on the public calendar, and registrations will open.`}
+        onConfirm={() => publishEvent && statusMutation.mutate({ eventId: publishEvent.id, newStatus: "published" })}
+        confirmText="Publish"
+      />
+
+      <ConfirmDialog
+        open={!!cancelEvent}
+        onOpenChange={() => setCancelEvent(null)}
+        title="Cancel Event"
+        description={`Cancel "${cancelEvent?.title}"? Existing registrations will remain, but the event will be hidden from the public calendar and no new registrations will be accepted.`}
+        onConfirm={() => cancelEvent && statusMutation.mutate({ eventId: cancelEvent.id, newStatus: "cancelled" })}
+        confirmText="Cancel Event"
         variant="destructive"
       />
 

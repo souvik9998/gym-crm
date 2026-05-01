@@ -20,7 +20,7 @@ import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import {
   ArrowLeft, Calendar, MapPin, Users, IndianRupee, Download, Search,
-  UserPlus, Edit2, Trash2, QrCode, Copy, Eye,
+  UserPlus, Edit2, Trash2, QrCode, Copy, Eye, Send, Ban,
 } from "lucide-react";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
@@ -66,6 +66,40 @@ export default function EventDetail() {
   const [editPhone, setEditPhone] = useState("");
   const [editEmail, setEditEmail] = useState("");
   const [itemFilter, setItemFilter] = useState("all");
+  const [confirmPublish, setConfirmPublish] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
+
+  const statusMutation = useMutation({
+    mutationFn: async (newStatus: string) => {
+      const { error } = await supabase.from("events").update({ status: newStatus }).eq("id", eventId!);
+      if (error) throw error;
+      return newStatus;
+    },
+    onSuccess: (newStatus) => {
+      queryClient.invalidateQueries({ queryKey: ["event-detail", eventId] });
+      queryClient.invalidateQueries({ queryKey: ["events"] });
+      if (newStatus === "published") toast.success("Event published");
+      else if (newStatus === "cancelled") toast.success("Event cancelled");
+
+      const action = newStatus === "published" ? "published" : newStatus === "cancelled" ? "cancelled" : `marked as ${newStatus}`;
+      const desc = `${isStaffLoggedIn ? `Staff "${staffUser?.fullName}"` : "Admin"} ${action} event "${(event as any)?.title}"`;
+      if (isStaffLoggedIn && staffUser) {
+        logStaffActivity({
+          category: "events", type: "event_status_changed", description: desc,
+          entityType: "events", entityName: (event as any)?.title,
+          branchId: (event as any)?.branch_id, staffId: staffUser.id, staffName: staffUser.fullName, staffPhone: staffUser.phone,
+        });
+      } else if (isAdmin) {
+        logAdminActivity({
+          category: "events", type: "event_status_changed", description: desc,
+          entityType: "events", entityName: (event as any)?.title, branchId: (event as any)?.branch_id,
+        });
+      }
+      setConfirmPublish(false);
+      setConfirmCancel(false);
+    },
+    onError: (err: any) => toast.error("Failed to update event", { description: err.message }),
+  });
 
   const { data: event, isLoading: eventLoading } = useQuery({
     queryKey: ["event-detail", eventId],
@@ -377,6 +411,15 @@ export default function EventDetail() {
               {event.description && <p className="text-sm text-muted-foreground max-w-2xl">{event.description}</p>}
             </div>
             <div className="flex items-center gap-2 flex-wrap shrink-0">
+              {event.status === "draft" && (
+                <Button
+                  size="sm"
+                  onClick={() => setConfirmPublish(true)}
+                  className="gap-1.5 rounded-xl h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+                >
+                  <Send className="w-3.5 h-3.5" /> Publish
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => setEditOpen(true)} className="gap-1.5 rounded-xl h-8 text-xs">
                 <Edit2 className="w-3.5 h-3.5" /> Edit
               </Button>
@@ -386,6 +429,16 @@ export default function EventDetail() {
               <Button size="sm" variant="outline" onClick={copyEventLink} className="gap-1.5 rounded-xl h-8 text-xs">
                 <Copy className="w-3.5 h-3.5" /> Copy Link
               </Button>
+              {event.status !== "cancelled" && event.status !== "completed" && !isPast && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setConfirmCancel(true)}
+                  className="gap-1.5 rounded-xl h-8 text-xs text-amber-600 border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-amber-800 dark:hover:bg-amber-950/30"
+                >
+                  <Ban className="w-3.5 h-3.5" /> Cancel Event
+                </Button>
+              )}
             </div>
           </div>
 
@@ -641,6 +694,25 @@ export default function EventDetail() {
         open={editOpen}
         onOpenChange={(open) => !open && setEditOpen(false)}
         editEvent={editOpen ? event : null}
+      />
+
+      <ConfirmDialog
+        open={confirmPublish}
+        onOpenChange={setConfirmPublish}
+        title="Publish Event"
+        description={`Publish "${event?.title}"? It will become visible on the public calendar and registrations will open.`}
+        onConfirm={() => statusMutation.mutate("published")}
+        confirmText="Publish"
+      />
+
+      <ConfirmDialog
+        open={confirmCancel}
+        onOpenChange={setConfirmCancel}
+        title="Cancel Event"
+        description={`Cancel "${event?.title}"? Existing registrations remain, but the event will be hidden from the public calendar and no new registrations will be accepted.`}
+        onConfirm={() => statusMutation.mutate("cancelled")}
+        confirmText="Cancel Event"
+        variant="destructive"
       />
     </div>
   );

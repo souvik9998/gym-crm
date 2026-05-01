@@ -169,7 +169,7 @@ const HolidayCalendarTab = () => {
         .from("events")
         .select("id, title, slug, event_date, event_end_date, location, status")
         .eq("branch_id", currentBranch.id)
-        .neq("status", "cancelled")
+        .not("status", "in", "(cancelled,draft)")
         .order("event_date", { ascending: true }),
     ]);
 

@@ -118,7 +118,7 @@ export default function PublicCalendar() {
           .from("events")
           .select("id, title, slug, event_date, event_end_date, location, status, description")
           .eq("branch_id", resolved.id)
-          .neq("status", "cancelled")
+          .not("status", "in", "(cancelled,draft)")
           .order("event_date", { ascending: true }),
       ]);
 
