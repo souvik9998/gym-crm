@@ -28,16 +28,42 @@ import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useBranch } from "@/contexts/BranchContext";
 
-const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
+const categoryFilters = ["all", "new_member", "event", "expired_checkin", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
 
 const categoryLabels: Record<CategoryFilter, string> = {
   all: "All",
   new_member: "New",
+  event: "Events",
+  expired_checkin: "Expired",
   plan: "Plan",
   limit: "Limits",
   member: "Members",
 };
+
+const SEEN_STORAGE_KEY = "admin_notifications_seen_v1";
+const MAX_SEEN_TRACKED = 200;
+
+function loadSeenIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(SEEN_STORAGE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return new Set();
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistSeenIds(ids: Set<string>) {
+  try {
+    const arr = Array.from(ids).slice(-MAX_SEEN_TRACKED);
+    localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(arr));
+  } catch {
+    // ignore quota errors
+  }
+}
 
 function NotificationIcon({ type }: { type: AdminNotification["type"] }) {
   if (type === "danger") return (
@@ -88,13 +114,35 @@ export function NotificationCenter() {
   const { currentBranch } = useBranch();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
-  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => loadSeenIds());
 
-  // When popover opens, mark all current notifications as seen
+  // Reconcile when fresh notifications arrive: keep only IDs still relevant,
+  // so storage doesn't grow forever and stale ids don't suppress brand-new ones.
+  useEffect(() => {
+    if (notifications.length === 0) return;
+    setSeenIds((prev) => {
+      const currentIds = new Set(notifications.map((n) => n.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (currentIds.has(id)) next.add(id);
+        else changed = true;
+      });
+      if (changed) persistSeenIds(next);
+      return changed ? next : prev;
+    });
+  }, [notifications]);
+
+  // When popover opens, mark all current notifications as seen and persist
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
-      setSeenIds(new Set(notifications.map(n => n.id)));
+      setSeenIds((prev) => {
+        const next = new Set(prev);
+        notifications.forEach((n) => next.add(n.id));
+        persistSeenIds(next);
+        return next;
+      });
     }
   };
 
@@ -115,6 +163,8 @@ export function NotificationCenter() {
   const filterCounts: Record<CategoryFilter, number> = {
     all: totalCount,
     new_member: notifications.filter(n => n.category === "new_member").length,
+    event: notifications.filter(n => n.category === "event").length,
+    expired_checkin: notifications.filter(n => n.category === "expired_checkin").length,
     plan: notifications.filter(n => n.category === "plan").length,
     limit: notifications.filter(n => n.category === "limit").length,
     member: notifications.filter(n => n.category === "member").length,
@@ -124,7 +174,7 @@ export function NotificationCenter() {
     if (n.category === "plan") {
       setOpen(false);
       setPlanDialog({ open: true, notification: n });
-    } else if (n.category === "member") {
+    } else if (n.category === "member" || n.category === "expired_checkin") {
       setOpen(false);
       setMemberDialog({ open: true, notification: n });
     } else if (n.category === "new_member") {
@@ -368,8 +418,11 @@ export function NotificationCenter() {
                         <NotificationBadge type={n.type} />
                       </div>
                       <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.description}</p>
-                      {n.category === "member" && (
+                      {(n.category === "member" || n.category === "expired_checkin") && (
                         <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to send reminder →</p>
+                      )}
+                      {n.category === "event" && (
+                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to view event →</p>
                       )}
                       {n.category === "plan" && (
                         <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to view options →</p>
