@@ -84,6 +84,8 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
 export function NotificationCenter() {
   const navigate = useNavigate();
   const { notifications, dangerCount, successCount, totalCount, refetch } = useAdminNotifications();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { currentBranch } = useBranch();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
