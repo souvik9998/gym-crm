@@ -181,6 +181,10 @@ export default {
   				'10%, 30%': { transform: 'rotate(14deg)' },
   				'20%, 40%': { transform: 'rotate(-8deg)' },
   				'50%': { transform: 'rotate(10deg)' }
+  			},
+  			'scale-in': {
+  				'0%': { opacity: '0', transform: 'scale(0.95)' },
+  				'100%': { opacity: '1', transform: 'scale(1)' }
   			}
   		},
   		animation: {
@@ -190,7 +194,8 @@ export default {
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 3s ease-in-out infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
-  			wave: 'wave 2.4s ease-in-out 1'
+  			wave: 'wave 2.4s ease-in-out 1',
+  			'scale-in': 'scale-in 0.18s ease-out'
   		}
   	}
   },
