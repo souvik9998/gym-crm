@@ -570,6 +570,9 @@ const AdminDashboard = () => {
                       onTrainerFilterChange={setTrainerFilter}
                       timeSlotFilter={timeSlotFilter}
                       onTimeSlotFilterChange={setTimeSlotFilter}
+                      timeBucketFilter={timeBucketFilter}
+                      onTimeBucketFilterChange={setTimeBucketFilter}
+                      timeBucketOptions={timeBucketOptions}
                     />
                   </div>
                   
