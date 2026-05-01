@@ -2289,7 +2289,7 @@ export const AddMemberDialog = ({
                     )}
                     {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
-                        <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
+                        <span className="text-muted-foreground">PT ({selectedPtOption ? selectedPtOption.label : `${ptMonths}mo`})</span>
                         <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
                           ₹{ptFee.toLocaleString("en-IN")}
                         </span>
