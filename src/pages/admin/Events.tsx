@@ -294,11 +294,29 @@ export default function Events() {
         <Card className="border border-border/40">
           <CardContent className="p-12 text-center">
             <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
-            <h3 className="font-semibold text-foreground mb-1">No events yet</h3>
-            <p className="text-sm text-muted-foreground mb-4">Create your first event to get started</p>
-            <Button onClick={() => setCreateOpen(true)} variant="outline" className="rounded-xl gap-2">
-              <Plus className="w-4 h-4" /> Create Event
-            </Button>
+            {events.length === 0 ? (
+              <>
+                <h3 className="font-semibold text-foreground mb-1">No events yet</h3>
+                <p className="text-sm text-muted-foreground mb-4">Create your first event to get started</p>
+                <Button onClick={() => setCreateOpen(true)} variant="outline" className="rounded-xl gap-2">
+                  <Plus className="w-4 h-4" /> Create Event
+                </Button>
+              </>
+            ) : (
+              <>
+                <h3 className="font-semibold text-foreground mb-1">No events match these filters</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Try a different search or status filter.
+                </p>
+                <Button
+                  onClick={() => { setSearch(""); setStatusFilter("all"); }}
+                  variant="outline"
+                  className="rounded-xl"
+                >
+                  Clear filters
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       ) : (
