@@ -552,6 +552,25 @@ export default function Events() {
         variant="destructive"
       />
 
+      <ConfirmDialog
+        open={!!publishEvent}
+        onOpenChange={() => setPublishEvent(null)}
+        title="Publish Event"
+        description={`Publish "${publishEvent?.title}"? It will become visible to members and on the public calendar, and registrations will open.`}
+        onConfirm={() => publishEvent && statusMutation.mutate({ eventId: publishEvent.id, newStatus: "published" })}
+        confirmText="Publish"
+      />
+
+      <ConfirmDialog
+        open={!!cancelEvent}
+        onOpenChange={() => setCancelEvent(null)}
+        title="Cancel Event"
+        description={`Cancel "${cancelEvent?.title}"? Existing registrations will remain, but the event will be hidden from the public calendar and no new registrations will be accepted.`}
+        onConfirm={() => cancelEvent && statusMutation.mutate({ eventId: cancelEvent.id, newStatus: "cancelled" })}
+        confirmText="Cancel Event"
+        variant="destructive"
+      />
+
       {registerEvent && (
         <AdminEventRegisterDialog
           open={!!registerEvent}
