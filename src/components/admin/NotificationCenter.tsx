@@ -23,6 +23,10 @@ import { toast } from "@/components/ui/sonner";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { Checkbox } from "@/components/ui/checkbox";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useBranch } from "@/contexts/BranchContext";
 
 const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
