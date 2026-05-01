@@ -59,6 +59,9 @@ export interface SendResult {
   success: boolean;
   error?: string;
   provider: ProviderName;
+  /** Provider-side message id (if returned). Used to reconcile delivery
+   *  status later — the send may be accepted but later marked failed. */
+  providerMessageId?: string;
 }
 
 // -------------------------------------------------------------------------
@@ -490,7 +493,7 @@ async function sendViaZavu(
       }
     }
 
-    return { success: true, provider: "zavu" };
+    return { success: true, provider: "zavu", providerMessageId: messageId || undefined };
   } catch (err: unknown) {
     return { success: false, provider: "zavu", error: (err as Error).message };
   }

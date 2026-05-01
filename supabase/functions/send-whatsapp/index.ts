@@ -181,6 +181,8 @@ Deno.serve(async (req) => {
       is_manual: boolean;
       admin_user_id?: string | null;
       branch_id?: string | null;
+      provider?: string | null;
+      provider_message_id?: string | null;
     }) => {
       try {
         const insertData: any = {
@@ -193,6 +195,8 @@ Deno.serve(async (req) => {
           is_manual: logData.is_manual,
           admin_user_id: logData.admin_user_id || null,
           branch_id: logData.branch_id || null,
+          provider: logData.provider ?? null,
+          provider_message_id: logData.provider_message_id ?? null,
         };
 
         if (logData.member_id) {
@@ -448,7 +452,7 @@ Deno.serve(async (req) => {
       category: MessageCategory,
       variables: Record<string, string>,
       bId?: string | null,
-    ): Promise<{ success: boolean; error?: string }> => {
+    ): Promise<{ success: boolean; error?: string; provider?: string; providerMessageId?: string }> => {
       const result = await sendWhatsAppForTenant(supabase, {
         toPhone,
         category,
@@ -456,7 +460,12 @@ Deno.serve(async (req) => {
         fallbackText,
         branchId: bId ?? null,
       });
-      return { success: result.success, error: result.error };
+      return {
+        success: result.success,
+        error: result.error,
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+      };
     };
 
     // Build the variable map for a member-style message.
@@ -593,6 +602,8 @@ Deno.serve(async (req) => {
         is_manual: true,
         admin_user_id: finalAdminUserId,
         branch_id: branchId || null,
+        provider: result.provider ?? null,
+        provider_message_id: result.providerMessageId ?? null,
       });
 
       return new Response(
@@ -680,6 +691,8 @@ Deno.serve(async (req) => {
         is_manual: isManual,
         admin_user_id: finalAdminUserId,
         branch_id: branchId || null,
+        provider: result.provider ?? null,
+        provider_message_id: result.providerMessageId ?? null,
       });
 
       return new Response(
@@ -750,6 +763,8 @@ Deno.serve(async (req) => {
           is_manual: isManual,
           admin_user_id: finalAdminUserId,
           branch_id: user.branch_id || branchId || null,
+          provider: result.provider ?? null,
+          provider_message_id: result.providerMessageId ?? null,
         });
 
         results.push({
@@ -861,6 +876,8 @@ Deno.serve(async (req) => {
         is_manual: isManual,
         admin_user_id: finalAdminUserId,
         branch_id: member.branch_id || branchId || null,
+        provider: result.provider ?? null,
+        provider_message_id: result.providerMessageId ?? null,
       });
 
       results.push({

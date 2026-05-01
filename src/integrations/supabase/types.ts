@@ -3410,10 +3410,13 @@ export type Database = {
           member_id: string | null
           message_content: string | null
           notification_type: string
+          provider: string | null
+          provider_message_id: string | null
           recipient_name: string | null
           recipient_phone: string | null
           sent_at: string
           status: string
+          status_checked_at: string | null
           subscription_id: string | null
         }
         Insert: {
@@ -3427,10 +3430,13 @@ export type Database = {
           member_id?: string | null
           message_content?: string | null
           notification_type: string
+          provider?: string | null
+          provider_message_id?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           sent_at?: string
           status?: string
+          status_checked_at?: string | null
           subscription_id?: string | null
         }
         Update: {
@@ -3444,10 +3450,13 @@ export type Database = {
           member_id?: string | null
           message_content?: string | null
           notification_type?: string
+          provider?: string | null
+          provider_message_id?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           sent_at?: string
           status?: string
+          status_checked_at?: string | null
           subscription_id?: string | null
         }
         Relationships: [
