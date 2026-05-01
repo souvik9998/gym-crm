@@ -2116,14 +2116,18 @@ export const AddMemberDialog = ({
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                               <Label className="text-xs text-muted-foreground">PT Duration</Label>
-                              <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
+                              <Select
+                                value={selectedPtOption?.key ?? ""}
+                                onValueChange={handlePtOptionChange}
+                                disabled={ptOptions.length === 0}
+                              >
                                 <SelectTrigger className="h-10 text-sm rounded-xl">
-                                  <SelectValue />
+                                  <SelectValue placeholder={ptOptions.length === 0 ? "No PT period available" : "Select duration"} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                  {ptMonthOptions.map((m) => (
-                                    <SelectItem key={m} value={String(m)}>
-                                      {m} {m === 1 ? "Month" : "Months"}
+                                  {ptOptions.map((o) => (
+                                    <SelectItem key={o.key} value={o.key}>
+                                      {o.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -2142,6 +2146,15 @@ export const AddMemberDialog = ({
                               />
                             </div>
                           </div>
+
+                          {/* PT date range — mirrors public registration form */}
+                          {selectedPtOption && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 -mt-1">
+                              <Calendar className="w-3 h-3" />
+                              PT: {format(ptStartForCalc, "d MMM yyyy")} → {format(selectedPtOption.endDate, "d MMM yyyy")}
+                              {" "}({selectedPtOption.days} days)
+                            </p>
+                          )}
 
                           {/* Optional Time Slot — only shown when the selected trainer
                               has configured slots in the schedule. Picking a slot is OPTIONAL. */}
