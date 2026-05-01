@@ -241,7 +241,7 @@ export function NotificationCenter() {
             await logStaffActivity({
               ...logPayload,
               staffId: staffUser.id,
-              staffName: staffUser.full_name,
+              staffName: staffUser.fullName,
               staffPhone: staffUser.phone,
             });
           } else {
