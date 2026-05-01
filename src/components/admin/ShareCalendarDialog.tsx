@@ -27,6 +27,9 @@ import {
   PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 interface ShareCalendarDialogProps {
   open: boolean;
