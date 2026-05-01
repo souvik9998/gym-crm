@@ -416,12 +416,16 @@ const Index = () => {
         {/* Features */}
         <div className="max-w-md mx-auto mt-12 grid grid-cols-3 gap-4">
           {[
-            { icon: Shield, label: "Secure Payment" },
-            { icon: Clock, label: "Instant Access" },
-            { icon: CreditCard, label: "Easy Renewal" },
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-card">
-              <Icon className="w-5 h-5 text-accent" />
+            { icon: ShieldCheck, label: "Secure Payment", tint: "text-emerald-500" },
+            { icon: Zap, label: "Instant Access", tint: "text-amber-500" },
+            { icon: HeartHandshake, label: "Easy Renewal", tint: "text-rose-500" },
+          ].map(({ icon: Icon, label, tint }, i) => (
+            <div
+              key={label}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md group animate-fade-in"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              <Icon className={`w-5 h-5 ${tint} transition-transform duration-300 group-hover:scale-110`} />
               <span className="text-xs text-muted-foreground text-center">{label}</span>
             </div>
           ))}
