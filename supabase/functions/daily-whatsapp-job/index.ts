@@ -396,6 +396,8 @@ Deno.serve(async (req) => {
               error_message: result.ok ? null : result.body,
               is_manual: isManualTrigger,
               branch_id: branchId,
+              provider: result.provider ?? null,
+              provider_message_id: result.providerMessageId ?? null,
             });
 
             logs.push({ memberId: member.id, memberName: member.name, branchId, type: "expiring_soon", status: result.ok ? "sent" : "failed", periskopeStatus: result.status });
