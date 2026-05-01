@@ -52,6 +52,9 @@ interface SlotMember {
   current_pt_trainer_name: string | null;
   /** True when the slot's trainer != member's current active PT trainer. */
   is_trainer_replaced: boolean;
+  /** Member's gym subscription status: active | expiring_soon | expired | inactive | paused | null */
+  subscription_status: string | null;
+  subscription_end_date: string | null;
 }
 
 interface AvailableMember {
@@ -198,6 +201,24 @@ export const TimeSlotDetailDialog = ({
         if (!tsmIdByMember.has(r.member_id)) tsmIdByMember.set(r.member_id, r.id);
       });
 
+      // Pull each member's latest gym subscription so admins can see whether
+      // a slot member is Active / Expiring Soon / Expired / Inactive without
+      // leaving the dialog.
+      const memberIds = Array.from(new Set((ptRows || []).map((p: any) => p.member_id)));
+      const subMap = new Map<string, { status: string; end_date: string }>();
+      if (memberIds.length > 0) {
+        const { data: subs } = await supabase
+          .from("subscriptions")
+          .select("member_id, status, end_date")
+          .in("member_id", memberIds)
+          .order("end_date", { ascending: false });
+        (subs || []).forEach((s: any) => {
+          if (!subMap.has(s.member_id)) {
+            subMap.set(s.member_id, { status: s.status, end_date: s.end_date });
+          }
+        });
+      }
+
       // Dedupe defensively: one row per member for this slot.
       const seen = new Set<string>();
       const list: SlotMember[] = [];
@@ -208,6 +229,7 @@ export const TimeSlotDetailDialog = ({
         const currentTrainerId = p.personal_trainer_id;
         const currentTrainerName = (p.personal_trainers as any)?.name || "Unknown";
         const isReplaced = !!(trainerPtId && currentTrainerId && currentTrainerId !== trainerPtId);
+        const subInfo = subMap.get(p.member_id);
 
         list.push({
           // Fall back to pt_subscriptions.id when no time_slot_members row exists
@@ -220,6 +242,8 @@ export const TimeSlotDetailDialog = ({
           current_pt_trainer_id: currentTrainerId,
           current_pt_trainer_name: currentTrainerName,
           is_trainer_replaced: isReplaced,
+          subscription_status: subInfo?.status || null,
+          subscription_end_date: subInfo?.end_date || null,
         });
       });
 
@@ -787,6 +811,24 @@ export const TimeSlotDetailDialog = ({
                                 {m.has_pt && (
                                   <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">PT</Badge>
                                 )}
+                                {(() => {
+                                  const s = m.subscription_status;
+                                  if (!s) return null;
+                                  const meta: Record<string, { label: string; cls: string }> = {
+                                    active: { label: "Active", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+                                    expiring_soon: { label: "Expiring Soon", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400" },
+                                    expired: { label: "Expired", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+                                    inactive: { label: "Inactive", cls: "bg-muted text-muted-foreground" },
+                                    paused: { label: "Paused", cls: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+                                  };
+                                  const m2 = meta[s];
+                                  if (!m2) return null;
+                                  return (
+                                    <Badge className={`${m2.cls} text-[9px] border-0 px-1 py-0 h-3.5`}>
+                                      {m2.label}
+                                    </Badge>
+                                  );
+                                })()}
                                 {m.is_trainer_replaced && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>

@@ -43,6 +43,7 @@ type AttendanceMemberRow = {
   trainerId: string;
   trainerName: string;
   status: AttendanceStatus;
+  subscriptionStatus: string | null;
 };
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
@@ -55,6 +56,12 @@ const STATUS_BUTTON_STYLES: Record<AttendanceStatus, string> = {
   present: "border-success/30 bg-success text-success-foreground shadow-sm",
   skipped: "border-muted-foreground/30 bg-muted-foreground text-background shadow-sm",
   absent: "border-destructive/25 bg-destructive text-destructive-foreground shadow-sm",
+};
+
+const SUB_STATUS_META: Record<string, { label: string; className: string }> = {
+  active: { label: "Active", className: "border-success/30 bg-success/10 text-success" },
+  expiring_soon: { label: "Expiring", className: "border-amber-400/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  expired: { label: "Expired", className: "border-destructive/30 bg-destructive/10 text-destructive" },
 };
 
 export const SlotAttendanceTab = () => {
@@ -133,8 +140,12 @@ export const SlotAttendanceTab = () => {
     if (visibleSlotIds.length === 0) return [];
 
     return scopedMembers.filter((member) => {
+      // Exclude only fully inactive/paused members. Active, expiring_soon and
+      // expired members assigned to a slot should still appear in attendance
+      // (admins often need to mark expired members until they renew or are
+      // explicitly deactivated).
       const subscriptionStatus = member.subscription?.status;
-      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") return false;
+      if (subscriptionStatus === "inactive" || subscriptionStatus === "paused") return false;
 
       const slotId = member.activePT?.time_slot_id;
       return !!slotId && visibleSlotIds.includes(slotId);
@@ -197,6 +208,7 @@ export const SlotAttendanceTab = () => {
           trainerId: slotMeta.trainerId,
           trainerName: slotMeta.trainerName,
           status: (localAttendance.get(`${slotId}:${member.id}`) || "absent") as AttendanceStatus,
+          subscriptionStatus: member.subscription?.status || null,
         };
       })
       .filter(Boolean)
@@ -362,6 +374,11 @@ export const SlotAttendanceTab = () => {
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Badge variant="outline" className="border-primary/20 bg-primary/5 text-[10px] text-foreground">{member.slotLabel}</Badge>
             <Badge variant="outline" className="border-accent/20 bg-accent/5 text-[10px] text-foreground">{member.trainerName}</Badge>
+            {member.subscriptionStatus && SUB_STATUS_META[member.subscriptionStatus] && (
+              <Badge variant="outline" className={cn("text-[10px]", SUB_STATUS_META[member.subscriptionStatus].className)}>
+                {SUB_STATUS_META[member.subscriptionStatus].label}
+              </Badge>
+            )}
           </div>
         </div>
         <Badge variant="outline" className={cn("text-[10px]", STATUS_STYLES[member.status])}>
@@ -606,7 +623,14 @@ export const SlotAttendanceTab = () => {
                               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-semibold text-primary">
                                 {member.memberName.charAt(0).toUpperCase()}
                               </div>
-                              <p className="text-sm font-medium text-foreground">{member.memberName}</p>
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <p className="text-sm font-medium text-foreground truncate">{member.memberName}</p>
+                                {member.subscriptionStatus && SUB_STATUS_META[member.subscriptionStatus] && (
+                                  <Badge variant="outline" className={cn("text-[9px] px-1 py-0 h-4 shrink-0", SUB_STATUS_META[member.subscriptionStatus].className)}>
+                                    {SUB_STATUS_META[member.subscriptionStatus].label}
+                                  </Badge>
+                                )}
+                              </div>
                             </div>
                           </td>
                           <td className="px-3 py-2.5 text-sm text-muted-foreground">{member.memberPhone}</td>

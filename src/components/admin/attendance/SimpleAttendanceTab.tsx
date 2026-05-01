@@ -314,8 +314,11 @@ export const SimpleAttendanceTab = () => {
 
   const activeMembers = useMemo(() => {
     return scopedMembers.filter((member) => {
+      // Exclude only fully inactive/paused members. Active, expiring_soon and
+      // expired members remain markable; admins explicitly deactivate members
+      // to remove them from attendance.
       const subscriptionStatus = member.subscription?.status;
-      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") {
+      if (subscriptionStatus === "inactive" || subscriptionStatus === "paused") {
         return false;
       }
 

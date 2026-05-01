@@ -260,7 +260,11 @@ export const AttendanceHistoryTab = () => {
 
   const selectedRecords = useMemo(() => {
     if (!selectedDate) return [];
-    let list = monthRecords.filter((r: any) => r.date === selectedDate);
+    // Hide rows whose member was deleted (no joined name). Those orphaned
+    // log entries are noise for admins reviewing the day.
+    let list = monthRecords.filter(
+      (r: any) => r.date === selectedDate && r.members?.name,
+    );
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r: any) => r.members?.name?.toLowerCase().includes(q) || r.members?.phone?.includes(q));
@@ -282,7 +286,10 @@ export const AttendanceHistoryTab = () => {
   // stay stable while the user toggles between Present/Skipped/Absent.
   const selectedStats = useMemo(() => {
     if (!selectedDate) return { present: 0, skipped: 0, absent: 0, total: 0 };
-    const dayRecords = monthRecords.filter((r: any) => r.date === selectedDate);
+    // Same orphan filter as selectedRecords so the chip counts match the list.
+    const dayRecords = monthRecords.filter(
+      (r: any) => r.date === selectedDate && r.members?.name,
+    );
     const present = dayRecords.filter((r: any) => r.status === "present").length;
     const skipped = dayRecords.filter((r: any) => r.status === "late" || r.status === "skipped").length;
     const absent = dayRecords.filter((r: any) => r.status === "absent").length;
