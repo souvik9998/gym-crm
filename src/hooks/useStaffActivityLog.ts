@@ -70,6 +70,7 @@ export type StaffActivityType =
   | "event_created"
   | "event_updated"
   | "event_deleted"
+  | "event_status_changed"
   | "event_registration_added"
   | "event_registration_updated"
   | "event_registration_deleted"
