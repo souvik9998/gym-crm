@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 
 interface SlotMember {
