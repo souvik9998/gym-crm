@@ -43,6 +43,7 @@ type AttendanceMemberRow = {
   trainerId: string;
   trainerName: string;
   status: AttendanceStatus;
+  subscriptionStatus: string | null;
 };
 
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
