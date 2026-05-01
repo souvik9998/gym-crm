@@ -1417,7 +1417,7 @@ export const AddMemberDialog = ({
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         const endDateStr = selectedAction === "add_pt" 
-          ? formatDateOnly(addPackageMonths(new Date(startDate), ptMonths))
+          ? formatDateOnly(resolvedPtEndDate ?? addPackageMonths(new Date(startDate), ptMonths))
           : formatDateOnly(addPackageMonths(new Date(startDate), selectedPackage?.months || 1));
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
