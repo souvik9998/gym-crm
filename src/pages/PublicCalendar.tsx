@@ -158,20 +158,43 @@ export default function PublicCalendar() {
     return map;
   }, [holidays]);
 
-  const upcomingEvents = useMemo(() => {
+  const isEventPast = (ev: PublicEvent): boolean => {
     const today = startOfDay(new Date());
+    const end = ev.event_end_date ? parseISO(ev.event_end_date) : parseISO(ev.event_date);
+    return isBefore(end, today);
+  };
+
+  const isHolidayPast = (h: PublicHoliday): boolean => {
+    const today = startOfDay(new Date());
+    return isBefore(parseISO(h.holiday_date), today);
+  };
+
+  const upcomingEvents = useMemo(() => {
+    return events.filter((e) => !isEventPast(e)).slice(0, 8);
+  }, [events]);
+
+  const pastEvents = useMemo(() => {
     return events
-      .filter((e) => {
-        const end = e.event_end_date ? parseISO(e.event_end_date) : parseISO(e.event_date);
-        return !isBefore(end, today);
-      })
+      .filter((e) => isEventPast(e))
+      .slice()
+      .reverse() // most recent past first
       .slice(0, 8);
   }, [events]);
 
   const upcomingHolidays = useMemo(() => {
-    const today = startOfDay(new Date());
-    return holidays.filter((h) => !isBefore(parseISO(h.holiday_date), today)).slice(0, 8);
+    return holidays.filter((h) => !isHolidayPast(h)).slice(0, 8);
   }, [holidays]);
+
+  const pastHolidays = useMemo(() => {
+    return holidays
+      .filter((h) => isHolidayPast(h))
+      .slice()
+      .reverse()
+      .slice(0, 8);
+  }, [holidays]);
+
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [showPastHolidays, setShowPastHolidays] = useState(false);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
