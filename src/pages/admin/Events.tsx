@@ -81,7 +81,10 @@ export default function Events() {
   const [editEvent, setEditEvent] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
   const [deleteEvent, setDeleteEvent] = useState<any>(null);
+  const [cancelEvent, setCancelEvent] = useState<any>(null);
+  const [publishEvent, setPublishEvent] = useState<any>(null);
   const [registerEvent, setRegisterEvent] = useState<any>(null);
+  const autoCompleteRanRef = useRef(false);
 
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events", currentBranch?.id],
