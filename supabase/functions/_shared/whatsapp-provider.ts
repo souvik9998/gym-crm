@@ -59,6 +59,9 @@ export interface SendResult {
   success: boolean;
   error?: string;
   provider: ProviderName;
+  /** Provider-side message id (if returned). Used to reconcile delivery
+   *  status later — the send may be accepted but later marked failed. */
+  providerMessageId?: string;
 }
 
 // -------------------------------------------------------------------------
