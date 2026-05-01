@@ -13,6 +13,7 @@ import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown"
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
 import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
 import type { TimeBucket, TimeBucketOption } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 // Per-option metadata for the rich sub-filter dropdowns. Mirrors the
 // trainer/time-slot dropdown style: icon + title + description + check badge.
@@ -209,6 +210,8 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null);
   const [mobileDropdownOpen, setMobileDropdownOpen] = React.useState(false);
   const hoverTimeoutRef = React.useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
+  useCloseOnRouteChange(mobileDropdownOpen, setMobileDropdownOpen);
+  useCloseOnRouteChange(openDropdown !== null, () => setOpenDropdown(null));
 
   const getCategoryFromValue = (val: MemberFilterValue): MemberFilterCategory | null => {
     if (val === "all") return "all";

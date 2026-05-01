@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 interface TrainerInfo {
   id: string;
@@ -44,6 +45,7 @@ export const NO_TRAINER_FILTER = "__no_trainer__";
 
 export const TrainerFilterDropdown = ({ value, onChange, compact = false }: TrainerFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
+  useCloseOnRouteChange(open, setOpen);
   const { currentBranch } = useBranch();
   const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
   const isMobile = useIsMobile();

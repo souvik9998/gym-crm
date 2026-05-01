@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 
 interface SlotMember {
@@ -62,6 +63,7 @@ export const NO_SLOT_FILTER = "__no_slot__";
 
 export const TimeSlotFilterDropdown = ({ value, onChange, trainerFilter = null, compact = false }: TimeSlotFilterDropdownProps) => {
   const [open, setOpen] = useState(false);
+  useCloseOnRouteChange(open, setOpen);
   const { currentBranch } = useBranch();
   const isMobile = useIsMobile();
 
