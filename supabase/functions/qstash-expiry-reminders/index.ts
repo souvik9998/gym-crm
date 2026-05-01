@@ -304,6 +304,8 @@ Deno.serve(async (req) => {
         error_message: result.success ? null : result.error,
         is_manual: parsed.manual === true,
         branch_id: branchId,
+        provider: result.provider ?? null,
+        provider_message_id: result.providerMessageId ?? null,
       });
 
       if (result.success) sent++;
