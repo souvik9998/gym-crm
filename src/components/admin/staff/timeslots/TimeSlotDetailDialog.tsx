@@ -811,6 +811,24 @@ export const TimeSlotDetailDialog = ({
                                 {m.has_pt && (
                                   <Badge className="bg-primary/10 text-primary text-[9px] px-1 py-0 h-3.5">PT</Badge>
                                 )}
+                                {(() => {
+                                  const s = m.subscription_status;
+                                  if (!s) return null;
+                                  const meta: Record<string, { label: string; cls: string }> = {
+                                    active: { label: "Active", cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+                                    expiring_soon: { label: "Expiring Soon", cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400" },
+                                    expired: { label: "Expired", cls: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400" },
+                                    inactive: { label: "Inactive", cls: "bg-muted text-muted-foreground" },
+                                    paused: { label: "Paused", cls: "bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+                                  };
+                                  const m2 = meta[s];
+                                  if (!m2) return null;
+                                  return (
+                                    <Badge className={`${m2.cls} text-[9px] border-0 px-1 py-0 h-3.5`}>
+                                      {m2.label}
+                                    </Badge>
+                                  );
+                                })()}
                                 {m.is_trainer_replaced && (
                                   <Tooltip>
                                     <TooltipTrigger asChild>
