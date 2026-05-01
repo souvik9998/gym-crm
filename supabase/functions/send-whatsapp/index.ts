@@ -763,6 +763,8 @@ Deno.serve(async (req) => {
           is_manual: isManual,
           admin_user_id: finalAdminUserId,
           branch_id: user.branch_id || branchId || null,
+          provider: result.provider ?? null,
+          provider_message_id: result.providerMessageId ?? null,
         });
 
         results.push({
