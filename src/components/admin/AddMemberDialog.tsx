@@ -664,34 +664,94 @@ export const AddMemberDialog = ({
     }
   }, [open, minAllowedStartDate, startDate]);
 
-  const ptMonthOptions: number[] = [];
-  if (gymMembershipEndDate) {
-    const ptStart = new Date(startDate);
-    ptStart.setHours(0, 0, 0, 0);
-    for (let m = 1; m <= 12; m++) {
-      const ptEnd = addPackageMonths(ptStart, m);
-      if (isAfter(ptEnd, gymMembershipEndDate)) break;
-      ptMonthOptions.push(m);
-    }
-    // Ensure at least showing that no months are available
-    if (ptMonthOptions.length === 0 && isPTOnly) {
-      // No valid PT months - membership too short
-    }
-  } else {
-    for (let i = 1; i <= (selectedPackage?.months || 1); i++) {
-      ptMonthOptions.push(i);
-    }
-  }
+  // Build rich PT duration options (mirrors PackageSelectionForm in user registration).
+  // Each option carries an exact day-count and end date so PT can fit the gym
+  // window precisely — including a partial "Until Gym End Date" choice.
+  type PtOption = {
+    key: string;
+    label: string;
+    months: number; // 0 for partial-day "Until gym end" option
+    days: number;
+    endDate: Date;
+    fee: number;
+  };
 
-  // Reset ptMonths if current selection exceeds available options
-  useEffect(() => {
-    if (ptMonthOptions.length > 0 && !ptMonthOptions.includes(ptMonths)) {
-      const maxAvailable = ptMonthOptions[ptMonthOptions.length - 1];
-      setPtMonths(maxAvailable);
-      const trainer = trainers.find((t) => t.id === selectedTrainerId);
-      if (trainer) setPtFee(Number(trainer.monthly_fee) * maxAvailable);
+  const ptStartForCalc = (() => {
+    const d = new Date(startDate);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
+  const ptOptions: PtOption[] = (() => {
+    if (!gymMembershipEndDate || !selectedTrainer) return [];
+    const monthlyTrainerFee = Number(selectedTrainer.monthly_fee) || 0;
+    const dailyRate = monthlyTrainerFee / 30;
+    const ptStart = ptStartForCalc;
+    if (!isBefore(ptStart, gymMembershipEndDate)) return [];
+
+    const opts: PtOption[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const end = addPackageMonths(ptStart, m);
+      if (isAfter(end, gymMembershipEndDate)) break;
+      const days = differenceInDays(end, ptStart);
+      opts.push({
+        key: `m-${m}`,
+        label: `${m} ${m === 1 ? "Month" : "Months"}`,
+        months: m,
+        days,
+        endDate: end,
+        fee: Math.ceil(dailyRate * days),
+      });
     }
-  }, [ptMonthOptions, ptMonths]);
+
+    const totalDays = differenceInDays(gymMembershipEndDate, ptStart);
+    if (totalDays > 0) {
+      const lastWhole = opts[opts.length - 1];
+      const needsPartial = !lastWhole || Math.abs(differenceInDays(lastWhole.endDate, gymMembershipEndDate)) >= 1;
+      if (needsPartial) {
+        opts.push({
+          key: "until-end",
+          label: `Until Gym End (${format(gymMembershipEndDate, "d MMM yyyy")})`,
+          months: 0,
+          days: totalDays,
+          endDate: gymMembershipEndDate,
+          fee: Math.ceil(dailyRate * totalDays),
+        });
+      }
+    }
+    return opts;
+  })();
+
+  // Auto-pick / keep PT option valid as inputs change
+  useEffect(() => {
+    if (!(wantsPT || isPTOnly)) return;
+    if (ptOptions.length === 0) return;
+    const matchKey = ptOptions.find((o) => o.months === ptMonths)?.key;
+    const stillValid = matchKey || ptOptions.some((o) => o.months === ptMonths);
+    if (stillValid) return;
+    const wholeMonths = ptOptions.filter((o) => o.months > 0);
+    const next = wholeMonths.length > 0 ? wholeMonths[wholeMonths.length - 1] : ptOptions[0];
+    setPtMonths(next.months || 0);
+    setPtFee(next.fee);
+  }, [ptOptions, wantsPT, isPTOnly, ptMonths]);
+
+  // Selected PT option (driven by ptMonths; 0 means the partial "until-end" option)
+  const selectedPtOption: PtOption | null = (() => {
+    if (ptOptions.length === 0) return null;
+    return ptOptions.find((o) => o.months === ptMonths) || null;
+  })();
+
+  const handlePtOptionChange = (key: string) => {
+    const opt = ptOptions.find((o) => o.key === key);
+    if (!opt) return;
+    setPtMonths(opt.months || 0);
+    setPtFee(opt.fee);
+  };
+
+  // Resolved PT end date used when persisting (uses exact day-count to support partial periods)
+  const resolvedPtEndDate: Date | null = selectedPtOption
+    ? selectedPtOption.endDate
+    : (gymMembershipEndDate && ptMonths > 0 ? addPackageMonths(ptStartForCalc, ptMonths) : null);
 
   const formatIdNumber = (value: string, type: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
