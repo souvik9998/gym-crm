@@ -175,6 +175,12 @@ export default {
   			'coachmark-pulse': {
   				'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--primary) / 0.45), 0 0 0 6px hsl(var(--primary) / 0.18)' },
   				'50%': { boxShadow: '0 0 0 4px hsl(var(--primary) / 0.30), 0 0 0 14px hsl(var(--primary) / 0.06)' }
+  			},
+  			wave: {
+  				'0%, 60%, 100%': { transform: 'rotate(0deg)' },
+  				'10%, 30%': { transform: 'rotate(14deg)' },
+  				'20%, 40%': { transform: 'rotate(-8deg)' },
+  				'50%': { transform: 'rotate(10deg)' }
   			}
   		},
   		animation: {
@@ -183,7 +189,8 @@ export default {
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 3s ease-in-out infinite',
-  			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite'
+  			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
+  			wave: 'wave 2.4s ease-in-out 1'
   		}
   	}
   },

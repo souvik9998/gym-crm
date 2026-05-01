@@ -4,7 +4,7 @@ import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
+import { Phone, ArrowRight, Dumbbell, ArrowLeft, RefreshCw, Sparkles, ShieldCheck, Zap, HeartHandshake, Hand } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { fetchPublicBranch, fetchDefaultBranch, fetchRegistrationBootstrap } from "@/api/publicData";
@@ -267,10 +267,10 @@ const Index = () => {
       {/* Main Content */}
       <main className="flex-1 px-4 pb-8">
         {showOptions ? (
-          <Card className="max-w-md mx-auto mt-6 border-0 shadow-xl bg-gradient-to-br from-card to-card/80">
+          <Card className="max-w-md mx-auto mt-6 border-0 shadow-xl bg-gradient-to-br from-card to-card/80 animate-fade-in">
             <CardHeader className="text-center pb-2">
-              <div className="w-16 h-16 mx-auto mb-3 rounded-full bg-accent/10 flex items-center justify-center">
-                <Dumbbell className="w-8 h-8 text-accent" />
+              <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center shadow-sm">
+                <Hand className="w-7 h-7 text-accent origin-[70%_70%] animate-wave" />
               </div>
               <CardTitle className="text-xl">Welcome Back!</CardTitle>
               <p className="text-lg font-semibold text-accent">{existingMember?.name}</p>
@@ -279,19 +279,19 @@ const Index = () => {
             <CardContent className="space-y-3 pt-4">
               <button
                 onClick={() => handleOptionSelect("renew")}
-                className="w-full p-4 rounded-xl border-2 border-accent bg-accent/5 hover:bg-accent/10 transition-all duration-200 group"
+                className="w-full p-4 rounded-2xl border-2 border-accent bg-gradient-to-r from-accent/10 to-accent/5 hover:from-accent/15 hover:to-accent/10 transition-all duration-300 group hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Dumbbell className="w-6 h-6 text-accent" />
+                    <div className="w-12 h-12 rounded-xl bg-accent/20 flex items-center justify-center transition-all duration-300 group-hover:rotate-180 group-hover:bg-accent/30">
+                      <RefreshCw className="w-5 h-5 text-accent" />
                     </div>
                     <div className="text-left">
                       <p className="font-semibold text-foreground">Renew Gym Membership</p>
                       <p className="text-sm text-muted-foreground">Continue your fitness journey</p>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-accent group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-5 h-5 text-accent transition-transform duration-300 group-hover:translate-x-1.5" />
                 </div>
               </button>
 
@@ -299,21 +299,27 @@ const Index = () => {
                 <button
                   onClick={() => handleOptionSelect("extend-pt")}
                   disabled={!membershipEndDate}
-                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 group ${
+                  className={`w-full p-4 rounded-2xl border-2 transition-all duration-300 group ${
                     membershipEndDate
-                      ? "border-border hover:border-accent/50 hover:bg-accent/5"
+                      ? "border-border hover:border-primary/40 hover:bg-primary/5 hover:-translate-y-0.5 hover:shadow-md active:translate-y-0"
                       : "border-border/50 bg-muted/30 opacity-60 cursor-not-allowed"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                       <div
-                        className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform ${
-                          membershipEndDate ? "bg-primary/10 group-hover:scale-110" : "bg-muted"
+                        className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                          membershipEndDate
+                            ? "bg-primary/10 group-hover:bg-primary/20 group-hover:scale-110"
+                            : "bg-muted"
                         }`}
                       >
-                        <UserPlus
-                          className={`w-6 h-6 ${membershipEndDate ? "text-primary" : "text-muted-foreground"}`}
+                        <Sparkles
+                          className={`w-5 h-5 transition-transform duration-500 ${
+                            membershipEndDate
+                              ? "text-primary group-hover:rotate-12 group-hover:scale-110"
+                              : "text-muted-foreground"
+                          }`}
                         />
                       </div>
                       <div className="text-left">
@@ -326,9 +332,9 @@ const Index = () => {
                       </div>
                     </div>
                     <ArrowRight
-                      className={`w-5 h-5 transition-transform ${
+                      className={`w-5 h-5 transition-transform duration-300 ${
                         membershipEndDate
-                          ? "text-muted-foreground group-hover:translate-x-1"
+                          ? "text-muted-foreground group-hover:translate-x-1.5 group-hover:text-primary"
                           : "text-muted-foreground/50"
                       }`}
                     />
@@ -342,8 +348,8 @@ const Index = () => {
                 </p>
               )}
 
-              <Button variant="ghost" className="w-full mt-2" onClick={handleBack}>
-                <ArrowLeft className="w-4 h-4 mr-2" />
+              <Button variant="ghost" className="w-full mt-2 group" onClick={handleBack}>
+                <ArrowLeft className="w-4 h-4 mr-2 transition-transform duration-300 group-hover:-translate-x-1" />
                 Use Different Number
               </Button>
             </CardContent>
@@ -410,12 +416,16 @@ const Index = () => {
         {/* Features */}
         <div className="max-w-md mx-auto mt-12 grid grid-cols-3 gap-4">
           {[
-            { icon: Shield, label: "Secure Payment" },
-            { icon: Clock, label: "Instant Access" },
-            { icon: CreditCard, label: "Easy Renewal" },
-          ].map(({ icon: Icon, label }) => (
-            <div key={label} className="flex flex-col items-center gap-2 p-4 rounded-lg border bg-card">
-              <Icon className="w-5 h-5 text-accent" />
+            { icon: ShieldCheck, label: "Secure Payment", tint: "text-emerald-500" },
+            { icon: Zap, label: "Instant Access", tint: "text-amber-500" },
+            { icon: HeartHandshake, label: "Easy Renewal", tint: "text-rose-500" },
+          ].map(({ icon: Icon, label, tint }, i) => (
+            <div
+              key={label}
+              className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-md group animate-fade-in"
+              style={{ animationDelay: `${i * 80}ms` }}
+            >
+              <Icon className={`w-5 h-5 ${tint} transition-transform duration-300 group-hover:scale-110`} />
               <span className="text-xs text-muted-foreground text-center">{label}</span>
             </div>
           ))}
