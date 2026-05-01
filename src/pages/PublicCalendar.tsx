@@ -14,6 +14,8 @@ import {
   ClockIcon,
   MapPinIcon,
   TicketIcon,
+  ChevronDownIcon,
+  ArchiveBoxIcon,
 } from "@heroicons/react/24/outline";
 import {
   format,
@@ -156,20 +158,43 @@ export default function PublicCalendar() {
     return map;
   }, [holidays]);
 
-  const upcomingEvents = useMemo(() => {
+  const isEventPast = (ev: PublicEvent): boolean => {
     const today = startOfDay(new Date());
+    const end = ev.event_end_date ? parseISO(ev.event_end_date) : parseISO(ev.event_date);
+    return isBefore(end, today);
+  };
+
+  const isHolidayPast = (h: PublicHoliday): boolean => {
+    const today = startOfDay(new Date());
+    return isBefore(parseISO(h.holiday_date), today);
+  };
+
+  const upcomingEvents = useMemo(() => {
+    return events.filter((e) => !isEventPast(e)).slice(0, 8);
+  }, [events]);
+
+  const pastEvents = useMemo(() => {
     return events
-      .filter((e) => {
-        const end = e.event_end_date ? parseISO(e.event_end_date) : parseISO(e.event_date);
-        return !isBefore(end, today);
-      })
+      .filter((e) => isEventPast(e))
+      .slice()
+      .reverse() // most recent past first
       .slice(0, 8);
   }, [events]);
 
   const upcomingHolidays = useMemo(() => {
-    const today = startOfDay(new Date());
-    return holidays.filter((h) => !isBefore(parseISO(h.holiday_date), today)).slice(0, 8);
+    return holidays.filter((h) => !isHolidayPast(h)).slice(0, 8);
   }, [holidays]);
+
+  const pastHolidays = useMemo(() => {
+    return holidays
+      .filter((h) => isHolidayPast(h))
+      .slice()
+      .reverse()
+      .slice(0, 8);
+  }, [holidays]);
+
+  const [showPastEvents, setShowPastEvents] = useState(false);
+  const [showPastHolidays, setShowPastHolidays] = useState(false);
 
   const calendarDays = useMemo(() => {
     const monthStart = startOfMonth(currentMonth);
@@ -327,9 +352,10 @@ export default function PublicCalendar() {
 
                     {/* DESKTOP cell — unchanged */}
                     {(() => {
-                      const Wrapper: any = singleEvent ? "a" : "div";
-                      const wrapperProps = singleEvent
-                        ? { href: eventLink(singleEvent), title: singleEvent.title }
+                      const singleEventClickable = singleEvent && !isEventPast(singleEvent);
+                      const Wrapper: any = singleEventClickable ? "a" : "div";
+                      const wrapperProps = singleEventClickable
+                        ? { href: eventLink(singleEvent!), title: singleEvent!.title }
                         : {};
                       return (
                         <Wrapper
@@ -337,12 +363,15 @@ export default function PublicCalendar() {
                           className={cn(
                             "hidden lg:flex w-full min-h-[100px] rounded-xl flex-col items-stretch p-2 relative text-sm overflow-hidden",
                             "border border-transparent transition-all duration-200 ease-out",
-                            (singleEvent || hasEvent) && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                            singleEventClickable && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                            !singleEventClickable && hasEvent && !isPast && "cursor-default",
                             isPast && "opacity-50",
                             !holiday && !isCurrent && !hasEvent && "bg-muted/20",
-                            !holiday && !isCurrent && hasEvent && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                            !holiday && !isCurrent && hasEvent && !isPast && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                            !holiday && !isCurrent && hasEvent && isPast && "bg-muted/30 border-border/40",
                             isCurrent && !holiday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
-                            holiday && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                            holiday && !isPast && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                            holiday && isPast && "bg-muted/30 border-border/40",
                             isSunday && !holiday && "text-destructive/60",
                           )}
                         >
@@ -350,7 +379,8 @@ export default function PublicCalendar() {
                             <span className={cn(
                               "text-sm leading-none",
                               isCurrent && !holiday && "text-primary font-bold",
-                              holiday && "text-destructive font-semibold",
+                              holiday && !isPast && "text-destructive font-semibold",
+                              holiday && isPast && "text-muted-foreground font-semibold line-through",
                               !holiday && !isCurrent && "font-medium",
                             )}>
                               {format(day, "d")}
@@ -363,29 +393,49 @@ export default function PublicCalendar() {
                           </div>
 
                           {holiday && (
-                            <span className="block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
+                            <span className={cn(
+                              "block text-[9px] leading-tight px-1 mt-1 line-clamp-1 font-semibold uppercase tracking-wide",
+                              isPast ? "text-muted-foreground" : "text-destructive",
+                            )}>
                               {holiday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
                             </span>
                           )}
                           {holiday && (
-                            <span className="block text-[9px] leading-tight px-1 line-clamp-1 text-destructive/80">
+                            <span className={cn(
+                              "block text-[9px] leading-tight px-1 line-clamp-1",
+                              isPast ? "text-muted-foreground/80 line-through" : "text-destructive/80",
+                            )}>
                               {holiday.holiday_name}
                             </span>
                           )}
 
                           {hasEvent && (
                             <div className="flex flex-col gap-0.5 mt-auto pt-1">
-                              {dayEvents.slice(0, 2).map((ev) => (
-                                <a
-                                  key={ev.id}
-                                  href={eventLink(ev)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
-                                  title={ev.title}
-                                >
-                                  {ev.title}
-                                </a>
-                              ))}
+                              {dayEvents.slice(0, 2).map((ev) => {
+                                const evPast = isEventPast(ev);
+                                if (evPast) {
+                                  return (
+                                    <div
+                                      key={ev.id}
+                                      className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate font-medium border border-border/40 line-through"
+                                      title={`${ev.title} (Ended)`}
+                                    >
+                                      {ev.title}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <a
+                                    key={ev.id}
+                                    href={eventLink(ev)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
+                                    title={ev.title}
+                                  >
+                                    {ev.title}
+                                  </a>
+                                );
+                              })}
                               {dayEvents.length > 2 && (
                                 <div className="text-[8px] text-blue-600 dark:text-blue-400 font-semibold px-1 leading-none">
                                   +{dayEvents.length - 2} more
@@ -403,15 +453,19 @@ export default function PublicCalendar() {
                         {holiday && (
                           <div className="whitespace-nowrap">
                             <span className="font-medium">{holiday.holiday_name}</span>
-                            <span className="ml-1 opacity-70 text-[9px]">· {holiday.holiday_type === "full_day" ? "Closed" : "Half Day"}</span>
+                            <span className="ml-1 opacity-70 text-[9px]">· {holiday.holiday_type === "full_day" ? "Closed" : "Half Day"}{isPast ? " · Past" : ""}</span>
                           </div>
                         )}
-                        {hasEvent && dayEvents.map((ev) => (
-                          <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", holiday && "mt-0.5 pt-0.5 border-t border-background/20")}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                            <span className="font-medium truncate">{ev.title}</span>
-                          </div>
-                        ))}
+                        {hasEvent && dayEvents.map((ev) => {
+                          const evPast = isEventPast(ev);
+                          return (
+                            <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", holiday && "mt-0.5 pt-0.5 border-t border-background/20")}>
+                              <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", evPast ? "bg-muted-foreground" : "bg-blue-400")} />
+                              <span className={cn("font-medium truncate", evPast && "line-through opacity-70")}>{ev.title}</span>
+                              {evPast && <span className="opacity-60 text-[9px]">· Ended</span>}
+                            </div>
+                          );
+                        })}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-foreground" />
                       </div>
                     )}
@@ -453,52 +507,104 @@ export default function PublicCalendar() {
                     <p className="text-xs text-muted-foreground text-center py-3">No events or holidays on this day.</p>
                   )}
 
-                  {selHoliday && (
-                    <div className="rounded-lg border border-destructive/20 bg-destructive/5 p-2.5 mb-2">
-                      <div className="flex items-start gap-2">
-                        <span className="text-base leading-none mt-0.5">{selHoliday.holiday_type === "full_day" ? "🚫" : "⏰"}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-destructive leading-tight">{selHoliday.holiday_name}</p>
-                          <p className="text-[11px] text-destructive/80 mt-0.5">
-                            {selHoliday.holiday_type === "full_day"
-                              ? "Gym Closed — Full Day"
-                              : `Half Day · ${formatTime12h(selHoliday.half_day_start_time)} – ${formatTime12h(selHoliday.half_day_end_time)}`}
-                          </p>
-                          {selHoliday.description && (
-                            <p className="text-[11px] text-muted-foreground mt-1">{selHoliday.description}</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {selEvents.length > 0 && (
-                    <div className="space-y-1.5">
-                      {selEvents.map((ev) => (
-                        <a
-                          key={ev.id}
-                          href={eventLink(ev)}
-                          className="flex items-center gap-2 p-2 rounded-lg border border-blue-500/20 bg-blue-500/5 active:scale-[0.98] transition-transform"
-                        >
-                          <div className="w-1 h-9 rounded-full bg-blue-500 flex-shrink-0" />
+                  {selHoliday && (() => {
+                    const holPast = isHolidayPast(selHoliday);
+                    return (
+                      <div className={cn(
+                        "rounded-lg border p-2.5 mb-2",
+                        holPast ? "border-border/40 bg-muted/30" : "border-destructive/20 bg-destructive/5",
+                      )}>
+                        <div className="flex items-start gap-2">
+                          <span className={cn("text-base leading-none mt-0.5", holPast && "grayscale opacity-70")}>
+                            {selHoliday.holiday_type === "full_day" ? "🚫" : "⏰"}
+                          </span>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold truncate text-foreground">{ev.title}</p>
-                            <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
-                              <span className="flex items-center gap-0.5">
-                                <ClockIcon className="w-2.5 h-2.5" />
-                                {format(parseISO(ev.event_date), "h:mm a")}
-                              </span>
-                              {ev.location && (
-                                <span className="flex items-center gap-0.5 truncate">
-                                  <MapPinIcon className="w-2.5 h-2.5" />
-                                  <span className="truncate">{ev.location}</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <p className={cn(
+                                "text-xs font-semibold leading-tight",
+                                holPast ? "text-muted-foreground line-through" : "text-destructive",
+                              )}>
+                                {selHoliday.holiday_name}
+                              </p>
+                              {holPast && (
+                                <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50">
+                                  Past
                                 </span>
                               )}
                             </div>
+                            <p className={cn("text-[11px] mt-0.5", holPast ? "text-muted-foreground/80" : "text-destructive/80")}>
+                              {selHoliday.holiday_type === "full_day"
+                                ? "Gym Closed — Full Day"
+                                : `Half Day · ${formatTime12h(selHoliday.half_day_start_time)} – ${formatTime12h(selHoliday.half_day_end_time)}`}
+                            </p>
+                            {selHoliday.description && (
+                              <p className="text-[11px] text-muted-foreground mt-1">{selHoliday.description}</p>
+                            )}
                           </div>
-                          <ChevronRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                        </a>
-                      ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  {selEvents.length > 0 && (
+                    <div className="space-y-1.5">
+                      {selEvents.map((ev) => {
+                        const evPast = isEventPast(ev);
+                        const commonInner = (
+                          <>
+                            <div className={cn("w-1 h-9 rounded-full flex-shrink-0", evPast ? "bg-muted-foreground/40" : "bg-blue-500")} />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className={cn(
+                                  "text-xs font-semibold truncate",
+                                  evPast ? "text-muted-foreground line-through" : "text-foreground",
+                                )}>
+                                  {ev.title}
+                                </p>
+                                {evPast && (
+                                  <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                                    Ended
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5 text-[10px] text-muted-foreground">
+                                <span className="flex items-center gap-0.5">
+                                  <ClockIcon className="w-2.5 h-2.5" />
+                                  {format(parseISO(ev.event_date), "h:mm a")}
+                                </span>
+                                {ev.location && (
+                                  <span className="flex items-center gap-0.5 truncate">
+                                    <MapPinIcon className="w-2.5 h-2.5" />
+                                    <span className="truncate">{ev.location}</span>
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {!evPast && <ChevronRightIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />}
+                          </>
+                        );
+                        if (evPast) {
+                          return (
+                            <div
+                              key={ev.id}
+                              className="flex items-center gap-2 p-2 rounded-lg border border-border/40 bg-muted/30 cursor-not-allowed"
+                              aria-disabled="true"
+                              title="This event has ended"
+                            >
+                              {commonInner}
+                            </div>
+                          );
+                        }
+                        return (
+                          <a
+                            key={ev.id}
+                            href={eventLink(ev)}
+                            className="flex items-center gap-2 p-2 rounded-lg border border-blue-500/20 bg-blue-500/5 active:scale-[0.98] transition-transform"
+                          >
+                            {commonInner}
+                          </a>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -620,6 +726,139 @@ export default function PublicCalendar() {
                 })}
               </div>
             </CardContent>
+          </Card>
+        )}
+
+        {/* Past Events (collapsible, non-registerable) */}
+        {pastEvents.length > 0 && (
+          <Card className="border border-border/40 shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPastEvents((v) => !v)}
+              className="w-full flex items-center gap-3 p-4 lg:p-6 text-left hover:bg-muted/30 transition-colors"
+              aria-expanded={showPastEvents}
+            >
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-muted text-muted-foreground">
+                <ArchiveBoxIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base lg:text-xl">Past Events</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">
+                  {pastEvents.length} ended event{pastEvents.length === 1 ? "" : "s"} · Registration closed
+                </CardDescription>
+              </div>
+              <ChevronDownIcon
+                className={cn(
+                  "w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  showPastEvents && "rotate-180",
+                )}
+              />
+            </button>
+            {showPastEvents && (
+              <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 animate-fade-in">
+                <div className="space-y-2">
+                  {pastEvents.map((ev) => {
+                    const start = parseISO(ev.event_date);
+                    return (
+                      <div
+                        key={ev.id}
+                        className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-muted/20 cursor-not-allowed"
+                        aria-disabled="true"
+                        title="This event has ended"
+                      >
+                        <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-muted text-muted-foreground">
+                          <span className="text-[10px] lg:text-xs font-medium leading-none">{format(start, "MMM")}</span>
+                          <span className="text-sm lg:text-base font-bold leading-tight">{format(start, "d")}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium text-sm truncate text-muted-foreground line-through">{ev.title}</p>
+                            <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                              Ended
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 mt-0.5 text-[11px] text-muted-foreground/80">
+                            <span className="flex items-center gap-1">
+                              <ClockIcon className="w-3 h-3" />
+                              {format(start, "h:mm a")}
+                            </span>
+                            {ev.location && (
+                              <span className="flex items-center gap-1 truncate">
+                                <MapPinIcon className="w-3 h-3" />
+                                <span className="truncate">{ev.location}</span>
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            )}
+          </Card>
+        )}
+
+        {/* Past Holidays (collapsible) */}
+        {pastHolidays.length > 0 && (
+          <Card className="border border-border/40 shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPastHolidays((v) => !v)}
+              className="w-full flex items-center gap-3 p-4 lg:p-6 text-left hover:bg-muted/30 transition-colors"
+              aria-expanded={showPastHolidays}
+            >
+              <div className="flex items-center justify-center w-9 h-9 lg:w-10 lg:h-10 rounded-xl bg-muted text-muted-foreground">
+                <ArchiveBoxIcon className="w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <CardTitle className="text-base lg:text-xl">Past Holidays</CardTitle>
+                <CardDescription className="text-xs lg:text-sm">
+                  {pastHolidays.length} previous closure{pastHolidays.length === 1 ? "" : "s"}
+                </CardDescription>
+              </div>
+              <ChevronDownIcon
+                className={cn(
+                  "w-4 h-4 lg:w-5 lg:h-5 text-muted-foreground transition-transform duration-200 flex-shrink-0",
+                  showPastHolidays && "rotate-180",
+                )}
+              />
+            </button>
+            {showPastHolidays && (
+              <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 animate-fade-in">
+                <div className="space-y-2">
+                  {pastHolidays.map((h) => {
+                    const date = parseISO(h.holiday_date);
+                    return (
+                      <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl border border-border/30 bg-muted/20">
+                        <div className="flex flex-col items-center justify-center w-11 h-11 lg:w-12 lg:h-12 rounded-xl bg-muted text-muted-foreground">
+                          <span className="text-[10px] lg:text-xs font-medium leading-none">{format(date, "MMM")}</span>
+                          <span className="text-sm lg:text-base font-bold leading-tight">{format(date, "d")}</span>
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="font-medium text-sm truncate text-muted-foreground line-through">{h.holiday_name}</p>
+                            <span className="text-[9px] uppercase tracking-wide font-bold px-1.5 py-0.5 rounded bg-muted text-muted-foreground border border-border/50 flex-shrink-0">
+                              Past
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="inline-flex items-center gap-1 text-[10px] lg:text-xs px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground">
+                              {h.holiday_type === "full_day" ? "Full Day" : (
+                                <>
+                                  <ClockIcon className="w-3 h-3" />
+                                  {formatTime12h(h.half_day_start_time)} – {formatTime12h(h.half_day_end_time)}
+                                </>
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            )}
           </Card>
         )}
       </main>
