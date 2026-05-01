@@ -15,6 +15,12 @@ interface TimeBucketDropdownProps {
   className?: string;
   /** Admin-configurable options. Falls back to defaults when omitted. */
   options?: TimeBucketOption[];
+  /**
+   * When true, render only the clock icon (no label / chevron). Used in tight
+   * mobile action rows where the trigger needs to fit beside other icon
+   * buttons. Default: false.
+   */
+  iconOnly?: boolean;
 }
 
 // Small cycling palette for the inline dot next to each option.
