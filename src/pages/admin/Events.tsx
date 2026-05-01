@@ -75,6 +75,8 @@ export default function Events() {
   const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const { isAdmin } = useIsAdmin();
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [sortBy, setSortBy] = useState<SortOption>("date_desc");
   const [createOpen, setCreateOpen] = useState(false);
   const [editEvent, setEditEvent] = useState<any>(null);
   const [qrEvent, setQrEvent] = useState<any>(null);
