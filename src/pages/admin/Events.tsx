@@ -323,18 +323,29 @@ export default function Events() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((event: any) => {
             const { paidRegs, totalCapacity, visiblePricingOptions } = getEventStats(event);
+            const ended = isEventEnded(event);
             return (
               <Card
                 key={event.id}
-                className="border border-border/40 hover:shadow-md transition-shadow overflow-hidden cursor-pointer"
+                className={cn(
+                  "border border-border/40 hover:shadow-md transition-shadow overflow-hidden cursor-pointer relative",
+                  ended && "bg-muted/20",
+                )}
                 onClick={() => navigate(`/admin/events/${event.id}`)}
               >
-                <div className="h-36 overflow-hidden bg-muted">
+                {/* "Ended" corner ribbon for past events */}
+                {ended && (
+                  <div className="absolute top-2 left-2 z-10 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-foreground/85 text-background text-[10px] font-bold uppercase tracking-wide shadow-md backdrop-blur-sm">
+                    <span className="w-1.5 h-1.5 rounded-full bg-background/80" />
+                    Ended
+                  </div>
+                )}
+                <div className={cn("h-36 overflow-hidden bg-muted relative", ended && "after:absolute after:inset-0 after:bg-background/40")}>
                   {event.banner_image_url ? (
                     <img
                       src={event.banner_image_url}
                       alt={event.title}
-                      className="w-full h-full object-cover"
+                      className={cn("w-full h-full object-cover", ended && "grayscale opacity-80")}
                       loading="lazy"
                     />
                   ) : (
@@ -346,7 +357,12 @@ export default function Events() {
                 </div>
                 <CardContent className="p-4 space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-semibold text-foreground line-clamp-1">{event.title}</h3>
+                    <h3 className={cn(
+                      "font-semibold line-clamp-1",
+                      ended ? "text-muted-foreground" : "text-foreground",
+                    )}>
+                      {event.title}
+                    </h3>
                     <Badge className={`text-[10px] px-2 py-0.5 ${statusColors[event.status]}`}>
                       {event.status}
                     </Badge>
@@ -355,7 +371,9 @@ export default function Events() {
                   <div className="space-y-1.5 text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5" />
-                      <span>{format(new Date(event.event_date), "dd MMM yyyy, hh:mm a")}</span>
+                      <span className={cn(ended && "line-through opacity-80")}>
+                        {format(new Date(event.event_date), "dd MMM yyyy, hh:mm a")}
+                      </span>
                     </div>
                     {event.location && (
                       <div className="flex items-center gap-2">
@@ -381,7 +399,14 @@ export default function Events() {
                   </div>
 
                   <div className="flex items-center gap-1.5 pt-1 border-t border-border/40 flex-wrap" onClick={(e) => e.stopPropagation()}>
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setRegisterEvent(event)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 gap-1.5 text-xs disabled:opacity-50"
+                      onClick={() => setRegisterEvent(event)}
+                      disabled={ended}
+                      title={ended ? "Registration closed — event has ended" : "Register a member"}
+                    >
                       <UserPlus className="w-3.5 h-3.5" /> Register
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => navigate(`/admin/events/${event.id}`)}>
@@ -390,7 +415,14 @@ export default function Events() {
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setEditEvent(event)}>
                       <Edit2 className="w-3.5 h-3.5" /> Edit
                     </Button>
-                    <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => setQrEvent(event)}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 gap-1.5 text-xs disabled:opacity-50"
+                      onClick={() => setQrEvent(event)}
+                      disabled={ended}
+                      title={ended ? "Registration closed — event has ended" : "Show registration QR"}
+                    >
                       <QrCode className="w-3.5 h-3.5" />
                     </Button>
                     <Button size="sm" variant="ghost" className="h-8 gap-1.5 text-xs" onClick={() => copyEventLink(event)}>
