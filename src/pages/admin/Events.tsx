@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,12 +14,40 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
-import { format } from "date-fns";
-import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus } from "lucide-react";
+import { format, isBefore, parseISO, startOfDay } from "date-fns";
+import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus, ArrowUpDown } from "lucide-react";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+type StatusFilter = "all" | "upcoming" | "ended" | "draft" | "cancelled";
+type SortOption = "date_desc" | "date_asc" | "name_asc" | "most_registered";
+
+const statusFilters: { value: StatusFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "upcoming", label: "Upcoming" },
+  { value: "ended", label: "Ended" },
+  { value: "draft", label: "Draft" },
+  { value: "cancelled", label: "Cancelled" },
+];
+
+const isEventEnded = (event: any): boolean => {
+  try {
+    const end = event.event_end_date ? parseISO(event.event_end_date) : parseISO(event.event_date);
+    return isBefore(end, startOfDay(new Date()));
+  } catch {
+    return false;
+  }
+};
 
 const statusColors: Record<string, string> = {
   draft: "bg-muted text-muted-foreground",
