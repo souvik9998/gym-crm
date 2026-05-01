@@ -23,6 +23,10 @@ import { toast } from "@/components/ui/sonner";
 import { WhatsAppSendingOverlay } from "@/components/ui/whatsapp-sending-overlay";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
 import { Checkbox } from "@/components/ui/checkbox";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
+import { useBranch } from "@/contexts/BranchContext";
 
 const categoryFilters = ["all", "new_member", "plan", "limit", "member"] as const;
 type CategoryFilter = (typeof categoryFilters)[number];
@@ -80,6 +84,8 @@ function NotificationBadge({ type }: { type: AdminNotification["type"] }) {
 export function NotificationCenter() {
   const navigate = useNavigate();
   const { notifications, dangerCount, successCount, totalCount, refetch } = useAdminNotifications();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
+  const { currentBranch } = useBranch();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
@@ -210,6 +216,40 @@ export function NotificationCenter() {
         const label = `${sentCount} expiring member${sentCount !== 1 ? "s" : ""}`;
         waOverlay.markSuccess(label);
         await refetch();
+
+        // Activity log: bulk reminder send from notification center
+        try {
+          const activityType = notificationType === "expiring_today"
+            ? "whatsapp_expiry_reminder_sent"
+            : "whatsapp_expiry_reminder_sent";
+          const description = `Sent ${notificationType.replace(/_/g, " ")} WhatsApp reminder to ${sentCount} member${sentCount !== 1 ? "s" : ""} from notification center`;
+          const logPayload = {
+            category: "whatsapp" as const,
+            type: activityType as any,
+            description,
+            entityType: "members",
+            metadata: {
+              source: "notification_center",
+              notification_type: notificationType,
+              recipient_count: sentCount,
+              total_attempted: selectedMemberIds.length,
+              member_ids: selectedMemberIds,
+            },
+            branchId: currentBranch?.id,
+          };
+          if (isStaffLoggedIn && staffUser) {
+            await logStaffActivity({
+              ...logPayload,
+              staffId: staffUser.id,
+              staffName: staffUser.fullName,
+              staffPhone: staffUser.phone,
+            });
+          } else {
+            await logAdminActivity(logPayload);
+          }
+        } catch (logErr) {
+          console.error("Failed to log notification reminder activity:", logErr);
+        }
       } else {
         waOverlay.markError(responseData?.error || responseData?.message || "Failed to send reminders. Please try again.");
       }

@@ -27,6 +27,9 @@ import {
   PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { useWhatsAppOverlay } from "@/hooks/useWhatsAppOverlay";
+import { logAdminActivity } from "@/hooks/useAdminActivityLog";
+import { logStaffActivity } from "@/hooks/useStaffActivityLog";
+import { useStaffAuth } from "@/contexts/StaffAuthContext";
 
 interface ShareCalendarDialogProps {
   open: boolean;
@@ -45,6 +48,7 @@ type Audience = "all_active" | "all" | "specific";
 
 const ShareCalendarDialog = ({ open, onOpenChange, shareUrl }: ShareCalendarDialogProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const whatsAppOverlay = useWhatsAppOverlay();
 
   const [members, setMembers] = useState<MemberRow[]>([]);
@@ -200,6 +204,39 @@ const ShareCalendarDialog = ({ open, onOpenChange, shareUrl }: ShareCalendarDial
         } else {
           toast.success(`Calendar shared with ${successCount} ${successCount === 1 ? "member" : "members"}`);
         }
+
+        // Activity log: calendar share via WhatsApp
+        try {
+          const description = `Shared events calendar via WhatsApp with ${successCount} member${successCount !== 1 ? "s" : ""} (${audience === "specific" ? "selected" : audience === "all" ? "all members" : "all active members"})`;
+          const logPayload = {
+            category: "whatsapp" as const,
+            type: "whatsapp_bulk_message_sent" as any,
+            description,
+            entityType: "events_calendar",
+            metadata: {
+              source: "share_calendar_dialog",
+              audience,
+              recipient_count: successCount,
+              failed_count: failCount,
+              total_attempted: targetMemberIds.length,
+              share_url: shareUrl,
+            },
+            branchId: currentBranch.id,
+          };
+          if (isStaffLoggedIn && staffUser) {
+            await logStaffActivity({
+              ...logPayload,
+              staffId: staffUser.id,
+              staffName: staffUser.fullName,
+              staffPhone: staffUser.phone,
+            });
+          } else {
+            await logAdminActivity(logPayload);
+          }
+        } catch (logErr) {
+          console.error("Failed to log share calendar activity:", logErr);
+        }
+
         onOpenChange(false);
       }
     } catch (err: any) {
