@@ -260,7 +260,11 @@ export const AttendanceHistoryTab = () => {
 
   const selectedRecords = useMemo(() => {
     if (!selectedDate) return [];
-    let list = monthRecords.filter((r: any) => r.date === selectedDate);
+    // Hide rows whose member was deleted (no joined name). Those orphaned
+    // log entries are noise for admins reviewing the day.
+    let list = monthRecords.filter(
+      (r: any) => r.date === selectedDate && r.members?.name,
+    );
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((r: any) => r.members?.name?.toLowerCase().includes(q) || r.members?.phone?.includes(q));
