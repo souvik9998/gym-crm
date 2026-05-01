@@ -114,13 +114,35 @@ export function NotificationCenter() {
   const { currentBranch } = useBranch();
   const [filter, setFilter] = useState<CategoryFilter>("all");
   const [open, setOpen] = useState(false);
-  const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [seenIds, setSeenIds] = useState<Set<string>>(() => loadSeenIds());
 
-  // When popover opens, mark all current notifications as seen
+  // Reconcile when fresh notifications arrive: keep only IDs still relevant,
+  // so storage doesn't grow forever and stale ids don't suppress brand-new ones.
+  useEffect(() => {
+    if (notifications.length === 0) return;
+    setSeenIds((prev) => {
+      const currentIds = new Set(notifications.map((n) => n.id));
+      let changed = false;
+      const next = new Set<string>();
+      prev.forEach((id) => {
+        if (currentIds.has(id)) next.add(id);
+        else changed = true;
+      });
+      if (changed) persistSeenIds(next);
+      return changed ? next : prev;
+    });
+  }, [notifications]);
+
+  // When popover opens, mark all current notifications as seen and persist
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
-      setSeenIds(new Set(notifications.map(n => n.id)));
+      setSeenIds((prev) => {
+        const next = new Set(prev);
+        notifications.forEach((n) => next.add(n.id));
+        persistSeenIds(next);
+        return next;
+      });
     }
   };
 
@@ -141,6 +163,8 @@ export function NotificationCenter() {
   const filterCounts: Record<CategoryFilter, number> = {
     all: totalCount,
     new_member: notifications.filter(n => n.category === "new_member").length,
+    event: notifications.filter(n => n.category === "event").length,
+    expired_checkin: notifications.filter(n => n.category === "expired_checkin").length,
     plan: notifications.filter(n => n.category === "plan").length,
     limit: notifications.filter(n => n.category === "limit").length,
     member: notifications.filter(n => n.category === "member").length,
@@ -150,7 +174,7 @@ export function NotificationCenter() {
     if (n.category === "plan") {
       setOpen(false);
       setPlanDialog({ open: true, notification: n });
-    } else if (n.category === "member") {
+    } else if (n.category === "member" || n.category === "expired_checkin") {
       setOpen(false);
       setMemberDialog({ open: true, notification: n });
     } else if (n.category === "new_member") {
