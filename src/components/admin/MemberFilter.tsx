@@ -205,7 +205,7 @@ const filterCategories: {
   },
 ];
 
-export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false, trainerFilter, onTrainerFilterChange, timeSlotFilter, onTimeSlotFilterChange }: MemberFilterProps) => {
+export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilterChange, mobileMode = false, trainerFilter, onTrainerFilterChange, timeSlotFilter, onTimeSlotFilterChange, timeBucketFilter, onTimeBucketFilterChange, timeBucketOptions }: MemberFilterProps) => {
   const [openDropdown, setOpenDropdown] = React.useState<string | null>(null);
   const [mobileDropdownOpen, setMobileDropdownOpen] = React.useState(false);
   const hoverTimeoutRef = React.useRef<Record<string, ReturnType<typeof setTimeout> | null>>({});
