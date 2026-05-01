@@ -26,7 +26,7 @@ interface MemberNotificationMeta {
 export interface AdminNotification {
   id: string;
   type: "danger" | "warning" | "info" | "success";
-  category: "plan" | "limit" | "member" | "new_member";
+  category: "plan" | "limit" | "member" | "new_member" | "event" | "expired_checkin";
   title: string;
   description: string;
   actionRoute?: string;
