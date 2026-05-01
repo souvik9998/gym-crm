@@ -72,6 +72,35 @@ export const AbsentAnalyticsTab = () => {
     enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
+  // Latest gym subscription status per member appearing in this period.
+  // Used to surface attendance recorded while the member was already expired
+  // (renewal reminder workflow).
+  const memberIdsInPeriod = useMemo(() => {
+    const ids = new Set<string>();
+    records.forEach((r: any) => { if (r.member_id) ids.add(r.member_id); });
+    return Array.from(ids);
+  }, [records]);
+
+  const { data: memberStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ["attendance-analytics-statuses", branchId, memberIdsInPeriod.sort().join(",")],
+    queryFn: async () => {
+      if (!branchId || memberIdsInPeriod.length === 0) return {};
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("member_id, status, end_date")
+        .in("member_id", memberIdsInPeriod)
+        .order("end_date", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data || []) as any[]) {
+        if (row.member_id && !map[row.member_id]) map[row.member_id] = row.status;
+      }
+      return map;
+    },
+    enabled: !!branchId && memberIdsInPeriod.length > 0,
+    staleTime: 60_000,
+  });
+
   const memberStats = useMemo((): MemberAbsentStats[] => {
     const map = new Map<string, { name: string; phone: string; present: number; absent: number; skipped: number }>();
 
