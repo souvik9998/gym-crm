@@ -352,9 +352,10 @@ export default function PublicCalendar() {
 
                     {/* DESKTOP cell — unchanged */}
                     {(() => {
-                      const Wrapper: any = singleEvent ? "a" : "div";
-                      const wrapperProps = singleEvent
-                        ? { href: eventLink(singleEvent), title: singleEvent.title }
+                      const singleEventClickable = singleEvent && !isEventPast(singleEvent);
+                      const Wrapper: any = singleEventClickable ? "a" : "div";
+                      const wrapperProps = singleEventClickable
+                        ? { href: eventLink(singleEvent!), title: singleEvent!.title }
                         : {};
                       return (
                         <Wrapper
@@ -362,12 +363,15 @@ export default function PublicCalendar() {
                           className={cn(
                             "hidden lg:flex w-full min-h-[100px] rounded-xl flex-col items-stretch p-2 relative text-sm overflow-hidden",
                             "border border-transparent transition-all duration-200 ease-out",
-                            (singleEvent || hasEvent) && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                            singleEventClickable && "cursor-pointer hover:scale-[1.02] hover:shadow-md hover:z-10",
+                            !singleEventClickable && hasEvent && !isPast && "cursor-default",
                             isPast && "opacity-50",
                             !holiday && !isCurrent && !hasEvent && "bg-muted/20",
-                            !holiday && !isCurrent && hasEvent && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                            !holiday && !isCurrent && hasEvent && !isPast && "bg-blue-500/8 hover:bg-blue-500/12 hover:border-blue-500/30",
+                            !holiday && !isCurrent && hasEvent && isPast && "bg-muted/30 border-border/40",
                             isCurrent && !holiday && "bg-gradient-to-br from-primary/15 to-primary/5 border-primary/30 ring-1 ring-primary/20 font-bold",
-                            holiday && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                            holiday && !isPast && "bg-destructive/8 hover:bg-destructive/14 border-destructive/20",
+                            holiday && isPast && "bg-muted/30 border-border/40",
                             isSunday && !holiday && "text-destructive/60",
                           )}
                         >
@@ -375,7 +379,8 @@ export default function PublicCalendar() {
                             <span className={cn(
                               "text-sm leading-none",
                               isCurrent && !holiday && "text-primary font-bold",
-                              holiday && "text-destructive font-semibold",
+                              holiday && !isPast && "text-destructive font-semibold",
+                              holiday && isPast && "text-muted-foreground font-semibold line-through",
                               !holiday && !isCurrent && "font-medium",
                             )}>
                               {format(day, "d")}
@@ -388,29 +393,49 @@ export default function PublicCalendar() {
                           </div>
 
                           {holiday && (
-                            <span className="block text-[9px] leading-tight px-1 mt-1 line-clamp-1 text-destructive font-semibold uppercase tracking-wide">
+                            <span className={cn(
+                              "block text-[9px] leading-tight px-1 mt-1 line-clamp-1 font-semibold uppercase tracking-wide",
+                              isPast ? "text-muted-foreground" : "text-destructive",
+                            )}>
                               {holiday.holiday_type === "full_day" ? "🚫 Closed" : "⏰ Half Day"}
                             </span>
                           )}
                           {holiday && (
-                            <span className="block text-[9px] leading-tight px-1 line-clamp-1 text-destructive/80">
+                            <span className={cn(
+                              "block text-[9px] leading-tight px-1 line-clamp-1",
+                              isPast ? "text-muted-foreground/80 line-through" : "text-destructive/80",
+                            )}>
                               {holiday.holiday_name}
                             </span>
                           )}
 
                           {hasEvent && (
                             <div className="flex flex-col gap-0.5 mt-auto pt-1">
-                              {dayEvents.slice(0, 2).map((ev) => (
-                                <a
-                                  key={ev.id}
-                                  href={eventLink(ev)}
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
-                                  title={ev.title}
-                                >
-                                  {ev.title}
-                                </a>
-                              ))}
+                              {dayEvents.slice(0, 2).map((ev) => {
+                                const evPast = isEventPast(ev);
+                                if (evPast) {
+                                  return (
+                                    <div
+                                      key={ev.id}
+                                      className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground truncate font-medium border border-border/40 line-through"
+                                      title={`${ev.title} (Ended)`}
+                                    >
+                                      {ev.title}
+                                    </div>
+                                  );
+                                }
+                                return (
+                                  <a
+                                    key={ev.id}
+                                    href={eventLink(ev)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-left text-[9px] leading-tight px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-700 dark:text-blue-300 truncate font-medium border border-blue-500/20 hover:bg-blue-500/25 transition-colors"
+                                    title={ev.title}
+                                  >
+                                    {ev.title}
+                                  </a>
+                                );
+                              })}
                               {dayEvents.length > 2 && (
                                 <div className="text-[8px] text-blue-600 dark:text-blue-400 font-semibold px-1 leading-none">
                                   +{dayEvents.length - 2} more
@@ -428,15 +453,19 @@ export default function PublicCalendar() {
                         {holiday && (
                           <div className="whitespace-nowrap">
                             <span className="font-medium">{holiday.holiday_name}</span>
-                            <span className="ml-1 opacity-70 text-[9px]">· {holiday.holiday_type === "full_day" ? "Closed" : "Half Day"}</span>
+                            <span className="ml-1 opacity-70 text-[9px]">· {holiday.holiday_type === "full_day" ? "Closed" : "Half Day"}{isPast ? " · Past" : ""}</span>
                           </div>
                         )}
-                        {hasEvent && dayEvents.map((ev) => (
-                          <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", holiday && "mt-0.5 pt-0.5 border-t border-background/20")}>
-                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 flex-shrink-0" />
-                            <span className="font-medium truncate">{ev.title}</span>
-                          </div>
-                        ))}
+                        {hasEvent && dayEvents.map((ev) => {
+                          const evPast = isEventPast(ev);
+                          return (
+                            <div key={ev.id} className={cn("flex items-center gap-1 whitespace-nowrap", holiday && "mt-0.5 pt-0.5 border-t border-background/20")}>
+                              <span className={cn("w-1.5 h-1.5 rounded-full flex-shrink-0", evPast ? "bg-muted-foreground" : "bg-blue-400")} />
+                              <span className={cn("font-medium truncate", evPast && "line-through opacity-70")}>{ev.title}</span>
+                              {evPast && <span className="opacity-60 text-[9px]">· Ended</span>}
+                            </div>
+                          );
+                        })}
                         <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-foreground" />
                       </div>
                     )}
