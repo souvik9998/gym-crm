@@ -58,6 +58,12 @@ const STATUS_BUTTON_STYLES: Record<AttendanceStatus, string> = {
   absent: "border-destructive/25 bg-destructive text-destructive-foreground shadow-sm",
 };
 
+const SUB_STATUS_META: Record<string, { label: string; className: string }> = {
+  active: { label: "Active", className: "border-success/30 bg-success/10 text-success" },
+  expiring_soon: { label: "Expiring", className: "border-amber-400/40 bg-amber-500/10 text-amber-700 dark:text-amber-400" },
+  expired: { label: "Expired", className: "border-destructive/30 bg-destructive/10 text-destructive" },
+};
+
 export const SlotAttendanceTab = () => {
   const { currentBranch } = useBranch();
   const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
