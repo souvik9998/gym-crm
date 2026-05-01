@@ -493,7 +493,7 @@ async function sendViaZavu(
       }
     }
 
-    return { success: true, provider: "zavu" };
+    return { success: true, provider: "zavu", providerMessageId: messageId || undefined };
   } catch (err: unknown) {
     return { success: false, provider: "zavu", error: (err as Error).message };
   }
