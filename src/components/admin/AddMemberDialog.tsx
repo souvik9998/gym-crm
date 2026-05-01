@@ -1035,7 +1035,7 @@ export const AddMemberDialog = ({
       if (subError) throw subError;
 
       if (wantsPT && selectedTrainerId) {
-        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+        const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
         const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
@@ -1283,7 +1283,7 @@ export const AddMemberDialog = ({
 
         // If also adding PT
         if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
-          const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+          const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
           const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
@@ -1321,7 +1321,7 @@ export const AddMemberDialog = ({
           throw e;
         }
 
-        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+        const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
         const { data: insertedAddPt } = await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
