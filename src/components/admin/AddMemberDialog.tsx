@@ -66,7 +66,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { format, addDays, isAfter, isBefore } from "date-fns";
+import { format, addDays, isAfter, isBefore, differenceInDays } from "date-fns";
 import { addPackageMonths } from "@/lib/packageDuration";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -664,34 +664,94 @@ export const AddMemberDialog = ({
     }
   }, [open, minAllowedStartDate, startDate]);
 
-  const ptMonthOptions: number[] = [];
-  if (gymMembershipEndDate) {
-    const ptStart = new Date(startDate);
-    ptStart.setHours(0, 0, 0, 0);
-    for (let m = 1; m <= 12; m++) {
-      const ptEnd = addPackageMonths(ptStart, m);
-      if (isAfter(ptEnd, gymMembershipEndDate)) break;
-      ptMonthOptions.push(m);
-    }
-    // Ensure at least showing that no months are available
-    if (ptMonthOptions.length === 0 && isPTOnly) {
-      // No valid PT months - membership too short
-    }
-  } else {
-    for (let i = 1; i <= (selectedPackage?.months || 1); i++) {
-      ptMonthOptions.push(i);
-    }
-  }
+  // Build rich PT duration options (mirrors PackageSelectionForm in user registration).
+  // Each option carries an exact day-count and end date so PT can fit the gym
+  // window precisely — including a partial "Until Gym End Date" choice.
+  type PtOption = {
+    key: string;
+    label: string;
+    months: number; // 0 for partial-day "Until gym end" option
+    days: number;
+    endDate: Date;
+    fee: number;
+  };
 
-  // Reset ptMonths if current selection exceeds available options
-  useEffect(() => {
-    if (ptMonthOptions.length > 0 && !ptMonthOptions.includes(ptMonths)) {
-      const maxAvailable = ptMonthOptions[ptMonthOptions.length - 1];
-      setPtMonths(maxAvailable);
-      const trainer = trainers.find((t) => t.id === selectedTrainerId);
-      if (trainer) setPtFee(Number(trainer.monthly_fee) * maxAvailable);
+  const ptStartForCalc = (() => {
+    const d = new Date(startDate);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  })();
+
+  const ptOptions: PtOption[] = (() => {
+    if (!gymMembershipEndDate || !selectedTrainer) return [];
+    const monthlyTrainerFee = Number(selectedTrainer.monthly_fee) || 0;
+    const dailyRate = monthlyTrainerFee / 30;
+    const ptStart = ptStartForCalc;
+    if (!isBefore(ptStart, gymMembershipEndDate)) return [];
+
+    const opts: PtOption[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const end = addPackageMonths(ptStart, m);
+      if (isAfter(end, gymMembershipEndDate)) break;
+      const days = differenceInDays(end, ptStart);
+      opts.push({
+        key: `m-${m}`,
+        label: `${m} ${m === 1 ? "Month" : "Months"}`,
+        months: m,
+        days,
+        endDate: end,
+        fee: Math.ceil(dailyRate * days),
+      });
     }
-  }, [ptMonthOptions, ptMonths]);
+
+    const totalDays = differenceInDays(gymMembershipEndDate, ptStart);
+    if (totalDays > 0) {
+      const lastWhole = opts[opts.length - 1];
+      const needsPartial = !lastWhole || Math.abs(differenceInDays(lastWhole.endDate, gymMembershipEndDate)) >= 1;
+      if (needsPartial) {
+        opts.push({
+          key: "until-end",
+          label: `Until Gym End (${format(gymMembershipEndDate, "d MMM yyyy")})`,
+          months: 0,
+          days: totalDays,
+          endDate: gymMembershipEndDate,
+          fee: Math.ceil(dailyRate * totalDays),
+        });
+      }
+    }
+    return opts;
+  })();
+
+  // Auto-pick / keep PT option valid as inputs change
+  useEffect(() => {
+    if (!(wantsPT || isPTOnly)) return;
+    if (ptOptions.length === 0) return;
+    const matchKey = ptOptions.find((o) => o.months === ptMonths)?.key;
+    const stillValid = matchKey || ptOptions.some((o) => o.months === ptMonths);
+    if (stillValid) return;
+    const wholeMonths = ptOptions.filter((o) => o.months > 0);
+    const next = wholeMonths.length > 0 ? wholeMonths[wholeMonths.length - 1] : ptOptions[0];
+    setPtMonths(next.months || 0);
+    setPtFee(next.fee);
+  }, [ptOptions, wantsPT, isPTOnly, ptMonths]);
+
+  // Selected PT option (driven by ptMonths; 0 means the partial "until-end" option)
+  const selectedPtOption: PtOption | null = (() => {
+    if (ptOptions.length === 0) return null;
+    return ptOptions.find((o) => o.months === ptMonths) || null;
+  })();
+
+  const handlePtOptionChange = (key: string) => {
+    const opt = ptOptions.find((o) => o.key === key);
+    if (!opt) return;
+    setPtMonths(opt.months || 0);
+    setPtFee(opt.fee);
+  };
+
+  // Resolved PT end date used when persisting (uses exact day-count to support partial periods)
+  const resolvedPtEndDate: Date | null = selectedPtOption
+    ? selectedPtOption.endDate
+    : (gymMembershipEndDate && ptMonths > 0 ? addPackageMonths(ptStartForCalc, ptMonths) : null);
 
   const formatIdNumber = (value: string, type: string) => {
     const cleaned = value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
@@ -782,7 +842,7 @@ export const AddMemberDialog = ({
     return true;
   })();
 
-  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptMonthOptions.length > 0) : !!selectedPackageId;
+  const isStep3Valid = isPTOnly ? (!!selectedTrainerId && ptOptions.length > 0) : !!selectedPackageId;
 
 
   const goToStep = (step: number) => {
@@ -975,7 +1035,7 @@ export const AddMemberDialog = ({
       if (subError) throw subError;
 
       if (wantsPT && selectedTrainerId) {
-        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+        const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
         const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
           member_id: member.id,
           personal_trainer_id: selectedTrainerId,
@@ -1223,7 +1283,7 @@ export const AddMemberDialog = ({
 
         // If also adding PT
         if (selectedAction === "renew_gym_pt" && selectedTrainerId) {
-          const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+          const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
           const { data: insertedPt } = await supabase.from("pt_subscriptions").insert({
             member_id: existingMember.id,
             personal_trainer_id: selectedTrainerId,
@@ -1261,7 +1321,7 @@ export const AddMemberDialog = ({
           throw e;
         }
 
-        const ptEndDate = addPackageMonths(gymStartDate, ptMonths);
+        const ptEndDate = resolvedPtEndDate ?? addPackageMonths(gymStartDate, ptMonths);
         const { data: insertedAddPt } = await supabase.from("pt_subscriptions").insert({
           member_id: existingMember.id,
           personal_trainer_id: selectedTrainerId,
@@ -1357,7 +1417,7 @@ export const AddMemberDialog = ({
         const { data: { session } } = await supabase.auth.getSession();
         const adminUserId = session?.user?.id || null;
         const endDateStr = selectedAction === "add_pt" 
-          ? formatDateOnly(addPackageMonths(new Date(startDate), ptMonths))
+          ? formatDateOnly(resolvedPtEndDate ?? addPackageMonths(new Date(startDate), ptMonths))
           : formatDateOnly(addPackageMonths(new Date(startDate), selectedPackage?.months || 1));
         
         const notificationType = selectedAction === "add_pt" ? "pt_extension" : "renewal";
@@ -2056,14 +2116,18 @@ export const AddMemberDialog = ({
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                               <Label className="text-xs text-muted-foreground">PT Duration</Label>
-                              <Select value={String(ptMonths)} onValueChange={(v) => handlePtMonthsChange(Number(v))}>
+                              <Select
+                                value={selectedPtOption?.key ?? ""}
+                                onValueChange={handlePtOptionChange}
+                                disabled={ptOptions.length === 0}
+                              >
                                 <SelectTrigger className="h-10 text-sm rounded-xl">
-                                  <SelectValue />
+                                  <SelectValue placeholder={ptOptions.length === 0 ? "No PT period available" : "Select duration"} />
                                 </SelectTrigger>
                                 <SelectContent className="rounded-xl">
-                                  {ptMonthOptions.map((m) => (
-                                    <SelectItem key={m} value={String(m)}>
-                                      {m} {m === 1 ? "Month" : "Months"}
+                                  {ptOptions.map((o) => (
+                                    <SelectItem key={o.key} value={o.key}>
+                                      {o.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
@@ -2082,6 +2146,15 @@ export const AddMemberDialog = ({
                               />
                             </div>
                           </div>
+
+                          {/* PT date range — mirrors public registration form */}
+                          {selectedPtOption && (
+                            <p className="text-xs text-muted-foreground flex items-center gap-1.5 -mt-1">
+                              <Calendar className="w-3 h-3" />
+                              PT: {format(ptStartForCalc, "d MMM yyyy")} → {format(selectedPtOption.endDate, "d MMM yyyy")}
+                              {" "}({selectedPtOption.days} days)
+                            </p>
+                          )}
 
                           {/* Optional Time Slot — only shown when the selected trainer
                               has configured slots in the schedule. Picking a slot is OPTIONAL. */}
@@ -2121,7 +2194,7 @@ export const AddMemberDialog = ({
                               PT can only be added till gym membership end date: {format(gymMembershipEndDate, "d MMM yyyy")}
                             </p>
                           )}
-                          {ptMonthOptions.length === 0 && (wantsPT || isPTOnly) && (
+                          {ptOptions.length === 0 && (wantsPT || isPTOnly) && (
                             <p className="text-xs text-destructive flex items-center gap-1.5 mt-1">
                               <Calendar className="w-3 h-3" />
                               Gym membership period is too short for PT. Please extend gym membership first.
@@ -2216,7 +2289,7 @@ export const AddMemberDialog = ({
                     )}
                     {(wantsPT || isPTOnly) && (
                       <div className="flex justify-between text-sm animate-fade-in">
-                        <span className="text-muted-foreground">PT ({ptMonths}mo)</span>
+                        <span className="text-muted-foreground">PT ({selectedPtOption ? selectedPtOption.label : `${ptMonths}mo`})</span>
                         <span className={cn("font-semibold tabular-nums", registerFree && "line-through text-muted-foreground")}>
                           ₹{ptFee.toLocaleString("en-IN")}
                         </span>
