@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/sonner";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { PaymentProcessingOverlay } from "@/components/ui/payment-processing-overlay";
-import { format } from "date-fns";
+import { format, isBefore, parseISO, startOfDay } from "date-fns";
 import { Calendar, MapPin, CheckCircle2, ArrowLeft, ArrowRight, IndianRupee, User, Phone, Mail, Ticket, TicketPercent, X } from "lucide-react";
 import PoweredByBadge from "@/components/PoweredByBadge";
 import { cn } from "@/lib/utils";
