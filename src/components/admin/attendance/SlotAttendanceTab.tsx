@@ -202,6 +202,7 @@ export const SlotAttendanceTab = () => {
           trainerId: slotMeta.trainerId,
           trainerName: slotMeta.trainerName,
           status: (localAttendance.get(`${slotId}:${member.id}`) || "absent") as AttendanceStatus,
+          subscriptionStatus: member.subscription?.status || null,
         };
       })
       .filter(Boolean)
