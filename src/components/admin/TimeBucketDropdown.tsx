@@ -43,11 +43,55 @@ export const TimeBucketDropdown = ({
   onChange,
   className,
   options,
+  iconOnly = false,
 }: TimeBucketDropdownProps) => {
   const [open, setOpen] = useState(false);
   const items = options && options.length > 0 ? options : TIME_BUCKET_OPTIONS;
   const isActive = value !== "all";
   const selected = items.find((o) => o.value === value) ?? items[0];
+
+  if (iconOnly) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            title={selected?.label}
+            aria-label={`Time of day: ${selected?.label ?? "All times"}`}
+            className={cn(
+              "h-9 w-9 rounded-xl border shadow-sm relative shrink-0",
+              "transition-all duration-200 ease-out active:scale-95",
+              "focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none",
+              isActive
+                ? "bg-amber-100 dark:bg-amber-900/40 border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-300"
+                : "bg-card border-border/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+              className,
+            )}
+            onClick={(e) => e.currentTarget.blur()}
+          >
+            <Clock className="w-4 h-4" />
+            {isActive && (
+              <span className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-amber-500" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent
+          align="end"
+          sideOffset={6}
+          className="p-0 rounded-xl border-border/50 shadow-2xl overflow-hidden w-[min(20rem,calc(100vw-2rem))]"
+        >
+          <TimeBucketPopoverBody
+            items={items}
+            value={value}
+            onChange={onChange}
+            isActive={isActive}
+            setOpen={setOpen}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
