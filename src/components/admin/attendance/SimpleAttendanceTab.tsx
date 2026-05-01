@@ -959,7 +959,7 @@ export const SimpleAttendanceTab = () => {
                     )}>
                       <td className={cn(
                         "px-3 py-2 sticky left-0 z-10",
-                        isExpired ? "bg-[hsl(var(--background))] [background:linear-gradient(hsl(var(--background)),hsl(var(--background)))_padding-box,linear-gradient(rgba(239,68,68,0.05),rgba(239,68,68,0.05))_padding-box]" : "bg-background"
+                        isExpired ? "bg-red-50 dark:bg-red-950/30" : "bg-background"
                       )}>
                         <div className="flex items-center gap-2">
                           <div className={cn(
