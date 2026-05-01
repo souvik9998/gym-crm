@@ -4,7 +4,7 @@ import { useBranchSlug } from "@/hooks/useBranchSlug";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Phone, ArrowRight, Shield, Clock, CreditCard, Dumbbell, UserPlus, ArrowLeft } from "lucide-react";
+import { Phone, ArrowRight, Dumbbell, ArrowLeft, RefreshCw, Sparkles, ShieldCheck, Zap, HeartHandshake, Hand } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/components/ui/sonner";
 import { fetchPublicBranch, fetchDefaultBranch, fetchRegistrationBootstrap } from "@/api/publicData";
