@@ -422,7 +422,7 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
           </DropdownMenuItem>
           
           {/* Trainer & Slot Filters - inside dropdown */}
-          {(onTrainerFilterChange || onTimeSlotFilterChange) && (
+          {(onTrainerFilterChange || onTimeSlotFilterChange || onTimeBucketFilterChange) && (
             <>
               <DropdownMenuSeparator className="my-1" />
               <div className="px-2 py-1.5 space-y-1.5">
@@ -443,6 +443,16 @@ export const MemberFilter = ({ value, onChange, counts, ptFilterActive, onPtFilt
                       onChange={onTimeSlotFilterChange}
                       trainerFilter={trainerFilter}
                       compact={false}
+                    />
+                  </div>
+                )}
+                {onTimeBucketFilterChange && (
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <TimeBucketDropdown
+                      value={timeBucketFilter ?? "all"}
+                      onChange={onTimeBucketFilterChange}
+                      options={timeBucketOptions}
+                      className="w-full justify-between h-9 text-xs px-3 rounded-xl"
                     />
                   </div>
                 )}
