@@ -421,11 +421,21 @@ export function CreateEventDialog({ open, onOpenChange, editEvent }: Props) {
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
                   <Label>Start Date & Time *</Label>
-                  <Input type="datetime-local" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="rounded-xl" />
+                  <DateTimePicker
+                    value={eventDate}
+                    onChange={setEventDate}
+                    placeholder="Select start"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>End Date & Time</Label>
-                  <Input type="datetime-local" value={eventEndDate} onChange={(e) => setEventEndDate(e.target.value)} className="rounded-xl" />
+                  <DateTimePicker
+                    value={eventEndDate}
+                    onChange={setEventEndDate}
+                    placeholder="Select end"
+                    min={eventDate || undefined}
+                    clearable
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
