@@ -8,6 +8,7 @@ import {
   type TimeBucket,
   type TimeBucketOption,
 } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { useCloseOnRouteChange } from "@/hooks/use-close-on-route-change";
 
 interface TimeBucketDropdownProps {
   value: TimeBucket;
