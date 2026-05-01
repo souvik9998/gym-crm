@@ -47,6 +47,7 @@ export const TimeBucketDropdown = ({
   iconOnly = false,
 }: TimeBucketDropdownProps) => {
   const [open, setOpen] = useState(false);
+  useCloseOnRouteChange(open, setOpen);
   const items = options && options.length > 0 ? options : TIME_BUCKET_OPTIONS;
   const isActive = value !== "all";
   const selected = items.find((o) => o.value === value) ?? items[0];
