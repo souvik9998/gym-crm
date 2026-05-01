@@ -374,6 +374,11 @@ export const SlotAttendanceTab = () => {
           <div className="mt-3 flex flex-wrap gap-1.5">
             <Badge variant="outline" className="border-primary/20 bg-primary/5 text-[10px] text-foreground">{member.slotLabel}</Badge>
             <Badge variant="outline" className="border-accent/20 bg-accent/5 text-[10px] text-foreground">{member.trainerName}</Badge>
+            {member.subscriptionStatus && SUB_STATUS_META[member.subscriptionStatus] && (
+              <Badge variant="outline" className={cn("text-[10px]", SUB_STATUS_META[member.subscriptionStatus].className)}>
+                {SUB_STATUS_META[member.subscriptionStatus].label}
+              </Badge>
+            )}
           </div>
         </div>
         <Badge variant="outline" className={cn("text-[10px]", STATUS_STYLES[member.status])}>
