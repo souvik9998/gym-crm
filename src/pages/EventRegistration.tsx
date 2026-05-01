@@ -611,6 +611,36 @@ export default function EventRegistration() {
     );
   }
 
+  // Block registration for events that have already ended
+  const eventEndDate = event.event_end_date ? parseISO(event.event_end_date) : parseISO(event.event_date);
+  const isEventEnded = isBefore(eventEndDate, startOfDay(new Date()));
+  if (isEventEnded && !registered) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full border-border/40">
+          <CardContent className="p-6 lg:p-8 text-center space-y-3">
+            <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mx-auto">
+              <span className="text-2xl">📅</span>
+            </div>
+            <h2 className="text-lg lg:text-xl font-bold text-foreground">This event has ended</h2>
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{event.title}</strong> took place on{" "}
+              {format(parseISO(event.event_date), "dd MMM yyyy")}
+              {event.event_end_date && event.event_end_date !== event.event_date && (
+                <> – {format(parseISO(event.event_end_date), "dd MMM yyyy")}</>
+              )}
+              . Registration is closed.
+            </p>
+            {event.location && (
+              <p className="text-xs text-muted-foreground">📍 {event.location}</p>
+            )}
+          </CardContent>
+        </Card>
+        <PoweredByBadge />
+      </div>
+    );
+  }
+
   if (registered) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
