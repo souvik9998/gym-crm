@@ -270,7 +270,7 @@ const Index = () => {
           <Card className="max-w-md mx-auto mt-6 border-0 shadow-xl bg-gradient-to-br from-card to-card/80 animate-fade-in">
             <CardHeader className="text-center pb-2">
               <div className="w-16 h-16 mx-auto mb-3 rounded-2xl bg-gradient-to-br from-accent/20 to-accent/5 flex items-center justify-center shadow-sm">
-                <Hand className="w-7 h-7 text-accent transition-transform duration-500 hover:rotate-12" style={{ animation: "wave 2.4s ease-in-out 1" }} />
+                <Hand className="w-7 h-7 text-accent origin-[70%_70%] animate-wave" />
               </div>
               <CardTitle className="text-xl">Welcome Back!</CardTitle>
               <p className="text-lg font-semibold text-accent">{existingMember?.name}</p>
