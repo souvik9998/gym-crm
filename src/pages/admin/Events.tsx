@@ -15,7 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/components/ui/sonner";
 import { format, isBefore, parseISO, startOfDay } from "date-fns";
-import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus, ArrowUpDown } from "lucide-react";
+import { Plus, Search, Calendar, MapPin, Users, IndianRupee, Eye, Edit2, Trash2, QrCode, Copy, UserPlus, ArrowUpDown, Send, Ban } from "lucide-react";
 import { CreateEventDialog } from "@/components/admin/events/CreateEventDialog";
 import { EventQRDialog } from "@/components/admin/events/EventQRDialog";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
