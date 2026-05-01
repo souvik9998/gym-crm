@@ -52,6 +52,9 @@ interface SlotMember {
   current_pt_trainer_name: string | null;
   /** True when the slot's trainer != member's current active PT trainer. */
   is_trainer_replaced: boolean;
+  /** Member's gym subscription status: active | expiring_soon | expired | inactive | paused | null */
+  subscription_status: string | null;
+  subscription_end_date: string | null;
 }
 
 interface AvailableMember {
