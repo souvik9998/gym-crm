@@ -41,6 +41,7 @@ interface MemberAttendance {
   memberName: string;
   memberPhone: string;
   trainerName?: string | null;
+  subscriptionStatus?: string | null;
 }
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
