@@ -72,6 +72,35 @@ export const AbsentAnalyticsTab = () => {
     enabled: !!branchId && (assignedMemberIds === null || assignedMemberIds !== undefined),
   });
 
+  // Latest gym subscription status per member appearing in this period.
+  // Used to surface attendance recorded while the member was already expired
+  // (renewal reminder workflow).
+  const memberIdsInPeriod = useMemo(() => {
+    const ids = new Set<string>();
+    records.forEach((r: any) => { if (r.member_id) ids.add(r.member_id); });
+    return Array.from(ids);
+  }, [records]);
+
+  const { data: memberStatusMap = {} } = useQuery<Record<string, string>>({
+    queryKey: ["attendance-analytics-statuses", branchId, memberIdsInPeriod.sort().join(",")],
+    queryFn: async () => {
+      if (!branchId || memberIdsInPeriod.length === 0) return {};
+      const { data, error } = await supabase
+        .from("subscriptions")
+        .select("member_id, status, end_date")
+        .in("member_id", memberIdsInPeriod)
+        .order("end_date", { ascending: false });
+      if (error) throw error;
+      const map: Record<string, string> = {};
+      for (const row of (data || []) as any[]) {
+        if (row.member_id && !map[row.member_id]) map[row.member_id] = row.status;
+      }
+      return map;
+    },
+    enabled: !!branchId && memberIdsInPeriod.length > 0,
+    staleTime: 60_000,
+  });
+
   const memberStats = useMemo((): MemberAbsentStats[] => {
     const map = new Map<string, { name: string; phone: string; present: number; absent: number; skipped: number }>();
 
@@ -126,6 +155,29 @@ export const AbsentAnalyticsTab = () => {
   }, [memberStats]);
 
   const frequentAbsentees = memberStats.filter((m) => m.countedDays >= 3 && m.attendanceRate < 50);
+
+  // Members whose latest gym subscription is expired but who still have
+  // attendance records in this period. Sorted by total check-ins desc so
+  // the most frequently visiting expired members surface first.
+  const expiredMembers = useMemo(() => {
+    return memberStats
+      .filter((m) => memberStatusMap[m.memberId] === "expired")
+      .map((m) => ({
+        ...m,
+        totalCheckins: m.presentDays + m.skippedDays + m.absentDays,
+      }))
+      .sort((a, b) => b.presentDays - a.presentDays || b.totalCheckins - a.totalCheckins);
+  }, [memberStats, memberStatusMap]);
+
+  const expiredSummary = useMemo(() => {
+    let present = 0, absent = 0, skipped = 0;
+    expiredMembers.forEach((m) => {
+      present += m.presentDays;
+      absent += m.absentDays;
+      skipped += m.skippedDays;
+    });
+    return { present, absent, skipped, total: expiredMembers.length };
+  }, [expiredMembers]);
 
   const getAttendanceColor = (rate: number) => {
     if (rate >= 80) return "text-green-600";
@@ -256,6 +308,54 @@ export const AbsentAnalyticsTab = () => {
                     +{frequentAbsentees.length - 10} more
                   </Badge>
                 )}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Expired Members Attendance — surfaces members who checked in despite
+            their gym membership being expired. Useful for renewal follow-ups. */}
+        {expiredMembers.length > 0 && (
+          <Card className="border border-red-200 dark:border-red-900/60 bg-red-500/[0.04] shadow-sm overflow-hidden animate-fade-in">
+            <CardHeader className="px-3 lg:px-4 py-2.5 bg-red-500/[0.06] flex flex-row items-center justify-between gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                <ExclamationTriangleIcon className="w-4 h-4 lg:w-5 lg:h-5 text-red-500 shrink-0" />
+                <CardTitle className="text-xs lg:text-sm text-red-700 dark:text-red-400 truncate">
+                  Expired Members Attendance
+                </CardTitle>
+              </div>
+              <div className="flex items-center gap-2 lg:gap-3 text-[9px] lg:text-[10px] shrink-0">
+                <span className="text-muted-foreground">{expiredSummary.total} members</span>
+                <span className="text-green-600 font-semibold">{expiredSummary.present}P</span>
+                <span className="text-red-500 font-semibold">{expiredSummary.absent}A</span>
+                <span className="text-slate-500 font-semibold">{expiredSummary.skipped}S</span>
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-red-200/40 dark:divide-red-900/30">
+                {expiredMembers.map((m) => (
+                  <div key={m.memberId} className="px-3 lg:px-4 py-2.5 flex items-center gap-3 hover:bg-red-500/[0.06] transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                        <p className="text-xs lg:text-sm font-medium truncate">{m.memberName}</p>
+                        <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[9px] h-4 px-1.5 shrink-0 gap-0.5">
+                          <ExclamationTriangleIcon className="w-2.5 h-2.5" />Expired
+                        </Badge>
+                      </div>
+                      <div className="flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] lg:text-[10px] text-muted-foreground">
+                        <span className="text-green-600 font-medium">{m.presentDays} present</span>
+                        <span className="text-red-500 font-medium">{m.absentDays} absent</span>
+                        {m.skippedDays > 0 && <span className="text-slate-500">{m.skippedDays} skipped</span>}
+                        <span className={cn("font-semibold", getAttendanceColor(m.attendanceRate))}>
+                          {m.countedDays > 0 ? `${m.attendanceRate}% rate` : "no counted days"}
+                        </span>
+                      </div>
+                    </div>
+                    {!isMobile && (
+                      <span className="text-[10px] text-muted-foreground shrink-0">{m.memberPhone}</span>
+                    )}
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>

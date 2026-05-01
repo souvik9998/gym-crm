@@ -20,6 +20,7 @@ import {
   UserIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ExclamationTriangleIcon,
 } from "@heroicons/react/24/outline";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
@@ -41,6 +42,7 @@ interface MemberAttendance {
   memberName: string;
   memberPhone: string;
   trainerName?: string | null;
+  subscriptionStatus?: string | null;
 }
 
 const STATUS_COLORS: Record<AttendanceStatus, string> = {
@@ -391,7 +393,13 @@ export const SimpleAttendanceTab = () => {
   }, [existingRecords]);
 
   const memberList = useMemo((): MemberAttendance[] => {
-    return activeMembers.map((m: any) => ({ memberId: m.id, memberName: m.name, memberPhone: m.phone, trainerName: m.activePT?.trainer_name || null }));
+    return activeMembers.map((m: any) => ({
+      memberId: m.id,
+      memberName: m.name,
+      memberPhone: m.phone,
+      trainerName: m.activePT?.trainer_name || null,
+      subscriptionStatus: m.subscription?.status || null,
+    }));
   }, [activeMembers]);
 
   // Base list (search applied) — used for stats so cards reflect totals regardless of active filter
@@ -501,12 +509,15 @@ export const SimpleAttendanceTab = () => {
   // ── Mobile card-based member row ──
   const MobileMemberCard = ({ member }: { member: MemberAttendance }) => {
     const currentStatus = localAttendance.get(member.memberId) || "absent";
+    const isExpired = member.subscriptionStatus === "expired";
     return (
       <div className={cn(
         "bg-card rounded-xl border p-3 transition-all duration-200",
-        currentStatus === "present" ? "border-green-200 dark:border-green-900/40" :
-        currentStatus === "skipped" ? "border-slate-300 dark:border-slate-700/60" :
-        "border-border/40",
+        isExpired
+          ? "border-red-300/60 dark:border-red-900/60 bg-red-500/[0.06] dark:bg-red-900/[0.10]"
+          : currentStatus === "present" ? "border-green-200 dark:border-green-900/40" :
+            currentStatus === "skipped" ? "border-slate-300 dark:border-slate-700/60" :
+            "border-border/40",
         isFutureDate && "opacity-50 pointer-events-none"
       )}>
         <div className="flex items-center justify-between gap-2">
@@ -520,8 +531,13 @@ export const SimpleAttendanceTab = () => {
               {member.memberName.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
                 <p className="text-sm font-medium truncate">{member.memberName}</p>
+                {isExpired && (
+                  <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[9px] h-4 px-1.5 shrink-0 gap-0.5">
+                    <ExclamationTriangleIcon className="w-2.5 h-2.5" />Expired
+                  </Badge>
+                )}
                 {member.trainerName && (
                   <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
                     <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
@@ -935,11 +951,16 @@ export const SimpleAttendanceTab = () => {
               <tbody className="divide-y divide-border/20">
                 {filteredList.map((member) => {
                   const currentStatus = localAttendance.get(member.memberId) || "absent";
+                  const isExpired = member.subscriptionStatus === "expired";
                   return (
                     <tr key={member.memberId} className={cn("transition-colors duration-150 hover:bg-muted/10",
+                      isExpired && "bg-red-500/[0.05] dark:bg-red-900/[0.10] hover:bg-red-500/[0.10]",
                       isFutureDate && "opacity-50 pointer-events-none"
                     )}>
-                      <td className="px-3 py-2 sticky left-0 bg-background z-10">
+                      <td className={cn(
+                        "px-3 py-2 sticky left-0 z-10",
+                        isExpired ? "bg-red-50 dark:bg-red-950/30" : "bg-background"
+                      )}>
                         <div className="flex items-center gap-2">
                           <div className={cn(
                             "w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-semibold shrink-0 transition-colors duration-300",
@@ -950,8 +971,13 @@ export const SimpleAttendanceTab = () => {
                             {member.memberName.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1 min-w-0">
+                            <div className="flex items-center gap-1 min-w-0 flex-wrap">
                               <p className="text-xs font-medium truncate max-w-[100px]">{member.memberName}</p>
+                              {isExpired && (
+                                <Badge className="bg-red-500/15 text-red-700 dark:text-red-400 border-0 text-[8px] h-4 px-1 shrink-0 gap-0.5">
+                                  <ExclamationTriangleIcon className="w-2 h-2" />Expired
+                                </Badge>
+                              )}
                               {member.trainerName && (
                                 <Badge variant="outline" className="text-[8px] h-4 px-1 border-blue-300/50 text-blue-600 dark:text-blue-400 bg-blue-500/5 shrink-0">
                                   <UserIcon className="w-2 h-2 mr-0.5" />{member.trainerName}
