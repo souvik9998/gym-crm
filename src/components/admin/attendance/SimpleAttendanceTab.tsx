@@ -392,7 +392,13 @@ export const SimpleAttendanceTab = () => {
   }, [existingRecords]);
 
   const memberList = useMemo((): MemberAttendance[] => {
-    return activeMembers.map((m: any) => ({ memberId: m.id, memberName: m.name, memberPhone: m.phone, trainerName: m.activePT?.trainer_name || null }));
+    return activeMembers.map((m: any) => ({
+      memberId: m.id,
+      memberName: m.name,
+      memberPhone: m.phone,
+      trainerName: m.activePT?.trainer_name || null,
+      subscriptionStatus: m.subscription?.status || null,
+    }));
   }, [activeMembers]);
 
   // Base list (search applied) — used for stats so cards reflect totals regardless of active filter
