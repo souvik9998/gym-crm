@@ -48,6 +48,7 @@ type Audience = "all_active" | "all" | "specific";
 
 const ShareCalendarDialog = ({ open, onOpenChange, shareUrl }: ShareCalendarDialogProps) => {
   const { currentBranch } = useBranch();
+  const { isStaffLoggedIn, staffUser } = useStaffAuth();
   const whatsAppOverlay = useWhatsAppOverlay();
 
   const [members, setMembers] = useState<MemberRow[]>([]);
