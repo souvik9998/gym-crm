@@ -606,7 +606,7 @@ const PackageSelectionForm = ({
             if (v === "custom" && hasActiveMembership) return;
             setPackageType(v as "monthly" | "custom");
           }}>
-            <TabsList className={cn("grid w-full", allowDailyPass ? "grid-cols-2" : "grid-cols-1")}>
+            <TabsList className={cn("grid w-full", allowDailyPass && !hasActiveMembership ? "grid-cols-2" : "grid-cols-1")}>
               <TabsTrigger value="monthly" className="gap-2">
                 <Calendar className="w-4 h-4" />
                 Monthly
