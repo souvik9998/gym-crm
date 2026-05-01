@@ -118,6 +118,9 @@ interface MemberFilterProps {
   onTrainerFilterChange?: (value: string | null) => void;
   timeSlotFilter?: string | null;
   onTimeSlotFilterChange?: (value: string | null) => void;
+  timeBucketFilter?: TimeBucket;
+  onTimeBucketFilterChange?: (value: TimeBucket) => void;
+  timeBucketOptions?: TimeBucketOption[];
 }
 
 const filterCategories: {
