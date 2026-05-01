@@ -11,6 +11,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
+import { TimeBucketDropdown } from "@/components/admin/TimeBucketDropdown";
+import type { TimeBucket, TimeBucketOption } from "@/components/admin/staff/timeslots/timeSlotUtils";
 
 // Per-option metadata for the rich sub-filter dropdowns. Mirrors the
 // trainer/time-slot dropdown style: icon + title + description + check badge.
