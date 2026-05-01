@@ -133,8 +133,12 @@ export const SlotAttendanceTab = () => {
     if (visibleSlotIds.length === 0) return [];
 
     return scopedMembers.filter((member) => {
+      // Exclude only fully inactive/paused members. Active, expiring_soon and
+      // expired members assigned to a slot should still appear in attendance
+      // (admins often need to mark expired members until they renew or are
+      // explicitly deactivated).
       const subscriptionStatus = member.subscription?.status;
-      if (subscriptionStatus !== "active" && subscriptionStatus !== "expiring_soon") return false;
+      if (subscriptionStatus === "inactive" || subscriptionStatus === "paused") return false;
 
       const slotId = member.activePT?.time_slot_id;
       return !!slotId && visibleSlotIds.includes(slotId);
