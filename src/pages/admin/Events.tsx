@@ -128,9 +128,65 @@ export default function Events() {
     onError: (err: any) => toast.error("Failed to delete", { description: err.message }),
   });
 
-  const filtered = events.filter((e: any) =>
-    e.title.toLowerCase().includes(search.toLowerCase())
-  );
+  // Status counts (for chip badges) — computed against search-matched events
+  const statusCounts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    const searchMatched = q
+      ? events.filter((e: any) => e.title.toLowerCase().includes(q))
+      : events;
+    return {
+      all: searchMatched.length,
+      upcoming: searchMatched.filter((e: any) => !isEventEnded(e) && e.status !== "cancelled" && e.status !== "draft").length,
+      ended: searchMatched.filter((e: any) => isEventEnded(e)).length,
+      draft: searchMatched.filter((e: any) => e.status === "draft").length,
+      cancelled: searchMatched.filter((e: any) => e.status === "cancelled").length,
+    };
+  }, [events, search]);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    let result = events.filter((e: any) =>
+      q ? e.title.toLowerCase().includes(q) : true
+    );
+
+    // Status filter
+    if (statusFilter !== "all") {
+      result = result.filter((e: any) => {
+        switch (statusFilter) {
+          case "upcoming":
+            return !isEventEnded(e) && e.status !== "cancelled" && e.status !== "draft";
+          case "ended":
+            return isEventEnded(e);
+          case "draft":
+            return e.status === "draft";
+          case "cancelled":
+            return e.status === "cancelled";
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Sorting
+    const sorted = [...result];
+    sorted.sort((a: any, b: any) => {
+      switch (sortBy) {
+        case "date_asc":
+          return new Date(a.event_date).getTime() - new Date(b.event_date).getTime();
+        case "name_asc":
+          return String(a.title || "").localeCompare(String(b.title || ""));
+        case "most_registered": {
+          const ar = (a.event_registrations || []).filter((r: any) => r.payment_status === "success").length;
+          const br = (b.event_registrations || []).filter((r: any) => r.payment_status === "success").length;
+          return br - ar;
+        }
+        case "date_desc":
+        default:
+          return new Date(b.event_date).getTime() - new Date(a.event_date).getTime();
+      }
+    });
+    return sorted;
+  }, [events, search, statusFilter, sortBy]);
 
   const getEventStats = (event: any) => {
     const regs = event.event_registrations || [];
