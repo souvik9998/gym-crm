@@ -20,7 +20,7 @@ import { toast } from "@/components/ui/sonner";
 import { format } from "date-fns";
 import {
   ArrowLeft, Calendar, MapPin, Users, IndianRupee, Download, Search,
-  UserPlus, Edit2, Trash2, QrCode, Copy, Eye,
+  UserPlus, Edit2, Trash2, QrCode, Copy, Eye, Send, Ban,
 } from "lucide-react";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { AdminEventRegisterDialog } from "@/components/admin/events/AdminEventRegisterDialog";
