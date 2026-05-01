@@ -288,6 +288,91 @@ export function useAdminNotifications() {
         }
       }
 
+      // Upcoming events (next 3 days, published only)
+      if (currentBranch?.id) {
+        try {
+          const nowIso = new Date().toISOString();
+          const in3DaysIso = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
+          const { data: upcomingEvents } = await supabase
+            .from("events")
+            .select("id, title, event_date, slug")
+            .eq("branch_id", currentBranch.id)
+            .eq("status", "published")
+            .gte("event_date", nowIso)
+            .lte("event_date", in3DaysIso)
+            .order("event_date", { ascending: true });
+
+          (upcomingEvents || []).forEach((ev: any) => {
+            const eventDate = new Date(ev.event_date);
+            const hoursUntil = Math.round((eventDate.getTime() - Date.now()) / (1000 * 60 * 60));
+            const isToday = hoursUntil <= 24;
+            const whenLabel = isToday
+              ? hoursUntil <= 1 ? "starting soon" : `in ${hoursUntil} hours`
+              : `in ${Math.ceil(hoursUntil / 24)} day${Math.ceil(hoursUntil / 24) > 1 ? "s" : ""}`;
+
+            items.push({
+              id: `event-upcoming-${ev.id}`,
+              type: isToday ? "danger" : "warning",
+              category: "event",
+              title: `Event ${whenLabel}: ${ev.title}`,
+              description: `${ev.title} is scheduled on ${eventDate.toLocaleString("en-IN", { timeZone: "Asia/Kolkata", dateStyle: "medium", timeStyle: "short" })}. Remind members to register.`,
+              actionRoute: `/admin/events/${ev.id}`,
+              timestamp: new Date(),
+            });
+          });
+        } catch (e) {
+          console.error("Failed to load upcoming events for notifications:", e);
+        }
+      }
+
+      // Expired members who checked in / marked attendance today
+      if (currentBranch?.id) {
+        try {
+          const todayIst = formatDate(today);
+          const { data: expiredCheckins } = await supabase
+            .from("attendance_logs")
+            .select("id, member_id, check_in_at, subscription_status, members!inner(id, name, phone, branch_id)")
+            .eq("branch_id", currentBranch.id)
+            .eq("date", todayIst)
+            .eq("user_type", "member")
+            .eq("subscription_status", "expired")
+            .order("check_in_at", { ascending: false });
+
+          const rows = (expiredCheckins || []) as any[];
+          const seenMembers = new Map<string, { id: string; name: string; phone: string }>();
+          rows.forEach((r) => {
+            if (r.member_id && r.members && !seenMembers.has(r.member_id)) {
+              seenMembers.set(r.member_id, {
+                id: r.member_id,
+                name: r.members.name || "Member",
+                phone: r.members.phone || "",
+              });
+            }
+          });
+
+          if (seenMembers.size > 0) {
+            const members = Array.from(seenMembers.values());
+            const namesPreview = members.slice(0, 3).map((m) => m.name).join(", ") +
+              (members.length > 3 ? ` and ${members.length - 3} more` : "");
+
+            items.push({
+              id: `expired-checkins-${todayIst}`,
+              type: "danger",
+              category: "expired_checkin",
+              title: `${members.length} Expired Member${members.length > 1 ? "s" : ""} Checked In Today`,
+              description: `${namesPreview} attended with an expired membership. Send a renewal reminder.`,
+              timestamp: new Date(),
+              memberMeta: {
+                mode: "expiring_today",
+                members: members.map((m) => ({ id: m.id, name: m.name, phone: m.phone, endDate: todayIst })),
+              },
+            });
+          }
+        } catch (e) {
+          console.error("Failed to load expired check-ins for notifications:", e);
+        }
+      }
+
       setNotifications(items);
     } catch (err) {
       console.error("Failed to fetch admin notifications:", err);
