@@ -316,16 +316,13 @@ InlineSpinner.displayName = "InlineSpinner";
  * Full-page loader using the prix-clip ring pattern with a soft halo.
  */
 export const PageLoader = memo(() => (
-  <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
-    <div className="relative w-12 h-12 text-primary">
-      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
+  <div className="flex items-center justify-center py-10 animate-fade-in">
+    <div className="relative w-7 h-7 text-primary">
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-md animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
       <span className="absolute inset-0 rounded-full animate-[spinner-orbit_1s_linear_infinite]">
-        <span className="block w-full h-full box-border rounded-full border-[5px] border-current animate-[prix-clip-fix_2s_linear_infinite]" />
+        <span className="block w-full h-full box-border rounded-full border-[3px] border-current animate-[prix-clip-fix_2s_linear_infinite]" />
       </span>
     </div>
-    <p className="text-xs font-medium text-muted-foreground tracking-wide animate-pulse">
-      Loading…
-    </p>
   </div>
 ));
 PageLoader.displayName = "PageLoader";
