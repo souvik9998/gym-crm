@@ -66,6 +66,7 @@ Deno.serve(async (req) => {
       endDate,
       staffCredentials,
       eventDetails,
+      holidayDetails,
     } = validation.data!;
 
     // Resolve branch name: use provided name, or look up from DB
