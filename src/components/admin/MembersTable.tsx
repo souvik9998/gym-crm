@@ -250,7 +250,10 @@ export const MembersTable = ({
       toast.error("Select an active promotional template in WhatsApp settings before sending.");
       return false;
     }
-    return window.confirm(`Send promotional message using Promo ${activeTemplate.slot}?\n\nTemplate ID: ${activeTemplate.templateId}\n\nThe message body, language and variables are configured in Zavu against this template ID.`);
+    const label = (activeTemplate.name && activeTemplate.name.trim()) || `Promo ${activeTemplate.slot}`;
+    const preview = (activeTemplate.previewBody && activeTemplate.previewBody.trim())
+      || "(No preview available — message body is configured by GymKloud.)";
+    return window.confirm(`Send promotional message: "${label}"?\n\n--- Message preview ---\n${preview}`);
   };
 
   const waOverlay = useWhatsAppOverlay();

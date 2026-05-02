@@ -89,7 +89,9 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       return;
     }
     setSavedSlot(activeSlot);
-    toast.success(activeSlot ? `Active promotional template set to "Promo ${activeSlot}"` : "Active promotional template cleared");
+    const chosen = slots.find((s) => s.slot === activeSlot);
+    const label = chosen?.name?.trim() || (activeSlot ? `Promo ${activeSlot}` : "");
+    toast.success(activeSlot ? `Active promotional template set to "${label}"` : "Active promotional template cleared");
     setSaving(false);
   };
 
@@ -143,14 +145,20 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
                     <RadioGroupItem value={String(s.slot)} id={`promo-${s.slot}`} className="mt-0.5" />
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium">{`Promo ${s.slot}`}</p>
+                        <p className="text-sm font-medium">{(s.name && s.name.trim()) || `Promo ${s.slot}`}</p>
                         {savedSlot === s.slot && (
                           <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Active</Badge>
                         )}
                       </div>
-                      <p className="text-[10px] lg:text-[11px] text-muted-foreground font-mono truncate">
-                        ID: {s.templateId}
-                      </p>
+                      {s.previewBody && s.previewBody.trim().length > 0 ? (
+                        <p className="text-[11px] lg:text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                          {s.previewBody}
+                        </p>
+                      ) : (
+                        <p className="text-[11px] text-muted-foreground italic">
+                          No preview available — message body is configured by GymKloud.
+                        </p>
+                      )}
                     </div>
                   </label>
                 ))}

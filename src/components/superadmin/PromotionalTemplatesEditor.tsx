@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
@@ -12,9 +13,11 @@ export interface PromoVariable {
   description?: string;
 }
 
-// Backwards-compatible shape (legacy fields kept so saved data from older versions
-// still loads). The editor now only manages `templateId` per slot — the real
-// template name, copy and variables live inside Zavu against that template ID.
+// The Super Admin configures the Zavu template ID (used to actually send the
+// message via Zavu) PLUS a friendly name and a preview body. The name and
+// preview body are shown to the gym admin so they can recognise which
+// promotional message they are sending — the Zavu template ID is never shown
+// outside Super Admin.
 export interface PromoTemplateSlot {
   slot: number;
   enabled: boolean;
@@ -31,6 +34,8 @@ const blankSlot = (slot: number): PromoTemplateSlot => ({
   slot,
   enabled: false,
   templateId: "",
+  name: "",
+  previewBody: "",
 });
 
 interface Props {
@@ -52,37 +57,38 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
     }
   }, [initial]);
 
-  const updateTemplateId = useCallback((slotNum: number, templateId: string) => {
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.slot === slotNum
-          ? { ...s, templateId, enabled: templateId.trim().length > 0 }
-          : s,
-      ),
-    );
-  }, []);
+  const updateSlot = useCallback(
+    (slotNum: number, patch: Partial<PromoTemplateSlot>) => {
+      setSlots((prev) =>
+        prev.map((s) => (s.slot === slotNum ? { ...s, ...patch } : s)),
+      );
+    },
+    [],
+  );
 
   const handleSave = async () => {
-    // Slots with a template ID become enabled. Empty slots are disabled.
-    // We preserve any legacy fields (name/previewBody/variables) so older
-    // configurations are not destroyed when re-saving.
-    const prepared: PromoTemplateSlot[] = slots.map((s) => ({
-      slot: s.slot,
-      templateId: s.templateId.trim(),
-      enabled: s.templateId.trim().length > 0,
-      // Internal label only — never shown to admin/member; helps Super Admin scan the list.
-      name: `Promo ${s.slot}`,
-      description: s.description ?? "",
-      previewBody: s.previewBody ?? "",
-      variables: Array.isArray(s.variables) ? s.variables : [],
-    }));
+    const prepared: PromoTemplateSlot[] = slots.map((s) => {
+      const tplId = (s.templateId ?? "").trim();
+      const name = (s.name ?? "").trim();
+      const body = (s.previewBody ?? "").trim();
+      return {
+        slot: s.slot,
+        templateId: tplId,
+        // A slot is "available to admin" when it has a Zavu template ID configured.
+        enabled: tplId.length > 0,
+        name: name || `Promo ${s.slot}`,
+        previewBody: body,
+        description: s.description ?? "",
+        variables: Array.isArray(s.variables) ? s.variables : [],
+      };
+    });
     await onSave(prepared);
     lastSyncedRef.current = JSON.stringify(normalize(prepared));
     setSlots(normalize(prepared));
-    toast.success("Promotional template IDs saved");
+    toast.success("Promotional templates saved");
   };
 
-  const filledCount = slots.filter((s) => s.templateId.trim().length > 0).length;
+  const filledCount = slots.filter((s) => (s.templateId ?? "").trim().length > 0).length;
 
   return (
     <Card>
@@ -91,10 +97,10 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
           <MegaphoneIcon className="w-5 h-5" /> Promotional Templates
         </CardTitle>
         <CardDescription>
-          Paste up to 4 approved Zavu promotional template IDs for this gym. The actual
-          message body, language and variables are configured inside Zavu against each
-          template ID — they are not editable here. The gym admin will simply pick which
-          slot to use as the active promo from their WhatsApp settings.
+          Configure up to 4 promotional templates for this gym. The <b>Zavu Template ID</b>
+          is used in the background to actually send the message and is never shown to
+          the gym admin. The <b>Name</b> and <b>Preview Body</b> are shown to the admin
+          so they can recognise which message they are sending.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -103,7 +109,7 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
         </div>
 
         {slots.map((s) => {
-          const filled = s.templateId.trim().length > 0;
+          const filled = (s.templateId ?? "").trim().length > 0;
           return (
             <div
               key={s.slot}
@@ -111,9 +117,9 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
                 filled ? "border-primary/40 bg-primary/[0.03]" : "border-border bg-muted/20"
               }`}
             >
-              <div className="flex items-center justify-between gap-3 mb-2">
+              <div className="flex items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="text-[10px]">Promo {s.slot}</Badge>
+                  <Badge variant="outline" className="text-[10px]">Slot {s.slot}</Badge>
                   {filled ? (
                     <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">
                       Available to admin
@@ -124,18 +130,42 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-xs">Approved Zavu Template ID</Label>
-                <Input
-                  value={s.templateId}
-                  onChange={(e) => updateTemplateId(s.slot, e.target.value)}
-                  placeholder="e.g. ks76tt87z42sgmmmdjgx6n7jch85yzp4"
-                  className="font-mono text-xs"
-                />
-                <p className="text-[11px] text-muted-foreground">
-                  The template body, variables and language come from Zavu. We only need
-                  the ID here — leave blank to disable this slot.
-                </p>
+              <div className="grid gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Template Name (shown to admin)</Label>
+                  <Input
+                    value={s.name ?? ""}
+                    onChange={(e) => updateSlot(s.slot, { name: e.target.value })}
+                    placeholder={`e.g. Diwali Offer, New Year Promo, Summer Discount`}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Preview Body (shown to admin)</Label>
+                  <Textarea
+                    value={s.previewBody ?? ""}
+                    onChange={(e) => updateSlot(s.slot, { previewBody: e.target.value })}
+                    placeholder="Type the exact message preview the admin should see before sending. Use {{1}}, {{2}}… or words like {name}, {branch_name} as placeholders."
+                    rows={4}
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    This is for showcase only — Zavu uses its own approved body for the
+                    actual message. Keep this preview close to the approved content.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Approved Zavu Template ID (hidden from admin)</Label>
+                  <Input
+                    value={s.templateId}
+                    onChange={(e) => updateSlot(s.slot, { templateId: e.target.value })}
+                    placeholder="e.g. ks76tt87z42sgmmmdjgx6n7jch85yzp4"
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-[11px] text-muted-foreground">
+                    Required to send. Leave blank to disable this slot.
+                  </p>
+                </div>
               </div>
             </div>
           );
@@ -143,7 +173,7 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
 
         <div className="flex justify-end">
           <Button onClick={handleSave} disabled={saving}>
-            {saving ? "Saving..." : "Save Promotional Template IDs"}
+            {saving ? "Saving..." : "Save Promotional Templates"}
           </Button>
         </div>
       </CardContent>
@@ -160,7 +190,7 @@ function normalize(initial: PromoTemplateSlot[]): PromoTemplateSlot[] {
         slot: t.slot,
         templateId: tplId,
         enabled: tplId.length > 0,
-        name: t.name ?? `Promo ${t.slot}`,
+        name: t.name ?? "",
         description: t.description ?? "",
         previewBody: t.previewBody ?? "",
         variables: Array.isArray(t.variables) ? t.variables : [],
