@@ -19,7 +19,7 @@ interface AdminLayoutProps {
 
 export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayoutProps) => {
   const navigate = useNavigate();
-  const { currentBranch, isLoading: branchLoading } = useBranch();
+  const { currentBranch } = useBranch();
   const { isStaffLoggedIn, staffUser, isLoading: staffLoading } = useStaffAuth();
   const { user: adminUser, isLoading, isAuthenticated } = useAuth();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
