@@ -358,7 +358,7 @@ const AdminDashboard = () => {
 
   return (
     <Fragment>
-      <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto">
+      <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto animate-fade-in">
         {/* Recommended Next Step (auto-hides when setup is complete) */}
         {canManageMembers && (
           <div data-tour="next-step">
