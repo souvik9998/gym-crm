@@ -1439,6 +1439,30 @@ interface UsageUpdateRequest {
           updates.zavu_templates = cleaned;
         }
 
+        if (Array.isArray(promotional_templates)) {
+          // Sanitize: keep only slots 1-4, clamp fields, drop empty entries
+          const cleaned = promotional_templates
+            .filter((t) => t && Number.isInteger(t.slot) && t.slot >= 1 && t.slot <= 4)
+            .map((t) => ({
+              slot: t.slot,
+              enabled: t.enabled !== false,
+              name: typeof t.name === "string" ? t.name.trim().slice(0, 80) : "",
+              templateId: typeof t.templateId === "string" ? t.templateId.trim().slice(0, 200) : "",
+              description: typeof t.description === "string" ? t.description.trim().slice(0, 500) : "",
+              previewBody: typeof t.previewBody === "string" ? t.previewBody.slice(0, 2000) : "",
+              variables: Array.isArray(t.variables)
+                ? t.variables
+                    .filter((v) => v && typeof v.key === "string" && v.key.trim().length > 0)
+                    .slice(0, 12)
+                    .map((v) => ({
+                      key: v.key.trim().slice(0, 60),
+                      description: typeof v.description === "string" ? v.description.trim().slice(0, 200) : "",
+                    }))
+                : [],
+            }));
+          updates.promotional_templates = cleaned;
+        }
+
         const { error: upsertError } = await supabase
           .from("tenant_messaging_config")
           .upsert(updates, { onConflict: "tenant_id" });
