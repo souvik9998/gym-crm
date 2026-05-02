@@ -80,10 +80,14 @@ export interface PaginatedPaymentsResponse {
   data: PaymentWithDetails[];
   nextCursor: number | null;
   totalCount: number;
+  totalAmount: number;
 }
 
 /**
- * Fetch payments with pagination (cursor-based using offset)
+ * Fetch payments with pagination (cursor-based using offset).
+ * `totalAmount` is computed across ALL payments for the branch (not just
+ * the current page) so the UI can display a true grand total that does
+ * not change as the user scrolls / loads more pages.
  */
 export async function fetchPaymentsPaginated(
   branchId: string | undefined,
@@ -91,19 +95,26 @@ export async function fetchPaymentsPaginated(
   limit: number = 25
 ): Promise<PaginatedPaymentsResponse> {
   if (!branchId) {
-    return { data: [], nextCursor: null, totalCount: 0 };
+    return { data: [], nextCursor: null, totalCount: 0, totalAmount: 0 };
   }
 
-  // Get total count for the branch
-  const { count, error: countError } = await supabase
+  // Get total count + total amount in parallel with the page fetch.
+  // The aggregate query is cheap (server-side sum), so it's safe to run on
+  // every page request — TanStack Query also caches it via the queryKey.
+  const countPromise = supabase
     .from("payments")
     .select("*", { count: "exact", head: true })
     .eq("branch_id", branchId);
 
-  if (countError) throw countError;
+  // Pull just the amount column for branch — Postgres returns it quickly and
+  // we sum on the client. Keeps logic simple while still being independent of
+  // pagination. (For very large datasets, replace with an RPC that runs SUM().)
+  const amountsPromise = supabase
+    .from("payments")
+    .select("amount")
+    .eq("branch_id", branchId);
 
-  // Fetch paginated data
-  const { data, error } = await supabase
+  const pagePromise = supabase
     .from("payments")
     .select(`
       id,
@@ -123,9 +134,19 @@ export async function fetchPaymentsPaginated(
     .order("created_at", { ascending: false })
     .range(cursor, cursor + limit - 1);
 
+  const [{ count, error: countError }, { data: amountRows, error: amountError }, { data, error }] =
+    await Promise.all([countPromise, amountsPromise, pagePromise]);
+
+  if (countError) throw countError;
+  if (amountError) throw amountError;
   if (error) throw error;
 
   const totalCount = count || 0;
+  const totalAmount = (amountRows || []).reduce(
+    (sum: number, row: { amount: number | string | null }) => sum + Number(row?.amount || 0),
+    0,
+  );
+
   const fetchedData = (data || []).map((p: any) => {
     const er = p.event_registrations?.[0];
     return {
@@ -144,6 +165,7 @@ export async function fetchPaymentsPaginated(
     data: fetchedData,
     nextCursor,
     totalCount,
+    totalAmount,
   };
 }
 
