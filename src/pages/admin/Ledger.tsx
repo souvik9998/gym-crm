@@ -176,6 +176,12 @@ const AdminLedger = () => {
   const [selectedEntry, setSelectedEntry] = useState<LedgerEntry | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
 
+  // New: search + filter + chart view toggle
+  const [searchQuery, setSearchQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "income" | "expense">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [chartView, setChartView] = useState<"bar" | "donut">("bar");
+
   const handleViewEntry = (entry: LedgerEntry) => {
     setSelectedEntry(entry);
     setIsDetailOpen(true);
