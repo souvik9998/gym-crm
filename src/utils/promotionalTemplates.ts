@@ -13,8 +13,8 @@ export interface PromoSlotLike {
 
 const POSITION_DEFAULTS: Record<number, { label: string; defaultValue: string; autoLabel?: string }> = {
   1: { label: "Member name", defaultValue: "", autoLabel: "Auto member name" },
-  2: { label: "Offer / occasion", defaultValue: "limited time offer" },
-  3: { label: "Offer details", defaultValue: "exclusive fitness offer" },
+  2: { label: "Discount / offer", defaultValue: "20% discount" },
+  3: { label: "Duration", defaultValue: "7 days" },
   4: { label: "Limit / seats", defaultValue: "50" },
   5: { label: "Booking link", defaultValue: "Contact the gym" },
   6: { label: "Gym name", defaultValue: "", autoLabel: "Auto gym name" },
