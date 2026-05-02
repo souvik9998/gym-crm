@@ -341,6 +341,7 @@ export const MembersTable = ({
 
   const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!(await confirmActivePromotionalTemplate())) return;
     await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
   };
 
