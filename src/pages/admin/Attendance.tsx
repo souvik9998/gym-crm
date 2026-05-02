@@ -9,7 +9,7 @@ import { SimpleAttendanceTab } from "@/components/admin/attendance/SimpleAttenda
 import { SlotAttendanceTab } from "@/components/admin/attendance/SlotAttendanceTab";
 import { AttendanceHistoryTab } from "@/components/admin/attendance/AttendanceHistoryTab";
 import { AbsentAnalyticsTab } from "@/components/admin/attendance/AbsentAnalyticsTab";
-import { AttendanceSkeleton } from "@/components/admin/attendance/AttendanceSkeleton";
+import { AttendanceSectionSkeleton } from "@/components/ui/skeleton-loaders";
 import {
   UsersIcon,
   ChartBarIcon,
@@ -50,7 +50,7 @@ const Attendance = () => {
   // No full-page skeleton swap — route-level <Suspense> fallback already
   // showed AdminSectionSkeleton. Render nothing until branch + mode resolve,
   // then transition straight into real content.
-  if (!currentBranch?.id || isModeLoading) return null;
+  if (!currentBranch?.id || isModeLoading) return <AttendanceSectionSkeleton />;
 
   const isSlotMode = attendanceMode === "time_slot";
 
