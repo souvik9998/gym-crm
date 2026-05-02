@@ -4,19 +4,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { memo } from "react";
 
 /**
- * Dashboard stats skeleton
+ * Modern dashboard stats skeleton — mirrors the live StatCard layout
+ * (icon tile + value + label + trend pill) with subtle gradient washes
+ * and staggered fade-in so loading feels alive instead of static.
  */
+const STAT_TONES = [
+  "from-primary/8 via-primary/3",
+  "from-success/10 via-success/3",
+  "from-warning/10 via-warning/3",
+  "from-accent/10 via-accent/3",
+] as const;
+
 export const DashboardStatsSkeleton = memo(() => (
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Card key={i} className="border-0 shadow-sm">
-        <CardContent className="p-5">
-          <div className="flex items-center justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-24" />
+      <Card
+        key={i}
+        className={`relative overflow-hidden border border-border/60 shadow-sm bg-gradient-to-br ${STAT_TONES[i]} to-transparent animate-fade-in`}
+        style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
+      >
+        <CardContent className="p-4 md:p-5">
+          <div className="flex items-start justify-between gap-3">
+            <div className="space-y-2.5 flex-1 min-w-0">
+              <Skeleton className="h-3 w-20 rounded-full" />
+              <Skeleton className="h-7 md:h-8 w-24" />
+              <div className="flex items-center gap-1.5">
+                <Skeleton className="h-4 w-10 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+              </div>
             </div>
-            <Skeleton className="h-12 w-12 rounded-xl" />
+            <Skeleton className="h-11 w-11 md:h-12 md:w-12 rounded-2xl shrink-0" />
           </div>
         </CardContent>
       </Card>
@@ -179,27 +196,48 @@ export const PaymentHistorySkeleton = memo(() => (
 PaymentHistorySkeleton.displayName = "PaymentHistorySkeleton";
 
 /**
- * Inline loading spinner
+ * Inline loading spinner — modern dual-ring with counter-rotating accent.
+ * Inherits color via `text-*` so it adapts to any context.
  */
-export const InlineSpinner = memo(({ size = "sm" }: { size?: "sm" | "md" | "lg" }) => {
+export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) => {
   const sizeClasses = {
-    sm: "w-4 h-4 border-2",
-    md: "w-6 h-6 border-2",
-    lg: "w-8 h-8 border-4",
+    sm: "w-4 h-4",
+    md: "w-6 h-6",
+    lg: "w-8 h-8",
   };
-  
+
   return (
-    <div className={`${sizeClasses[size]} border-primary/30 border-t-primary rounded-full animate-spin`} />
+    <span
+      className={`relative inline-flex ${sizeClasses[size]} text-primary ${className ?? ""}`}
+      role="status"
+      aria-label="Loading"
+    >
+      <span className="absolute inset-0 rounded-full border-2 border-current/20 border-t-current animate-[spinner-orbit_0.7s_linear_infinite]" />
+      <span className="absolute inset-[20%] rounded-full border-2 border-current/30 border-b-current animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
+    </span>
   );
 });
 InlineSpinner.displayName = "InlineSpinner";
 
 /**
- * Full page loading state
+ * Full page loading state — modern stacked spinner with a soft halo so
+ * route transitions feel polished and quick instead of blank.
  */
 export const PageLoader = memo(() => (
-  <div className="flex items-center justify-center py-12">
-    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
+  <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
+    <div className="relative w-14 h-14 text-primary">
+      {/* Soft halo */}
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.4s_ease-in-out_infinite]" />
+      {/* Outer fast ring */}
+      <span className="absolute inset-0 rounded-full border-[3px] border-primary/15 border-t-primary animate-[spinner-orbit_0.7s_linear_infinite]" />
+      {/* Counter-rotating inner ring */}
+      <span className="absolute inset-2 rounded-full border-2 border-primary/25 border-b-primary animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
+      {/* Pulsing center dot */}
+      <span className="absolute inset-[42%] rounded-full bg-primary animate-[spinner-pulse_1.2s_ease-in-out_infinite]" />
+    </div>
+    <p className="text-xs font-medium text-muted-foreground tracking-wide animate-pulse">
+      Loading…
+    </p>
   </div>
 ));
 PageLoader.displayName = "PageLoader";
