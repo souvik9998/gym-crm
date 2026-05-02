@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -45,9 +45,17 @@ interface Props {
 
 export default function PromotionalTemplatesEditor({ initial, onSave, saving = false }: Props) {
   const [slots, setSlots] = useState<PromoTemplateSlot[]>(() => normalize(initial));
+  // Track the last "remote" signature we synced from so we don't blow away
+  // local edits every time the parent re-renders with a fresh array reference.
+  const lastSyncedRef = useRef<string>(JSON.stringify(normalize(initial)));
 
   useEffect(() => {
-    setSlots(normalize(initial));
+    const incoming = normalize(initial);
+    const sig = JSON.stringify(incoming);
+    if (sig !== lastSyncedRef.current) {
+      lastSyncedRef.current = sig;
+      setSlots(incoming);
+    }
   }, [initial]);
 
   const update = useCallback((slotNum: number, patch: Partial<PromoTemplateSlot>) => {

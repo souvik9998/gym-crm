@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -348,8 +348,8 @@ export default function MessagingProviderTab({ tenantId }: Props) {
       )}
 
       {/* Promotional 4-slot templates (independent of active provider — admin always sees these) */}
-      <PromotionalTemplatesEditor
-        initial={config?.promotional_templates ?? []}
+      <MemoizedPromoEditor
+        templates={config?.promotional_templates}
         onSave={savePromotionalTemplates}
         saving={saving}
       />
@@ -371,3 +371,20 @@ export default function MessagingProviderTab({ tenantId }: Props) {
     </div>
   );
 }
+
+// Wrapper that stabilises the `initial` prop reference so the editor's internal
+// state isn't reset every time the parent re-renders (e.g. user typing in the
+// test-phone field). It only updates when the actual template content changes.
+const MemoizedPromoEditor = ({
+  templates,
+  onSave,
+  saving,
+}: {
+  templates: PromoTemplateSlot[] | undefined;
+  onSave: (t: PromoTemplateSlot[]) => Promise<void>;
+  saving: boolean;
+}) => {
+  const sig = JSON.stringify(templates ?? []);
+  const stable = useMemo(() => (templates ?? []) as PromoTemplateSlot[], [sig]);
+  return <PromotionalTemplatesEditor initial={stable} onSave={onSave} saving={saving} />;
+};
