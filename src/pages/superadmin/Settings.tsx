@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useIsSuperAdmin } from "@/hooks/useUserRoles";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
