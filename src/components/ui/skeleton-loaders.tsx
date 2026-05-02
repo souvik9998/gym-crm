@@ -94,6 +94,60 @@ export const DashboardFullSkeleton = memo(() => (
 DashboardFullSkeleton.displayName = "DashboardFullSkeleton";
 
 /**
+ * Generic admin section skeleton used as route/chunk fallback inside the
+ * already-mounted admin layout. Avoids showing a separate spinner in the main
+ * content area while lazy pages load.
+ */
+export const AdminSectionSkeleton = memo(() => (
+  <div className="space-y-3 md:space-y-5 max-w-7xl mx-auto animate-fade-in-soft">
+    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-3.5 w-64 max-w-full" />
+      </div>
+      <div className="flex gap-2">
+        <Skeleton className="h-8 w-8 rounded-md" />
+        <Skeleton className="h-8 w-24 rounded-md" />
+      </div>
+    </div>
+
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Card key={i} className="border border-border/60 shadow-sm">
+          <CardContent className="p-3 lg:p-4 space-y-2">
+            <Skeleton className="h-6 w-14" />
+            <Skeleton className="h-3.5 w-24" />
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="px-3 sm:px-4 lg:px-6 py-3 border-b space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <Skeleton className="h-8 w-24 rounded-md" />
+          <Skeleton className="h-8 w-24 rounded-md" />
+          <Skeleton className="h-8 flex-1 min-w-40 max-w-md rounded-md" />
+        </div>
+      </CardHeader>
+      <CardContent className="p-3 sm:p-4 lg:p-6 space-y-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+            <div className="space-y-2 flex-1 min-w-0">
+              <Skeleton className="h-4 w-40 max-w-full" />
+              <Skeleton className="h-3 w-64 max-w-full" />
+            </div>
+            <Skeleton className="h-7 w-20 rounded-md hidden sm:block" />
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  </div>
+));
+AdminSectionSkeleton.displayName = "AdminSectionSkeleton";
+
+/**
  * Table skeleton for members/payments
  */
 export const TableSkeleton = memo(({ rows = 5, columns = 5 }: { rows?: number; columns?: number }) => (
