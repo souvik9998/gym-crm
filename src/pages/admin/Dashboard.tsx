@@ -366,8 +366,7 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Grid — spinner-then-skeleton-then-content pattern:
-            Suspense PageLoader covers chunk load, then this skeleton covers data fetch. */}
+        {/* Stats Grid — use skeleton only; no separate main-section spinner. */}
         {statsLoading && !stats ? (
           <div key="stats-skeleton" className="animate-fade-in-soft">
             <DashboardStatsSkeleton />
