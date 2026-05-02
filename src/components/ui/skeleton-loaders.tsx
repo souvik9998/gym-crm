@@ -23,7 +23,12 @@ export const DashboardStatsSkeleton = memo(() => (
         className={`relative overflow-hidden border border-border/60 shadow-sm bg-gradient-to-br ${STAT_TONES[i]} to-transparent animate-fade-in`}
         style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
       >
-        <CardContent className="p-4 md:p-5">
+        {/* Decorative shimmer wash */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent animate-[shimmer_2.4s_ease-in-out_infinite]"
+        />
+        <CardContent className="relative p-4 md:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2.5 flex-1 min-w-0">
               <Skeleton className="h-3 w-20 rounded-full" />
@@ -41,6 +46,94 @@ export const DashboardStatsSkeleton = memo(() => (
   </div>
 ));
 DashboardStatsSkeleton.displayName = "DashboardStatsSkeleton";
+
+/**
+ * Full dashboard skeleton — hero header + quick actions + stats + chart + list.
+ * Use as the top-level loading fallback for the admin dashboard.
+ */
+export const DashboardFullSkeleton = memo(() => (
+  <div className="space-y-5 md:space-y-6 animate-fade-in">
+    {/* Hero / greeting */}
+    <Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.05] to-transparent animate-[shimmer_2.2s_ease-in-out_infinite]"
+      />
+      <CardContent className="relative p-5 md:p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-2.5 flex-1 min-w-0">
+            <Skeleton className="h-3 w-24 rounded-full" />
+            <Skeleton className="h-6 md:h-7 w-56 max-w-full" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="hidden sm:block h-10 w-32 rounded-md" />
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Quick actions */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className="h-12 rounded-xl animate-fade-in"
+          style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+        />
+      ))}
+    </div>
+
+    {/* Stats */}
+    <DashboardStatsSkeleton />
+
+    {/* Chart + side list */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+      <Card className="lg:col-span-2 border-border/60">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-56" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-[220px] md:h-[260px] flex items-end gap-2 md:gap-3 px-1">
+            {Array.from({ length: 14 }).map((_, i) => {
+              const h = 25 + ((i * 13) % 70);
+              return (
+                <Skeleton
+                  key={i}
+                  className="flex-1 rounded-t-md animate-fade-in"
+                  style={{ height: `${h}%`, animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
+                />
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-44" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 animate-fade-in"
+              style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
+            >
+              <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5 min-w-0">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-5 w-12 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+));
+DashboardFullSkeleton.displayName = "DashboardFullSkeleton";
 
 /**
  * Table skeleton for members/payments
@@ -196,44 +289,39 @@ export const PaymentHistorySkeleton = memo(() => (
 PaymentHistorySkeleton.displayName = "PaymentHistorySkeleton";
 
 /**
- * Inline loading spinner — modern dual-ring with counter-rotating accent.
- * Inherits color via `text-*` so it adapts to any context.
+ * Inline prix-clip ring spinner. Inherits color via `currentColor`.
  */
 export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) => {
   const sizeClasses = {
-    sm: "w-4 h-4",
-    md: "w-6 h-6",
-    lg: "w-8 h-8",
+    sm: "w-4 h-4 border-2",
+    md: "w-6 h-6 border-[3px]",
+    lg: "w-8 h-8 border-[3px]",
   };
 
   return (
     <span
-      className={`relative inline-flex ${sizeClasses[size]} text-primary ${className ?? ""}`}
+      className={`relative inline-block rounded-full text-primary animate-[spinner-orbit_1s_linear_infinite] ${className ?? ""}`}
       role="status"
       aria-label="Loading"
     >
-      <span className="absolute inset-0 rounded-full border-2 border-current/20 border-t-current animate-[spinner-orbit_0.7s_linear_infinite]" />
-      <span className="absolute inset-[20%] rounded-full border-2 border-current/30 border-b-current animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
+      <span
+        className={`block box-border rounded-full border-current animate-[prix-clip-fix_2s_linear_infinite] ${sizeClasses[size]}`}
+      />
     </span>
   );
 });
 InlineSpinner.displayName = "InlineSpinner";
 
 /**
- * Full page loading state — modern stacked spinner with a soft halo so
- * route transitions feel polished and quick instead of blank.
+ * Full-page loader using the prix-clip ring pattern with a soft halo.
  */
 export const PageLoader = memo(() => (
   <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
-    <div className="relative w-14 h-14 text-primary">
-      {/* Soft halo */}
-      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.4s_ease-in-out_infinite]" />
-      {/* Outer fast ring */}
-      <span className="absolute inset-0 rounded-full border-[3px] border-primary/15 border-t-primary animate-[spinner-orbit_0.7s_linear_infinite]" />
-      {/* Counter-rotating inner ring */}
-      <span className="absolute inset-2 rounded-full border-2 border-primary/25 border-b-primary animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
-      {/* Pulsing center dot */}
-      <span className="absolute inset-[42%] rounded-full bg-primary animate-[spinner-pulse_1.2s_ease-in-out_infinite]" />
+    <div className="relative w-12 h-12 text-primary">
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
+      <span className="absolute inset-0 rounded-full animate-[spinner-orbit_1s_linear_infinite]">
+        <span className="block w-full h-full box-border rounded-full border-[5px] border-current animate-[prix-clip-fix_2s_linear_infinite]" />
+      </span>
     </div>
     <p className="text-xs font-medium text-muted-foreground tracking-wide animate-pulse">
       Loading…

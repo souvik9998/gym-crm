@@ -164,6 +164,13 @@ export default {
   				'0%, 100%': { transform: 'scale(0.85)', opacity: '0.6' },
   				'50%': { transform: 'scale(1)', opacity: '1' }
   			},
+  			'prix-clip-fix': {
+  				'0%':   { clipPath: 'polygon(50% 50%, 0 0, 0 0, 0 0, 0 0, 0 0)' },
+  				'25%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 0, 100% 0, 100% 0)' },
+  				'50%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%)' },
+  				'75%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 100%)' },
+  				'100%': { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 0)' }
+  			},
   			'refresh-spin': {
   				from: { transform: 'rotate(0deg)' },
   				to: { transform: 'rotate(-360deg)' }
@@ -197,8 +204,9 @@ export default {
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 1.6s ease-in-out infinite',
-  			'spinner-orbit': 'spinner-orbit 0.8s linear infinite',
+  			'spinner-orbit': 'spinner-orbit 1s linear infinite',
   			'spinner-pulse': 'spinner-pulse 1.2s ease-in-out infinite',
+  			'prix-clip-fix': 'prix-clip-fix 2s linear infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
   			wave: 'wave 2.4s ease-in-out 1',
   			'scale-in': 'scale-in 0.18s ease-out'
