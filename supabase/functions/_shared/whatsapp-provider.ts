@@ -430,13 +430,37 @@ async function sendViaZavu(
   }
 
   const templateVariableCount = await getZavuTemplateVariableCount(apiKey, templateId);
-  const effectiveVariableOrder = templateVariableCount
-    ? variableOrder.slice(0, templateVariableCount)
-    : variableOrder;
   const templateVariables: Record<string, string> = {};
-  effectiveVariableOrder.forEach((key, i) => {
+
+  // Map admin-defined variable keys to positional {{1}}, {{2}}, ...
+  variableOrder.forEach((key, i) => {
     templateVariables[String(i + 1)] = variables[key] ?? "";
   });
+
+  // If Zavu reports the approved template needs more variables than the admin
+  // configured (common for promotional templates where the body has {{1}}..{{4}}
+  // but no variable keys were defined yet), backfill the missing positions
+  // with sensible defaults so the send is not rejected for parameter-count mismatch.
+  if (templateVariableCount && templateVariableCount > Object.keys(templateVariables).length) {
+    const fallbacks: string[] = [
+      String(variables.name ?? variables.member_name ?? "Member"),
+      String(variables.branch_name ?? variables.gym_name ?? ""),
+      String(variables.offer ?? ""),
+      String(variables.url ?? variables.link ?? ""),
+    ];
+    for (let i = 1; i <= templateVariableCount; i++) {
+      if (!templateVariables[String(i)]) {
+        templateVariables[String(i)] = fallbacks[i - 1] ?? "";
+      }
+    }
+  }
+
+  // Trim if admin defined more variables than the approved template uses.
+  if (templateVariableCount && Object.keys(templateVariables).length > templateVariableCount) {
+    for (const key of Object.keys(templateVariables)) {
+      if (Number(key) > templateVariableCount) delete templateVariables[key];
+    }
+  }
 
   try {
     const headers: Record<string, string> = {
