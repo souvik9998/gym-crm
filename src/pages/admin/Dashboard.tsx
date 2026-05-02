@@ -20,11 +20,11 @@ import {
   BarsArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import {
-  UsersIcon as UsersIconSolid,
-  ArrowTrendingUpIcon as ArrowTrendingUpIconSolid,
-  ExclamationTriangleIcon as ExclamationTriangleIconSolid,
-  CreditCardIcon as CreditCardIconSolid,
-} from "@heroicons/react/24/solid";
+  Users as UsersIconSolid,
+  TrendingUp as ArrowTrendingUpIconSolid,
+  AlertTriangle as ExclamationTriangleIconSolid,
+  CreditCard as CreditCardIconSolid,
+} from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
@@ -85,7 +85,7 @@ const StatCard = memo(({
         </p>
       </div>
       <div className={`w-7 h-7 md:w-9 md:h-9 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} />
+        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} strokeWidth={1.75} />
       </div>
     </CardContent>
 
@@ -97,7 +97,7 @@ const StatCard = memo(({
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
         <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-5 h-5 ${iconClass}`} />
+          <Icon className={`w-5 h-5 ${iconClass}`} strokeWidth={1.75} />
         </div>
       </div>
     </CardContent>
