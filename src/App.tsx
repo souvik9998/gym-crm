@@ -222,10 +222,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/staff/dashboard" element={
-        <Suspense fallback={<PageLoader />}><StaffDashboard /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><StaffDashboard /></Suspense>
       } />
       <Route path="/staff/time-slots" element={
-        <Suspense fallback={<PageLoader />}><StaffTimeSlots /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><StaffTimeSlots /></Suspense>
       } />
     </Route>
 
@@ -235,28 +235,28 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/superadmin/dashboard" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminDashboard /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminDashboard /></Suspense>
       } />
       <Route path="/superadmin/tenants" element={
-        <Suspense fallback={<PageLoader />}><TenantList /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><TenantList /></Suspense>
       } />
       <Route path="/superadmin/tenants/new" element={
-        <Suspense fallback={<PageLoader />}><CreateTenant /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><CreateTenant /></Suspense>
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
-        <Suspense fallback={<PageLoader />}><TenantDetail /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><TenantDetail /></Suspense>
       } />
       <Route path="/superadmin/users" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminUsers /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminUsers /></Suspense>
       } />
       <Route path="/superadmin/analytics" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminAnalytics /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminAnalytics /></Suspense>
       } />
       <Route path="/superadmin/audit-logs" element={
-        <Suspense fallback={<PageLoader />}><AuditLogs /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AuditLogs /></Suspense>
       } />
       <Route path="/superadmin/settings" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminSettings /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminSettings /></Suspense>
       } />
     </Route>
 
