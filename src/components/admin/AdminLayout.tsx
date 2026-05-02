@@ -51,56 +51,18 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     localStorage.setItem("admin-sidebar-collapsed", String(collapsed));
   };
 
-  // Show skeleton while auth OR branch is loading to prevent stale data flash
-  if (isLoading || staffLoading || branchLoading) {
-    return (
-      <div className="min-h-screen bg-background">
-        {/* Skeleton sidebar - desktop only */}
-        <div className="hidden lg:block fixed left-0 top-0 h-screen w-64 bg-card border-r border-border">
-          <div className="p-4 space-y-2 border-b border-border">
-            <Skeleton className="h-10 w-10 rounded-xl" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-          <div className="p-3 space-y-1 mt-2">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <Skeleton key={i} className="h-9 w-full rounded-lg" />
-            ))}
-          </div>
-        </div>
-        {/* Skeleton main content */}
-        <div className="lg:pl-64">
-          {/* Skeleton header */}
-          <div className="h-14 border-b border-border bg-card px-4 flex items-center gap-4">
-            <Skeleton className="h-5 w-40" />
-            <div className="ml-auto flex gap-2">
-              <Skeleton className="h-8 w-8 rounded-lg" />
-              <Skeleton className="h-8 w-8 rounded-full" />
-            </div>
-          </div>
-          {/* Skeleton page content */}
-          <div className="p-3 sm:p-4 lg:p-6 space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-              {Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="bg-card rounded-xl border border-border p-5">
-                  <Skeleton className="h-8 w-16 mb-2" />
-                  <Skeleton className="h-3 w-24" />
-                </div>
-              ))}
-            </div>
-            <div className="bg-card rounded-xl border border-border p-4">
-              <Skeleton className="h-5 w-32 mb-4" />
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full mb-2" />
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  // While auth/branch resolves, render NOTHING from this layout — the
+  // ProtectedRoute wrapper already gates rendering until auth is ready, and
+  // the route-level <Suspense> fallback (DashboardFullSkeleton /
+  // AdminSectionSkeleton) is the SINGLE skeleton the user sees. Showing
+  // a separate layout-level skeleton here would cause the dreaded
+  // "skeleton-swap" flash that the user is complaining about.
+  // Once auth is ready, the real sidebar+header mount once and stay
+  // mounted across navigations; only the main content swaps.
 
   // Check if either admin or staff is logged in
   const isUserAuthenticated = isAuthenticated || isStaffLoggedIn;
+  if (isLoading || staffLoading) return null;
   if (!isUserAuthenticated) return null;
 
   // Check if this is a staff session by examining the email pattern
