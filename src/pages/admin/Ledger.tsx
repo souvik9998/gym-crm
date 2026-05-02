@@ -712,177 +712,63 @@ const AdminLedger = () => {
     return <LedgerSkeleton />;
   }
 
+  const presetButtons = [
+    { value: "today", label: "Today" },
+    { value: "7days", label: "7D" },
+    { value: "15days", label: "15D" },
+    { value: "30days", label: "30D" },
+    { value: "this_month", label: "This Month" },
+    { value: "custom", label: "Custom" },
+  ];
+
   return (
     <Fragment>
-      <div className="max-w-6xl mx-auto space-y-6">
-        {/* Date Range Selector */}
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-center gap-3">
-              <Label className="text-sm font-medium">Date Range:</Label>
-              <div className="flex flex-wrap gap-2">
-                {[
-                  { value: "today", label: "Today" },
-                  { value: "7days", label: "7 Days" },
-                  { value: "15days", label: "15 Days" },
-                  { value: "30days", label: "30 Days" },
-                  { value: "this_month", label: "This Month" },
-                  { value: "custom", label: "Custom" },
-                ].map((preset) => (
-                  <Button
-                    key={preset.value}
-                    variant={dateRangePreset === preset.value ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setDateRangePreset(preset.value as DateRangePreset)}
-                  >
-                    {preset.label}
-                  </Button>
-                ))}
+      <div className="max-w-7xl mx-auto space-y-5 sm:space-y-6 animate-fade-in">
+        {/* HERO HEADER */}
+        <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-primary/10 via-background to-accent/10 p-5 sm:p-7">
+          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+          <div className="absolute -left-16 -bottom-16 h-48 w-48 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
+          <div className="relative flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className="flex h-11 w-11 sm:h-12 sm:w-12 items-center justify-center rounded-xl bg-primary/15 text-primary shadow-sm">
+                <BookOpenIcon className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
-              
-              {dateRangePreset === "custom" && (
-                <div className="flex items-center gap-2 ml-4">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <CalendarIcon className="w-4 h-4" />
-                        {customStartDate ? format(customStartDate, "MMM dd") : "Start"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={customStartDate}
-                        onSelect={setCustomStartDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                  <span className="text-muted-foreground">to</span>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <CalendarIcon className="w-4 h-4" />
-                        {customEndDate ? format(customEndDate, "MMM dd") : "End"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={customEndDate}
-                        onSelect={setCustomEndDate}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="border-l-4 border-l-success">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Income</p>
-                  <p className="text-2xl font-bold text-success">
-                    ₹{totals.income.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 bg-success/10 rounded-lg">
-                  <ArrowUpRightIcon className="w-6 h-6 text-success" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-destructive">
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Expenses</p>
-                  <p className="text-2xl font-bold text-destructive">
-                    ₹{totals.expense.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className="p-3 bg-destructive/10 rounded-lg">
-                  <ArrowDownRightIcon className="w-6 h-6 text-destructive" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className={cn("border-l-4", totals.profit >= 0 ? "border-l-primary" : "border-l-destructive")}>
-            <CardContent className="p-5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Net Profit/Loss</p>
-                  <p className={cn(
-                    "text-2xl font-bold",
-                    totals.profit >= 0 ? "text-primary" : "text-destructive"
-                  )}>
-                    {totals.profit >= 0 ? "+" : ""}₹{totals.profit.toLocaleString("en-IN")}
-                  </p>
-                </div>
-                <div className={cn("p-3 rounded-lg", totals.profit >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
-                  {totals.profit >= 0 ? (
-                    <ArrowTrendingUpIcon className="w-6 h-6 text-primary" />
-                  ) : (
-                    <ArrowTrendingDownIcon className="w-6 h-6 text-destructive" />
+              <div>
+                <h1 className="text-xl sm:text-2xl font-semibold tracking-tight">Ledger</h1>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <CalendarIcon className="h-3.5 w-3.5" />
+                    {dateRangeLabel}
+                  </span>
+                  <span className="text-muted-foreground/40">•</span>
+                  <span>{entries.length} {entries.length === 1 ? "transaction" : "transactions"}</span>
+                  {isEntriesFetching && (
+                    <>
+                      <span className="text-muted-foreground/40">•</span>
+                      <span className="inline-flex items-center gap-1.5 text-primary">
+                        <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                        Refreshing
+                      </span>
+                    </>
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Chart */}
-        {chartData.length > 0 && (
-          <Card>
-            <CardHeader className="px-3 py-3 sm:p-6">
-              <CardTitle className="text-base sm:text-xl">Income vs Expenses</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">Daily breakdown for the selected period</CardDescription>
-            </CardHeader>
-            <CardContent className="px-1 pb-3 pt-0 sm:p-6 sm:pt-0">
-              <div className="h-[220px] sm:h-[280px] lg:h-[300px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={chartData} margin={isMobile ? { top: 4, right: 8, left: -10, bottom: 4 } : undefined}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="date" className="text-xs" tick={isMobile ? { fontSize: 10 } : undefined} />
-                    <YAxis className="text-xs" tick={isMobile ? { fontSize: 10 } : undefined} width={isMobile ? 36 : undefined} />
-                    <Tooltip
-                      contentStyle={{
-                        backgroundColor: "hsl(var(--card))",
-                        border: "1px solid hsl(var(--border))",
-                        borderRadius: "8px",
-                      }}
-                      formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, ""]}
-                    />
-                    <Legend wrapperStyle={isMobile ? { fontSize: 11 } : undefined} />
-                    <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Entries Table */}
-        <Card>
-          <CardHeader className="px-3 py-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div>
-                <CardTitle className="text-base sm:text-xl">Transactions</CardTitle>
-                <CardDescription className="text-xs sm:text-sm">All income and expense entries</CardDescription>
-              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size={isMobile ? "sm" : "default"}
+                onClick={handleExport}
+                disabled={entries.length === 0}
+                className="gap-2 bg-background/60 backdrop-blur"
+              >
+                <ArrowDownTrayIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Export</span>
+              </Button>
               <Dialog open={isAddExpenseOpen} onOpenChange={setIsAddExpenseOpen}>
                 <DialogTrigger asChild>
-                  <Button size={isMobile ? "sm" : "default"} className="w-full sm:w-auto">
-                    <PlusIcon className="w-4 h-4 mr-2" />
+                  <Button size={isMobile ? "sm" : "default"} className="gap-2 shadow-sm">
+                    <PlusIcon className="h-4 w-4" />
                     Add Expense
                   </Button>
                 </DialogTrigger>
@@ -894,29 +780,19 @@ const AdminLedger = () => {
                   <div className="space-y-4 pt-4">
                     <div className="space-y-2">
                       <Label>Category *</Label>
-                      <Select 
-                        value={expenseCategory} 
+                      <Select
+                        value={expenseCategory}
                         onValueChange={(value) => {
                           setExpenseCategory(value);
-                          if (value !== "trainer_percentage") {
-                            setSelectedTrainerId("");
-                          }
-                          if (value !== "staff_salary") {
-                            setSelectedStaffId("");
-                          }
-                          if (value !== "trainer_percentage" && value !== "staff_salary") {
-                            setExpenseAmount("");
-                          }
+                          if (value !== "trainer_percentage") setSelectedTrainerId("");
+                          if (value !== "staff_salary") setSelectedStaffId("");
+                          if (value !== "trainer_percentage" && value !== "staff_salary") setExpenseAmount("");
                         }}
                       >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
+                        <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                         <SelectContent>
                           {EXPENSE_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
+                            <SelectItem key={cat.value} value={cat.value}>{cat.label}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -924,11 +800,7 @@ const AdminLedger = () => {
                     {expenseCategory === "trainer_percentage" && (
                       <div className="space-y-2">
                         <Label>Trainer *</Label>
-                        <Select 
-                          value={selectedTrainerId} 
-                          onValueChange={handleTrainerSelect}
-                          disabled={isLoadingTrainers}
-                        >
+                        <Select value={selectedTrainerId} onValueChange={handleTrainerSelect} disabled={isLoadingTrainers}>
                           <SelectTrigger>
                             <SelectValue placeholder={isLoadingTrainers ? "Loading trainers..." : "Select trainer"} />
                           </SelectTrigger>
@@ -951,11 +823,7 @@ const AdminLedger = () => {
                     {expenseCategory === "staff_salary" && (
                       <div className="space-y-2">
                         <Label>Staff Member *</Label>
-                        <Select 
-                          value={selectedStaffId} 
-                          onValueChange={handleStaffSelect}
-                          disabled={isLoadingStaff}
-                        >
+                        <Select value={selectedStaffId} onValueChange={handleStaffSelect} disabled={isLoadingStaff}>
                           <SelectTrigger>
                             <SelectValue placeholder={isLoadingStaff ? "Loading staff..." : "Select staff member"} />
                           </SelectTrigger>
@@ -987,12 +855,7 @@ const AdminLedger = () => {
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label>Amount (₹) *</Label>
-                        <Input
-                          type="number"
-                          value={expenseAmount}
-                          onChange={(e) => setExpenseAmount(e.target.value)}
-                          placeholder="0"
-                        />
+                        <Input type="number" value={expenseAmount} onChange={(e) => setExpenseAmount(e.target.value)} placeholder="0" />
                       </div>
                       <div className="space-y-2">
                         <Label>Date</Label>
@@ -1004,28 +867,17 @@ const AdminLedger = () => {
                             </Button>
                           </PopoverTrigger>
                           <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar
-                              mode="single"
-                              selected={expenseDate}
-                              onSelect={(date) => date && setExpenseDate(date)}
-                              initialFocus
-                            />
+                            <Calendar mode="single" selected={expenseDate} onSelect={(date) => date && setExpenseDate(date)} initialFocus />
                           </PopoverContent>
                         </Popover>
                       </div>
                     </div>
                     <div className="space-y-2">
                       <Label>Notes (optional)</Label>
-                      <Input
-                        value={expenseNotes}
-                        onChange={(e) => setExpenseNotes(e.target.value)}
-                        placeholder="Additional notes..."
-                      />
+                      <Input value={expenseNotes} onChange={(e) => setExpenseNotes(e.target.value)} placeholder="Additional notes..." />
                     </div>
                     <div className="flex gap-3 pt-4">
-                      <Button variant="outline" className="flex-1" onClick={() => setIsAddExpenseOpen(false)}>
-                        Cancel
-                      </Button>
+                      <Button variant="outline" className="flex-1" onClick={() => setIsAddExpenseOpen(false)}>Cancel</Button>
                       <Button className="flex-1 gap-2" onClick={handleAddExpense} disabled={isSaving}>
                         {isSaving && <ButtonSpinner />}
                         {isSaving ? "Adding..." : "Add Expense"}
@@ -1035,211 +887,549 @@ const AdminLedger = () => {
                 </DialogContent>
               </Dialog>
             </div>
+          </div>
+
+          {/* Date range pills inside header */}
+          <div className="relative mt-5 flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center rounded-lg border bg-background/70 backdrop-blur p-1 shadow-sm">
+              {presetButtons.map((p) => (
+                <button
+                  key={p.value}
+                  onClick={() => setDateRangePreset(p.value as DateRangePreset)}
+                  className={cn(
+                    "px-3 py-1.5 text-xs sm:text-sm rounded-md transition-all font-medium",
+                    dateRangePreset === p.value
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  )}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+            {dateRangePreset === "custom" && (
+              <div className="flex items-center gap-2">
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 bg-background/70 backdrop-blur">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customStartDate ? format(customStartDate, "MMM dd") : "Start"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={customStartDate} onSelect={setCustomStartDate} initialFocus />
+                  </PopoverContent>
+                </Popover>
+                <span className="text-muted-foreground text-sm">to</span>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="gap-2 bg-background/70 backdrop-blur">
+                      <CalendarIcon className="w-4 h-4" />
+                      {customEndDate ? format(customEndDate, "MMM dd") : "End"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar mode="single" selected={customEndDate} onSelect={setCustomEndDate} initialFocus />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* SUMMARY CARDS */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {/* Income */}
+          <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-success/15 via-success/5 to-transparent ring-1 ring-success/20 hover:ring-success/40 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-success/80">Income</p>
+                  <p className="text-2xl sm:text-[26px] font-bold text-success leading-tight">
+                    ₹{totals.income.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{totals.incomeCount} {totals.incomeCount === 1 ? "entry" : "entries"}</p>
+                </div>
+                <div className="rounded-xl bg-success/15 p-2.5 group-hover:scale-110 transition-transform">
+                  <ArrowUpRightIcon className="h-5 w-5 text-success" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Expenses */}
+          <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-destructive/15 via-destructive/5 to-transparent ring-1 ring-destructive/20 hover:ring-destructive/40 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-medium uppercase tracking-wider text-destructive/80">Expenses</p>
+                  <p className="text-2xl sm:text-[26px] font-bold text-destructive leading-tight">
+                    ₹{totals.expense.toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">{totals.expenseCount} {totals.expenseCount === 1 ? "entry" : "entries"}</p>
+                </div>
+                <div className="rounded-xl bg-destructive/15 p-2.5 group-hover:scale-110 transition-transform">
+                  <ArrowDownRightIcon className="h-5 w-5 text-destructive" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Net Profit */}
+          <Card className={cn(
+            "group relative overflow-hidden border-0 ring-1 transition-all hover:-translate-y-0.5 hover:shadow-lg",
+            totals.profit >= 0
+              ? "bg-gradient-to-br from-primary/15 via-primary/5 to-transparent ring-primary/20 hover:ring-primary/40"
+              : "bg-gradient-to-br from-destructive/15 via-destructive/5 to-transparent ring-destructive/20 hover:ring-destructive/40"
+          )}>
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className={cn(
+                    "text-xs font-medium uppercase tracking-wider",
+                    totals.profit >= 0 ? "text-primary/80" : "text-destructive/80"
+                  )}>Net P&L</p>
+                  <p className={cn(
+                    "text-2xl sm:text-[26px] font-bold leading-tight",
+                    totals.profit >= 0 ? "text-primary" : "text-destructive"
+                  )}>
+                    {totals.profit >= 0 ? "+" : "-"}₹{Math.abs(totals.profit).toLocaleString("en-IN")}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {totals.profit >= 0 ? "Profitable period" : "Loss for period"}
+                  </p>
+                </div>
+                <div className={cn(
+                  "rounded-xl p-2.5 group-hover:scale-110 transition-transform",
+                  totals.profit >= 0 ? "bg-primary/15" : "bg-destructive/15"
+                )}>
+                  {totals.profit >= 0
+                    ? <ArrowTrendingUpIcon className="h-5 w-5 text-primary" />
+                    : <ArrowTrendingDownIcon className="h-5 w-5 text-destructive" />}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Savings rate */}
+          <Card className="group relative overflow-hidden border-0 bg-gradient-to-br from-accent/15 via-accent/5 to-transparent ring-1 ring-accent/20 hover:ring-accent/40 transition-all hover:-translate-y-0.5 hover:shadow-lg">
+            <CardContent className="p-4 sm:p-5">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1 flex-1 min-w-0">
+                  <p className="text-xs font-medium uppercase tracking-wider text-accent/80">Margin</p>
+                  <p className="text-2xl sm:text-[26px] font-bold text-accent leading-tight">
+                    {totals.income > 0 ? `${totals.savingsRate.toFixed(1)}%` : "—"}
+                  </p>
+                  <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className={cn(
+                        "h-full rounded-full transition-all duration-500",
+                        totals.savingsRate >= 0 ? "bg-accent" : "bg-destructive"
+                      )}
+                      style={{ width: `${Math.min(Math.max(totals.savingsRate, 0), 100)}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="rounded-xl bg-accent/15 p-2.5 ml-3 group-hover:scale-110 transition-transform">
+                  <SparklesIcon className="h-5 w-5 text-accent" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* CHARTS ROW */}
+        {entries.length > 0 && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+            {/* Bar / Donut chart */}
+            <Card className="lg:col-span-2 overflow-hidden">
+              <CardHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b bg-muted/30">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                      <ChartBarIcon className="h-4 w-4 text-primary" />
+                      Cash Flow
+                    </CardTitle>
+                    <CardDescription className="text-xs sm:text-sm mt-0.5">
+                      {chartView === "bar" ? "Daily income vs expenses" : "Expense breakdown by category"}
+                    </CardDescription>
+                  </div>
+                  <Tabs value={chartView} onValueChange={(v) => setChartView(v as "bar" | "donut")}>
+                    <TabsList className="h-8 p-0.5">
+                      <TabsTrigger value="bar" className="h-7 px-2.5 text-xs gap-1.5">
+                        <Squares2X2Icon className="h-3.5 w-3.5" />
+                        Daily
+                      </TabsTrigger>
+                      <TabsTrigger value="donut" className="h-7 px-2.5 text-xs gap-1.5">
+                        <ChartPieIcon className="h-3.5 w-3.5" />
+                        By Category
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                </div>
+              </CardHeader>
+              <CardContent className="px-2 pb-3 pt-3 sm:px-4 sm:pb-4">
+                <div className="h-[240px] sm:h-[300px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    {chartView === "bar" ? (
+                      <BarChart data={chartData} margin={{ top: 8, right: 12, left: isMobile ? -12 : 0, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" className="stroke-muted/60" vertical={false} />
+                        <XAxis dataKey="date" className="text-xs" tick={{ fontSize: isMobile ? 10 : 11 }} axisLine={false} tickLine={false} />
+                        <YAxis className="text-xs" tick={{ fontSize: isMobile ? 10 : 11 }} width={isMobile ? 40 : 50} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          cursor={{ fill: "hsl(var(--muted) / 0.4)" }}
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "10px",
+                            boxShadow: "0 8px 24px -12px hsl(var(--foreground) / 0.15)",
+                            fontSize: 12,
+                          }}
+                          formatter={(value: number, name: string) => [`₹${value.toLocaleString("en-IN")}`, name]}
+                        />
+                        <Legend wrapperStyle={{ fontSize: isMobile ? 11 : 12, paddingTop: 8 }} iconType="circle" />
+                        <Bar dataKey="income" name="Income" fill="hsl(var(--success))" radius={[6, 6, 0, 0]} maxBarSize={42} />
+                        <Bar dataKey="expense" name="Expense" fill="hsl(var(--destructive))" radius={[6, 6, 0, 0]} maxBarSize={42} />
+                      </BarChart>
+                    ) : topExpenseCategories.length === 0 ? (
+                      <div className="h-full flex items-center justify-center text-sm text-muted-foreground">
+                        No expense data for this period
+                      </div>
+                    ) : (
+                      <PieChart>
+                        <Tooltip
+                          contentStyle={{
+                            backgroundColor: "hsl(var(--card))",
+                            border: "1px solid hsl(var(--border))",
+                            borderRadius: "10px",
+                            fontSize: 12,
+                          }}
+                          formatter={(value: number) => [`₹${value.toLocaleString("en-IN")}`, "Amount"]}
+                        />
+                        <Pie
+                          data={topExpenseCategories.map((c) => ({ name: getCategoryLabel(c.category, "expense"), value: c.amount }))}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={isMobile ? 50 : 65}
+                          outerRadius={isMobile ? 85 : 105}
+                          paddingAngle={3}
+                        >
+                          {topExpenseCategories.map((_, idx) => (
+                            <Cell key={idx} fill={CATEGORY_COLORS[idx % CATEGORY_COLORS.length]} stroke="hsl(var(--card))" strokeWidth={2} />
+                          ))}
+                        </Pie>
+                        <Legend wrapperStyle={{ fontSize: isMobile ? 10 : 12 }} iconType="circle" />
+                      </PieChart>
+                    )}
+                  </ResponsiveContainer>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Top categories list */}
+            <Card className="overflow-hidden">
+              <CardHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b bg-muted/30">
+                <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                  <CurrencyRupeeIcon className="h-4 w-4 text-destructive" />
+                  Top Expenses
+                </CardTitle>
+                <CardDescription className="text-xs sm:text-sm mt-0.5">Where money is going</CardDescription>
+              </CardHeader>
+              <CardContent className="p-3 sm:p-4">
+                {topExpenseCategories.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-muted-foreground">No expenses yet</div>
+                ) : (
+                  <div className="space-y-3">
+                    {topExpenseCategories.map((c, idx) => {
+                      const pct = totals.expense > 0 ? (c.amount / totals.expense) * 100 : 0;
+                      const color = CATEGORY_COLORS[idx % CATEGORY_COLORS.length];
+                      return (
+                        <div key={c.category} className="space-y-1.5">
+                          <div className="flex items-center justify-between gap-2 text-sm">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="h-2.5 w-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                              <span className="truncate font-medium">{getCategoryLabel(c.category, "expense")}</span>
+                            </div>
+                            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                              ₹{c.amount.toLocaleString("en-IN")}
+                            </span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+                          </div>
+                          <div className="flex justify-between text-[10px] text-muted-foreground">
+                            <span>{c.count} {c.count === 1 ? "entry" : "entries"}</span>
+                            <span>{pct.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* TRANSACTIONS */}
+        <Card className="overflow-hidden">
+          <CardHeader className="px-4 py-3 sm:px-6 sm:py-4 border-b bg-muted/30">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <CardTitle className="text-base sm:text-lg">Transactions</CardTitle>
+                <CardDescription className="text-xs sm:text-sm mt-0.5">
+                  {hasActiveFilters
+                    ? `${filteredEntries.length} of ${entries.length} matching`
+                    : `${entries.length} entries`}
+                </CardDescription>
+              </div>
+
+              {/* Filter toolbar */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative flex-1 sm:flex-initial sm:w-56">
+                  <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search…"
+                    className="h-9 pl-8 pr-8 text-sm"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted"
+                      aria-label="Clear search"
+                    >
+                      <XMarkIcon className="h-3.5 w-3.5" />
+                    </button>
+                  )}
+                </div>
+                <Select value={typeFilter} onValueChange={(v) => { setTypeFilter(v as any); setCategoryFilter("all"); }}>
+                  <SelectTrigger className="h-9 w-auto min-w-[110px] text-sm gap-1.5">
+                    <FunnelIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="income">Income</SelectItem>
+                    <SelectItem value="expense">Expenses</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={categoryFilter} onValueChange={setCategoryFilter} disabled={availableCategories.length === 0}>
+                  <SelectTrigger className="h-9 w-auto min-w-[130px] text-sm">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    {availableCategories.map((cat) => {
+                      const sample = entries.find((e) => e.category === cat);
+                      return (
+                        <SelectItem key={cat} value={cat}>
+                          {sample ? getCategoryLabel(cat, sample.entry_type) : cat}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                {hasActiveFilters && (
+                  <Button variant="ghost" size="sm" onClick={clearFilters} className="h-9 px-2 text-xs gap-1">
+                    <XMarkIcon className="h-3.5 w-3.5" />
+                    Clear
+                  </Button>
+                )}
+              </div>
+            </div>
           </CardHeader>
-          <CardContent className="px-3 pb-3 pt-0 sm:p-6 sm:pt-0">
+          <CardContent className="p-0">
             {entries.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <BookOpenIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                <p>No entries found for the selected period</p>
+              <div className="text-center py-16 px-4">
+                <div className="mx-auto h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-4">
+                  <BookOpenIcon className="h-7 w-7 text-muted-foreground/60" />
+                </div>
+                <p className="text-sm font-medium">No entries yet</p>
+                <p className="text-xs text-muted-foreground mt-1">Add an expense or wait for transactions to appear here</p>
+              </div>
+            ) : filteredEntries.length === 0 ? (
+              <div className="text-center py-12 px-4">
+                <p className="text-sm font-medium">No matches found</p>
+                <p className="text-xs text-muted-foreground mt-1">Try a different search or clear the filters</p>
+                <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
+                  Clear filters
+                </Button>
+              </div>
+            ) : isMobile ? (
+              <div className="divide-y">
+                {filteredEntries.map((entry) => (
+                  <MobileExpandableRow
+                    key={entry.id}
+                    collapsedContent={
+                      <div className="flex items-center gap-3 py-0.5">
+                        <div className={cn(
+                          "h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0",
+                          entry.entry_type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                        )}>
+                          {entry.entry_type === "income"
+                            ? <ArrowUpRightIcon className="h-4 w-4" />
+                            : <ArrowDownRightIcon className="h-4 w-4" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{entry.description}</p>
+                          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mt-0.5">
+                            <span>{format(parseISO(entry.entry_date), "dd MMM")}</span>
+                            <span className="text-muted-foreground/40">•</span>
+                            <span className="truncate">{getCategoryLabel(entry.category, entry.entry_type)}</span>
+                          </div>
+                        </div>
+                        <span className={cn(
+                          "text-sm font-semibold whitespace-nowrap",
+                          entry.entry_type === "income" ? "text-success" : "text-destructive"
+                        )}>
+                          {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    }
+                    expandedContent={
+                      <div className="space-y-3 pt-2">
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div>
+                            <p className="text-xs text-muted-foreground">Type</p>
+                            <Badge className={cn(
+                              "mt-1",
+                              entry.entry_type === "income"
+                                ? "bg-success/10 text-success border-success/20"
+                                : "bg-destructive/10 text-destructive border-destructive/20"
+                            )}>
+                              {entry.entry_type === "income" ? "Income" : "Expense"}
+                            </Badge>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground">Category</p>
+                            <p className="font-medium mt-1">{getCategoryLabel(entry.category, entry.entry_type)}</p>
+                          </div>
+                          <div className="col-span-2">
+                            <p className="text-xs text-muted-foreground">Description</p>
+                            <p className="font-medium mt-1">{entry.description}</p>
+                            {entry.is_auto_generated && (
+                              <span className="text-xs text-muted-foreground">(Auto-generated)</span>
+                            )}
+                          </div>
+                          {entry.notes && (
+                            <div className="col-span-2">
+                              <p className="text-xs text-muted-foreground">Notes</p>
+                              <p className="text-sm mt-1">{entry.notes}</p>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewEntry(entry)}>
+                            <EyeIcon className="w-4 h-4 mr-2" />
+                            View Details
+                          </Button>
+                          {!entry.is_auto_generated && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={(e) => { e.stopPropagation(); handleDeleteEntry(entry); }}
+                            >
+                              <TrashIcon className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    }
+                  />
+                ))}
               </div>
             ) : (
-              <>
-                <div className="flex justify-end mb-3 sm:mb-4">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleExport}
-                    className="gap-2 hover:bg-accent/50 transition-colors font-medium"
-                  >
-                    <ArrowDownTrayIcon className="w-4 h-4" />
-                    Export Data
-                  </Button>
-                </div>
-                
-                {/* Mobile View - Expandable Rows */}
-                {isMobile ? (
-                  <div className="rounded-lg border overflow-hidden">
-                    {entries.map((entry) => (
-                      <MobileExpandableRow
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent border-b">
+                      <TableHead className="whitespace-nowrap text-xs uppercase tracking-wider font-semibold w-[120px]">Date</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider font-semibold">Transaction</TableHead>
+                      <TableHead className="text-xs uppercase tracking-wider font-semibold w-[160px]">Category</TableHead>
+                      <TableHead className="text-right whitespace-nowrap text-xs uppercase tracking-wider font-semibold w-[140px]">Amount</TableHead>
+                      <TableHead className="w-[90px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEntries.map((entry) => (
+                      <TableRow
                         key={entry.id}
-                        collapsedContent={
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="text-xs text-muted-foreground">
-                                  {format(parseISO(entry.entry_date), "dd MMM")}
-                                </span>
-                                <span className="text-xs text-muted-foreground">
-                                  {format(new Date(entry.created_at), "hh:mm a")}
-                                </span>
-                              </div>
+                        className="cursor-pointer group transition-colors"
+                        onClick={() => handleViewEntry(entry)}
+                      >
+                        <TableCell className="py-3">
+                          <div>
+                            <p className="text-sm font-medium">{format(parseISO(entry.entry_date), "dd MMM")}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {format(parseISO(entry.entry_date), "yyyy")} · {format(new Date(entry.created_at), "hh:mm a")}
+                            </p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-105",
+                              entry.entry_type === "income" ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive"
+                            )}>
+                              {entry.entry_type === "income"
+                                ? <ArrowUpRightIcon className="h-4 w-4" />
+                                : <ArrowDownRightIcon className="h-4 w-4" />}
+                            </div>
+                            <div className="min-w-0 max-w-[280px] lg:max-w-md">
                               <p className="text-sm font-medium truncate">{entry.description}</p>
-                            </div>
-                            <div className="flex items-center gap-2 flex-shrink-0">
-                              <span className={cn(
-                                "text-sm font-semibold",
-                                entry.entry_type === "income" ? "text-success" : "text-destructive"
-                              )}>
-                                {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
-                              </span>
-                            </div>
-                          </div>
-                        }
-                        expandedContent={
-                          <div className="space-y-3 pt-2">
-                            <div className="grid grid-cols-2 gap-3 text-sm">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Type</p>
-                                <Badge className={cn(
-                                  "mt-1",
-                                  entry.entry_type === "income"
-                                    ? "bg-success/10 text-success border-success/20"
-                                    : "bg-destructive/10 text-destructive border-destructive/20"
-                                )}>
-                                  {entry.entry_type === "income" ? "Income" : "Expense"}
-                                </Badge>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Category</p>
-                                <p className="font-medium mt-1">{getCategoryLabel(entry.category, entry.entry_type)}</p>
-                              </div>
-                              <div className="col-span-2">
-                                <p className="text-xs text-muted-foreground">Description</p>
-                                <p className="font-medium mt-1">{entry.description}</p>
-                                {entry.is_auto_generated && (
-                                  <span className="text-xs text-muted-foreground">(Auto-generated)</span>
-                                )}
-                              </div>
-                              {entry.notes && (
-                                <div className="col-span-2">
-                                  <p className="text-xs text-muted-foreground">Notes</p>
-                                  <p className="text-sm mt-1">{entry.notes}</p>
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="flex-1"
-                                onClick={() => handleViewEntry(entry)}
-                              >
-                                <BookOpenIcon className="w-4 h-4 mr-2" />
-                                View Details
-                              </Button>
-                              {!entry.is_auto_generated && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteEntry(entry);
-                                  }}
-                                >
-                                  <TrashIcon className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        }
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  /* Desktop View - Table */
-                  <div className="overflow-x-auto">
-                    <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap w-[100px] md:w-[90px]">Date & Time</TableHead>
-                        <TableHead className="w-[80px]">Type</TableHead>
-                        <TableHead className="w-[120px] md:w-[110px]">Category</TableHead>
-                        <TableHead>Description</TableHead>
-                        <TableHead className="text-right whitespace-nowrap w-[90px]">Amount</TableHead>
-                        <TableHead className="w-[80px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {entries.map((entry) => (
-                        <TableRow 
-                          key={entry.id}
-                          className="cursor-pointer hover:bg-muted/50 transition-colors"
-                          onClick={() => handleViewEntry(entry)}
-                        >
-                          <TableCell className="font-medium whitespace-nowrap py-2.5">
-                            <div>
-                              <p className="text-sm">{format(parseISO(entry.entry_date), "dd MMM yyyy")}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {format(new Date(entry.created_at), "hh:mm a")}
+                              <p className="text-[11px] text-muted-foreground">
+                                {entry.is_auto_generated ? "Auto-generated" : "Manual entry"}
                               </p>
                             </div>
-                          </TableCell>
-                          <TableCell className="py-2.5">
-                            <span className={cn(
-                              "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap",
-                              entry.entry_type === "income"
-                                ? "bg-success/10 text-success"
-                                : "bg-destructive/10 text-destructive"
-                            )}>
-                              {entry.entry_type === "income" ? (
-                                <ArrowUpRightIcon className="w-3 h-3" />
-                              ) : (
-                                <ArrowDownRightIcon className="w-3 h-3" />
-                              )}
-                              {entry.entry_type === "income" ? "Income" : "Expense"}
-                            </span>
-                          </TableCell>
-                          <TableCell className="text-muted-foreground text-sm py-2.5">
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-medium bg-muted text-foreground/80">
                             {getCategoryLabel(entry.category, entry.entry_type)}
-                          </TableCell>
-                          <TableCell className="py-2.5">
-                            <div className="max-w-[200px] lg:max-w-xs">
-                              <p className="truncate text-sm">{entry.description}</p>
-                              {entry.is_auto_generated && (
-                                <span className="text-xs text-muted-foreground">(Auto-generated)</span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className={cn(
-                            "text-right font-medium",
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right py-3">
+                          <span className={cn(
+                            "text-sm font-semibold tabular-nums",
                             entry.entry_type === "income" ? "text-success" : "text-destructive"
                           )}>
                             {entry.entry_type === "income" ? "+" : "-"}₹{Number(entry.amount).toLocaleString("en-IN")}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1">
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <div className="flex items-center justify-end gap-0.5 opacity-60 group-hover:opacity-100 transition-opacity">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={(e) => { e.stopPropagation(); handleViewEntry(entry); }}
+                              aria-label="View details"
+                            >
+                              <EyeIcon className="w-4 h-4 text-muted-foreground" />
+                            </Button>
+                            {!entry.is_auto_generated && (
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewEntry(entry);
-                                }}
+                                className="h-8 w-8 hover:bg-destructive/10"
+                                onClick={(e) => { e.stopPropagation(); handleDeleteEntry(entry); }}
+                                aria-label="Delete"
                               >
-                                <BookOpenIcon className="w-4 h-4 text-muted-foreground" />
+                                <TrashIcon className="w-4 h-4 text-destructive" />
                               </Button>
-                              {!entry.is_auto_generated && (
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteEntry(entry);
-                                  }}
-                                >
-                                  <TrashIcon className="w-4 h-4 text-destructive" />
-                                </Button>
-                              )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                    </Table>
-                  </div>
-                )}
-              </>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </CardContent>
         </Card>
