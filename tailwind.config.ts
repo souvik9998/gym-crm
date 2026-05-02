@@ -142,6 +142,10 @@ export default {
   					transform: 'translateY(0)'
   				}
   			},
+  			'fade-in-soft': {
+  				from: { opacity: '0' },
+  				to: { opacity: '1' }
+  			},
   			'slide-up': {
   				from: {
   					opacity: '0',
