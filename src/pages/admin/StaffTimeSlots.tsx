@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { AdminSectionSkeleton } from "@/components/ui/skeleton-loaders";
 import { ChartBarIcon, ClockIcon, UserGroupIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -132,11 +133,7 @@ const StaffTimeSlots = () => {
   }, [trainerStaff]);
 
   if (staffLoading) {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
+    return <AdminSectionSkeleton />;
   }
 
   if (!isStaffLoggedIn) return null;
