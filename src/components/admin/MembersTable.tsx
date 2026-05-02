@@ -1994,7 +1994,7 @@ export const MembersTable = ({
           <DialogHeader>
             <DialogTitle>Send promotional message</DialogTitle>
             <DialogDescription>
-              {promoSendContext?.name} will be sent to {pendingPromoSend?.mode === "bulk" ? `${pendingPromoSend.memberIds.length} members` : pendingPromoSend?.member.name}.
+              {promoSendContext?.name} will be sent to {pendingPromoSend?.mode === "bulk" ? `${pendingPromoSend.memberIds.length} members` : pendingPromoSend?.mode === "single" ? pendingPromoSend.member.name : "selected members"}.
             </DialogDescription>
           </DialogHeader>
 
