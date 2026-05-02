@@ -463,6 +463,7 @@ Deno.serve(async (req) => {
         variables,
         fallbackText,
         branchId: bId ?? null,
+        promotionalSlot: category === "promotional" ? activePromoSlot : null,
       });
       return {
         success: result.success,
