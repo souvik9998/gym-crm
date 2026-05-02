@@ -431,8 +431,8 @@ export const AdminSidebar = ({ collapsed, onCollapsedChange, isMobile = false, i
         collapsed ? "w-[68px]" : "w-64",
       )}
     >
-      {/* Header - h-16 to match top nav */}
-      <div className="h-16 px-4 border-b border-border flex items-center">
+      {/* Header - matches AdminHeader heights so bottom borders align */}
+      <div className="h-11 md:h-12 lg:h-14 px-4 border-b border-border flex items-center">
         <div className={cn("flex items-center w-full", collapsed ? "justify-center" : "gap-3")}>
           <BranchLogo logoUrl={currentBranch?.logo_url} name={gymName} size="md" />
           {!collapsed && (
