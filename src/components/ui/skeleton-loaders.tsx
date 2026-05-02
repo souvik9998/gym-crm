@@ -4,41 +4,20 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { memo } from "react";
 
 /**
- * Modern dashboard stats skeleton — mirrors the live StatCard layout
- * (icon tile + value + label + trend pill) with subtle gradient washes
- * and staggered fade-in so loading feels alive instead of static.
+ * Dashboard stats skeleton — neutral, color-free placeholders that mirror
+ * the live StatCard layout. Matches the analytics skeleton style.
  */
-const STAT_TONES = [
-  "from-primary/8 via-primary/3",
-  "from-success/10 via-success/3",
-  "from-warning/10 via-warning/3",
-  "from-accent/10 via-accent/3",
-] as const;
-
 export const DashboardStatsSkeleton = memo(() => (
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4 animate-fade-in-soft">
     {Array.from({ length: 4 }).map((_, i) => (
-      <Card
-        key={i}
-        className={`relative overflow-hidden border border-border/60 shadow-sm bg-gradient-to-br ${STAT_TONES[i]} to-transparent animate-fade-in`}
-        style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
-      >
-        {/* Decorative shimmer wash */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent animate-[shimmer_2.4s_ease-in-out_infinite]"
-        />
-        <CardContent className="relative p-4 md:p-5">
-          <div className="flex items-start justify-between gap-3">
-            <div className="space-y-2.5 flex-1 min-w-0">
-              <Skeleton className="h-3 w-20 rounded-full" />
-              <Skeleton className="h-7 md:h-8 w-24" />
-              <div className="flex items-center gap-1.5">
-                <Skeleton className="h-4 w-10 rounded-full" />
-                <Skeleton className="h-3 w-16" />
-              </div>
+      <Card key={i} className="border border-border/60 shadow-sm">
+        <CardContent className="p-2.5 md:p-3 lg:p-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="space-y-2 flex-1 min-w-0">
+              <Skeleton className="h-6 md:h-7 w-16" />
+              <Skeleton className="h-3 w-20" />
             </div>
-            <Skeleton className="h-11 w-11 md:h-12 md:w-12 rounded-2xl shrink-0" />
+            <Skeleton className="h-9 w-9 md:h-10 md:w-10 rounded-xl shrink-0" />
           </div>
         </CardContent>
       </Card>
@@ -48,89 +27,68 @@ export const DashboardStatsSkeleton = memo(() => (
 DashboardStatsSkeleton.displayName = "DashboardStatsSkeleton";
 
 /**
- * Full dashboard skeleton — hero header + quick actions + stats + chart + list.
- * Use as the top-level loading fallback for the admin dashboard.
+ * Full dashboard skeleton — neutral placeholders for stats + tabs + table.
+ * Mirrors the actual dashboard layout so the swap to real content is seamless
+ * (no hollow space, no popping sections).
  */
 export const DashboardFullSkeleton = memo(() => (
-  <div className="space-y-5 md:space-y-6 animate-fade-in">
-    {/* Hero / greeting */}
-    <Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-primary/5 via-background to-accent/5">
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.05] to-transparent animate-[shimmer_2.2s_ease-in-out_infinite]"
-      />
-      <CardContent className="relative p-5 md:p-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-2.5 flex-1 min-w-0">
-            <Skeleton className="h-3 w-24 rounded-full" />
-            <Skeleton className="h-6 md:h-7 w-56 max-w-full" />
-            <Skeleton className="h-3 w-40" />
-          </div>
-          <Skeleton className="hidden sm:block h-10 w-32 rounded-md" />
-        </div>
-      </CardContent>
-    </Card>
-
-    {/* Quick actions */}
-    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton
-          key={i}
-          className="h-12 rounded-xl animate-fade-in"
-          style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
-        />
-      ))}
-    </div>
-
+  <div className="space-y-3 md:space-y-6 max-w-7xl mx-auto animate-fade-in-soft">
     {/* Stats */}
     <DashboardStatsSkeleton />
 
-    {/* Chart + side list */}
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
-      <Card className="lg:col-span-2 border-border/60">
-        <CardHeader className="space-y-2">
-          <Skeleton className="h-5 w-40" />
-          <Skeleton className="h-3 w-56" />
-        </CardHeader>
-        <CardContent>
-          <div className="h-[220px] md:h-[260px] flex items-end gap-2 md:gap-3 px-1">
-            {Array.from({ length: 14 }).map((_, i) => {
-              const h = 25 + ((i * 13) % 70);
-              return (
-                <Skeleton
-                  key={i}
-                  className="flex-1 rounded-t-md animate-fade-in"
-                  style={{ height: `${h}%`, animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
-                />
-              );
-            })}
+    {/* Tabs + search + actions card */}
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="px-2 lg:px-6 pt-2 lg:pt-6 pb-2 lg:pb-4 border-b">
+        <div className="flex flex-col gap-2 lg:gap-4">
+          {/* Top row: tabs + search + actions */}
+          <div className="flex items-center gap-2 lg:gap-3">
+            <div className="flex gap-1.5">
+              <Skeleton className="h-8 lg:h-9 w-20 lg:w-24 rounded-md" />
+              <Skeleton className="h-8 lg:h-9 w-20 lg:w-24 rounded-md" />
+              <Skeleton className="h-8 lg:h-9 w-20 lg:w-24 rounded-md" />
+            </div>
+            <Skeleton className="h-8 lg:h-9 flex-1 max-w-md rounded-md" />
+            <div className="ml-auto flex gap-1.5">
+              <Skeleton className="h-8 lg:h-9 w-9 rounded-md" />
+              <Skeleton className="h-8 lg:h-9 w-24 lg:w-28 rounded-md" />
+            </div>
           </div>
-        </CardContent>
-      </Card>
-
-      <Card className="border-border/60">
-        <CardHeader className="space-y-2">
-          <Skeleton className="h-5 w-32" />
-          <Skeleton className="h-3 w-44" />
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="flex items-center gap-3 animate-fade-in"
-              style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
-            >
-              <Skeleton className="h-9 w-9 rounded-full shrink-0" />
-              <div className="flex-1 space-y-1.5 min-w-0">
-                <Skeleton className="h-3.5 w-3/4" />
-                <Skeleton className="h-3 w-1/2" />
+          {/* Filter chips row */}
+          <div className="flex flex-wrap gap-1.5 lg:gap-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-7 lg:h-8 w-20 lg:w-24 rounded-full" />
+            ))}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="p-3 sm:p-4 lg:pt-2 lg:px-6 lg:pb-6">
+        {/* Table header */}
+        <div className="hidden lg:grid grid-cols-12 gap-3 pb-3 border-b">
+          <Skeleton className="h-3.5 w-20 col-span-3" />
+          <Skeleton className="h-3.5 w-16 col-span-2" />
+          <Skeleton className="h-3.5 w-14 col-span-2" />
+          <Skeleton className="h-3.5 w-16 col-span-2" />
+          <Skeleton className="h-3.5 w-16 col-span-2" />
+          <Skeleton className="h-3.5 w-6 col-span-1 ml-auto" />
+        </div>
+        {/* Rows */}
+        <div className="divide-y">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="grid grid-cols-12 gap-3 py-2.5 lg:py-3 items-center">
+              <div className="col-span-3 flex items-center gap-2 lg:gap-3 min-w-0">
+                <Skeleton className="h-8 w-8 lg:h-9 lg:w-9 rounded-full shrink-0" />
+                <Skeleton className="h-4 w-24 lg:w-32" />
               </div>
-              <Skeleton className="h-5 w-12 rounded-full" />
+              <Skeleton className="h-4 w-24 col-span-2 hidden lg:block" />
+              <Skeleton className="h-5 w-16 rounded-full col-span-2" />
+              <Skeleton className="h-5 w-16 rounded-full col-span-2 hidden lg:block" />
+              <Skeleton className="h-4 w-20 col-span-2 hidden lg:block" />
+              <Skeleton className="h-7 w-7 rounded-md col-span-1 ml-auto" />
             </div>
           ))}
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   </div>
 ));
 DashboardFullSkeleton.displayName = "DashboardFullSkeleton";
