@@ -637,6 +637,13 @@ const HolidayCalendarTab = () => {
     }
   };
 
+  if (isLoading) {
+    // Render nothing here — the parent Suspense fallback (CalendarSectionSkeleton)
+    // already covers the initial load. Returning a fragment keeps a single skeleton
+    // visible (no swap/flicker) until data is ready.
+    return <CalendarSectionSkeletonInline />;
+  }
+
   return (
     <div className="space-y-3 lg:space-y-6 overflow-x-hidden">
       {/* Calendar Card */}
