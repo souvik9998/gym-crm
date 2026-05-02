@@ -49,6 +49,7 @@ import { useSettingsPageData } from "@/hooks/queries/useSettingsPageData";
 import { invalidatePublicDataCache } from "@/api/publicData";
 import { ButtonSpinner } from "@/components/ui/button-spinner";
 import { EyeIcon } from "@heroicons/react/24/outline";
+import { SettingsSectionSkeleton } from "@/components/ui/skeleton-loaders";
 
 // Lazy load HolidayCalendarTab for code splitting
 const HolidayCalendarTab = lazy(() => import("@/components/admin/HolidayCalendarTab"));
@@ -1239,6 +1240,8 @@ const AdminSettings = () => {
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
   }, [mobileMenuOpen]);
+
+  if (isLoadingData) return <SettingsSectionSkeleton />;
 
   return (
     <Fragment>
