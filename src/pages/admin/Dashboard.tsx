@@ -19,6 +19,12 @@ import {
   BarsArrowDownIcon,
   BarsArrowUpIcon,
 } from "@heroicons/react/24/outline";
+import {
+  UsersIcon as UsersIconSolid,
+  ArrowTrendingUpIcon as ArrowTrendingUpIconSolid,
+  ExclamationTriangleIcon as ExclamationTriangleIconSolid,
+  CreditCardIcon as CreditCardIconSolid,
+} from "@heroicons/react/24/solid";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
@@ -68,18 +74,18 @@ const StatCard = memo(({
   index?: number;
 }) => (
   <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
-    {/* Mobile/Tablet layout - icon on right, text and number on left */}
-    <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between">
-      <div className="flex-1 min-w-0 pr-2">
-        <p className={`text-lg md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
+    {/* Mobile/Tablet layout - smaller, cleaner icon on right */}
+    <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between gap-2">
+      <div className="flex-1 min-w-0">
+        <p className={`text-base md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
           {value}
         </p>
-        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-1 font-medium">
+        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5 font-medium truncate">
           {label}
         </p>
       </div>
-      <div className={`w-9 h-9 md:w-10 md:h-10 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
-        <Icon className={`w-4.5 h-4.5 md:w-5 md:h-5 ${iconClass}`} />
+      <div className={`w-7 h-7 md:w-9 md:h-9 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
+        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} />
       </div>
     </CardContent>
 
@@ -376,13 +382,13 @@ const AdminDashboard = () => {
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
-              icon={UsersIcon}
+              icon={UsersIconSolid}
               index={0}
             />
             <StatCard 
               value={displayStats.activeMembers} 
               label="Active Members" 
-              icon={ArrowTrendingUpIcon}
+              icon={ArrowTrendingUpIconSolid}
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
@@ -391,7 +397,7 @@ const AdminDashboard = () => {
             <StatCard 
               value={displayStats.expiringSoon} 
               label="Expiring Soon" 
-              icon={ExclamationTriangleIcon}
+              icon={ExclamationTriangleIconSolid}
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
@@ -400,7 +406,7 @@ const AdminDashboard = () => {
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
               label="This Month" 
-              icon={CreditCardIcon}
+              icon={CreditCardIconSolid}
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
