@@ -38,35 +38,27 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
     if (!currentBranch?.id) return;
     setLoading(true);
     try {
-      // Resolve tenant id from branch + load active slot in parallel
-      const [{ data: branchRow }, { data: settings }] = await Promise.all([
-        supabase.from("branches").select("tenant_id").eq("id", currentBranch.id).maybeSingle(),
-        supabase.from("gym_settings").select("active_promotional_slot").eq("branch_id", currentBranch.id).maybeSingle(),
-      ]);
-      const tenantId = branchRow?.tenant_id as string | undefined;
-      const cur = (settings?.active_promotional_slot ?? null) as number | null;
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=get-promotional-templates`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${session?.access_token ?? ""}`,
+        },
+        body: JSON.stringify({ branchId: currentBranch.id }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Failed to load promotional templates");
+
+      const promos = (json?.data?.promotional_templates ?? []) as PromoSlot[];
+      const visible = promos
+        .filter((p) => p && p.enabled !== false && typeof p.templateId === "string" && p.templateId.trim().length > 0)
+        .sort((a, b) => a.slot - b.slot);
+      const cur = (json?.data?.active_promotional_slot ?? null) as number | null;
       setActiveSlot(cur);
       setSavedSlot(cur);
-
-      if (tenantId) {
-        const { data: { session } } = await supabase.auth.getSession();
-        const res = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=get-messaging-config`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            apikey: SUPABASE_ANON_KEY,
-            Authorization: `Bearer ${session?.access_token ?? ""}`,
-          },
-          body: JSON.stringify({ tenantId }),
-        });
-        const json = await res.json();
-        if (res.ok) {
-          const promos = (json?.data?.promotional_templates ?? []) as PromoSlot[];
-          setSlots(promos.filter((p) => p && p.enabled && p.templateId).sort((a, b) => a.slot - b.slot));
-        } else {
-          setSlots([]);
-        }
-      }
+      setSlots(visible);
     } catch (e) {
       console.warn("[promo-templates] load failed:", e);
       setSlots([]);
@@ -80,12 +72,19 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
   const handleSave = async () => {
     if (!currentBranch?.id) return;
     setSaving(true);
-    const { error } = await supabase
-      .from("gym_settings")
-      .update({ active_promotional_slot: activeSlot })
-      .eq("branch_id", currentBranch.id);
-    if (error) {
-      toast.error("Failed to update active promotional template");
+    const { data: { session } } = await supabase.auth.getSession();
+    const res = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=set-active-promotional-slot`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${session?.access_token ?? ""}`,
+      },
+      body: JSON.stringify({ branchId: currentBranch.id, activeSlot }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast.error(json?.error || "Failed to update active promotional template");
       setSaving(false);
       return;
     }

@@ -1319,6 +1319,153 @@ interface UsageUpdateRequest {
         );
       }
 
+      case "get-promotional-templates": {
+        const { branchId } = body as { branchId?: string };
+        if (!userId || !branchId) {
+          return new Response(
+            JSON.stringify({ error: "Missing branch or user session" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: branch } = await supabase
+          .from("branches")
+          .select("tenant_id")
+          .eq("id", branchId)
+          .maybeSingle();
+        if (!branch?.tenant_id) {
+          return new Response(
+            JSON.stringify({ error: "Branch not found" }),
+            { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: hasBranchAccess } = await supabase.rpc("user_has_branch_access", {
+          _user_id: userId,
+          _branch_id: branchId,
+        });
+        const { data: branchForAuth } = await supabase
+          .from("branches")
+          .select("tenant_id")
+          .eq("id", branchId)
+          .maybeSingle();
+        const tenantIdForAuth = branchForAuth?.tenant_id as string | undefined;
+        const { data: staffSettingsPerm } = await supabase
+          .from("staff")
+          .select("id, staff_branch_assignments!inner(branch_id), staff_permissions(can_change_settings)")
+          .eq("auth_user_id", userId)
+          .eq("is_active", true)
+          .eq("staff_branch_assignments.branch_id", branchId)
+          .maybeSingle();
+        const canManagePromoSelection =
+          isSuperAdmin ||
+          (!!tenantIdForAuth && await (async () => {
+            const { data } = await supabase.rpc("is_tenant_admin", { _user_id: userId, _tenant_id: tenantIdForAuth });
+            return !!data;
+          })()) ||
+          ((staffSettingsPerm as any)?.staff_permissions?.can_change_settings === true);
+
+        if (!hasBranchAccess || !canManagePromoSelection) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const [{ data: cfg }, { data: settings }] = await Promise.all([
+          supabase
+            .from("tenant_messaging_config")
+            .select("promotional_templates")
+            .eq("tenant_id", branch.tenant_id)
+            .maybeSingle(),
+          supabase
+            .from("gym_settings")
+            .select("active_promotional_slot")
+            .eq("branch_id", branchId)
+            .maybeSingle(),
+        ]);
+
+        const promotionalTemplates = Array.isArray(cfg?.promotional_templates)
+          ? (cfg!.promotional_templates as unknown[])
+          : [];
+
+        return new Response(
+          JSON.stringify({
+            data: {
+              promotional_templates: promotionalTemplates,
+              active_promotional_slot: settings?.active_promotional_slot ?? null,
+            },
+          }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      case "set-active-promotional-slot": {
+        const { branchId, activeSlot } = body as { branchId?: string; activeSlot?: number | null };
+        if (!userId || !branchId) {
+          return new Response(
+            JSON.stringify({ error: "Missing branch or user session" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const nextSlot = activeSlot == null ? null : Number(activeSlot);
+        if (nextSlot !== null && (!Number.isInteger(nextSlot) || nextSlot < 1 || nextSlot > 4)) {
+          return new Response(
+            JSON.stringify({ error: "Invalid promotional template slot" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const { data: hasBranchAccess } = await supabase.rpc("user_has_branch_access", {
+          _user_id: userId,
+          _branch_id: branchId,
+        });
+        if (!isSuperAdmin && !hasBranchAccess) {
+          return new Response(
+            JSON.stringify({ error: "Unauthorized" }),
+            { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        if (nextSlot !== null) {
+          const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
+          const { data: cfg } = await supabase
+            .from("tenant_messaging_config")
+            .select("promotional_templates")
+            .eq("tenant_id", tenantId)
+            .maybeSingle();
+          const configured = (Array.isArray(cfg?.promotional_templates) ? cfg!.promotional_templates : []).some(
+            (t: any) => Number(t?.slot) === nextSlot && typeof t?.templateId === "string" && t.templateId.trim().length > 0,
+          );
+          if (!configured) {
+            return new Response(
+              JSON.stringify({ error: "Selected promotional template is not configured" }),
+              { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        }
+
+        const { data: existing } = await supabase
+          .from("gym_settings")
+          .select("id")
+          .eq("branch_id", branchId)
+          .maybeSingle();
+        const { error } = existing?.id
+          ? await supabase.from("gym_settings").update({ active_promotional_slot: nextSlot }).eq("id", existing.id)
+          : await supabase.from("gym_settings").insert({ branch_id: branchId, active_promotional_slot: nextSlot });
+        if (error) {
+          return new Response(
+            JSON.stringify({ error: "Failed to save promotional template selection" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        return new Response(
+          JSON.stringify({ data: { success: true, active_promotional_slot: nextSlot } }),
+          { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       case "save-messaging-config": {
         if (!isSuperAdmin) {
           return new Response(

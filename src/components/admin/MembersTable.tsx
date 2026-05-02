@@ -226,6 +226,33 @@ export const MembersTable = ({
     return savedTemplate || undefined;
   };
 
+  const confirmActivePromotionalTemplate = async (): Promise<boolean> => {
+    if (!currentBranch?.id) return false;
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=get-promotional-templates`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: session?.access_token ? `Bearer ${session.access_token}` : `Bearer ${SUPABASE_ANON_KEY}`,
+        apikey: SUPABASE_ANON_KEY,
+      },
+      body: JSON.stringify({ branchId: currentBranch.id }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      toast.error(data?.error || "Could not load active promotional template");
+      return false;
+    }
+    const activeSlot = data?.data?.active_promotional_slot as number | null;
+    const slots = (data?.data?.promotional_templates ?? []) as Array<{ slot: number; enabled?: boolean; name?: string; templateId?: string; previewBody?: string }>;
+    const activeTemplate = slots.find((s) => s.slot === activeSlot && s.enabled !== false && s.templateId?.trim());
+    if (!activeTemplate) {
+      toast.error("Select an active promotional template in WhatsApp settings before sending.");
+      return false;
+    }
+    return window.confirm(`Send promotional message using ${activeTemplate.name || `Promo ${activeTemplate.slot}`}?\n\n${activeTemplate.previewBody || "Preview is not configured for this template."}`);
+  };
+
   const waOverlay = useWhatsAppOverlay();
 
   const sendWhatsAppMessage = async (
@@ -240,9 +267,9 @@ export const MembersTable = ({
     
     try {
       // Get saved template for the message type if no custom message provided
-      let messageToSend = customMessage;
+      let messageToSend = type === "promotional" ? undefined : customMessage;
       if (!messageToSend) {
-        messageToSend = getSavedTemplate(type);
+        messageToSend = type === "promotional" ? undefined : getSavedTemplate(type);
       }
 
       // Get current admin user
@@ -314,6 +341,7 @@ export const MembersTable = ({
 
   const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
+    if (!(await confirmActivePromotionalTemplate())) return;
     await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
   };
 
@@ -565,11 +593,12 @@ export const MembersTable = ({
     if (selectedMembers.size === 0) return;
     
     const count = selectedMembers.size;
+    if (type === "promotional" && !(await confirmActivePromotionalTemplate())) return;
     if (!waOverlay.startSending(`${count} members`)) return;
     setBulkActionType(type);
     try {
       // Get saved template for the message type
-      const savedTemplate = getSavedTemplate(type);
+      const savedTemplate = type === "promotional" ? undefined : getSavedTemplate(type);
 
       // Get current admin user
       const { data: { session } } = await supabase.auth.getSession();
