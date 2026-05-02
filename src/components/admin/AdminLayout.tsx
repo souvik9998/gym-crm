@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { useNavigate } from "react-router-dom";
 import { AdminSidebar } from "./AdminSidebar";
 import { BranchLogo } from "./BranchLogo";
