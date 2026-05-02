@@ -20,11 +20,11 @@ import {
   BarsArrowUpIcon,
 } from "@heroicons/react/24/outline";
 import {
-  UsersIcon as UsersIconSolid,
-  ArrowTrendingUpIcon as ArrowTrendingUpIconSolid,
-  ExclamationTriangleIcon as ExclamationTriangleIconSolid,
-  CreditCardIcon as CreditCardIconSolid,
-} from "@heroicons/react/24/solid";
+  Users as UsersIconSolid,
+  TrendingUp as ArrowTrendingUpIconSolid,
+  AlertTriangle as ExclamationTriangleIconSolid,
+  CreditCard as CreditCardIconSolid,
+} from "lucide-react";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
