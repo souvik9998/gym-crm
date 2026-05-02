@@ -125,6 +125,7 @@ export const MESSAGE_CATEGORIES: Array<{
   { key: "staff_credentials",   group: "Manual / Admin",   label: "Staff Credentials",   description: "Login credentials sent to new staff." },
   { key: "password_reset",      group: "Manual / Admin",   label: "Password Reset",      description: "Password-reset link." },
   { key: "daily_summary_admin", group: "Manual / Admin",   label: "Daily Admin Summary", description: "Daily owner/admin summary message." },
+  { key: "holiday_notification",group: "Manual / Admin",   label: "Holiday Notification",description: "Sent to members when a gym holiday / closure is announced." },
 ];
 
 // -------------------------------------------------------------------------
