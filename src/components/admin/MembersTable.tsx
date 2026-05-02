@@ -14,6 +14,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, UserX, Clock, AlertTriangle, Download, Fingerprint, UserPlus, Sparkles, ArrowRight, Search, Zap, ShieldCheck, Filter } from "lucide-react";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
@@ -46,6 +49,7 @@ import { checkMemberBiometricStatus, fetchBiometricDevices } from "@/api/biometr
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { matchesTimeFilter } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { getPromoDisplayValue, getPromoTemplateName, getPromoVariableLabel, getResolvedPromoVariables, type PromoVariable } from "@/utils/promotionalTemplates";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -64,6 +68,16 @@ interface MembersTableProps {
 
 type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
+type PromoSendContext = {
+  slot: number;
+  name: string;
+  previewBody: string;
+  variables: PromoVariable[];
+  customVariables: Record<string, string>;
+};
+type PendingPromoSend =
+  | { mode: "single"; member: Member }
+  | { mode: "bulk"; memberIds: string[] };
 
 const FeatureHint = ({
   icon,
@@ -230,9 +244,13 @@ export const MembersTable = ({
   // the merged customVariables (Super-Admin defaults + admin overrides) along
   // with the send call without re-fetching.
   const [promoCustomVariables, setPromoCustomVariables] = useState<Record<string, string> | undefined>(undefined);
+  const [promoSendContext, setPromoSendContext] = useState<PromoSendContext | null>(null);
+  const [pendingPromoSend, setPendingPromoSend] = useState<PendingPromoSend | null>(null);
+  const [loadingPromoDialog, setLoadingPromoDialog] = useState(false);
 
-  const confirmActivePromotionalTemplate = async (): Promise<boolean> => {
-    if (!currentBranch?.id) return false;
+  const loadActivePromotionalTemplate = async (): Promise<PromoSendContext | null> => {
+    if (!currentBranch?.id) return null;
+    setLoadingPromoDialog(true);
     const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=get-promotional-templates`, {
       method: "POST",
@@ -243,10 +261,11 @@ export const MembersTable = ({
       },
       body: JSON.stringify({ branchId: currentBranch.id }),
     });
+    setLoadingPromoDialog(false);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       toast.error(data?.error || "Could not load active promotional template");
-      return false;
+      return null;
     }
     const activeSlot = data?.data?.active_promotional_slot as number | null;
     type ApiSlot = {
@@ -261,7 +280,7 @@ export const MembersTable = ({
     const activeTemplate = slots.find((s) => s.slot === activeSlot && s.enabled !== false && s.templateId?.trim());
     if (!activeTemplate) {
       toast.error("Select an active promotional template in WhatsApp settings before sending.");
-      return false;
+      return null;
     }
 
     // Merge: Super-Admin defaults <- admin's localStorage overrides for this branch+slot.
@@ -271,8 +290,9 @@ export const MembersTable = ({
       const raw = localStorage.getItem(overridesKey);
       if (raw) savedOverrides = JSON.parse(raw) ?? {};
     } catch (_e) { /* noop */ }
+    const variables = getResolvedPromoVariables(activeTemplate);
     const merged: Record<string, string> = {};
-    for (const v of activeTemplate.variables ?? []) {
+    for (const v of variables) {
       if (!v?.key) continue;
       const override = savedOverrides[v.key];
       const val = (typeof override === "string" && override.length > 0)
@@ -282,13 +302,14 @@ export const MembersTable = ({
     }
     setPromoCustomVariables(Object.keys(merged).length > 0 ? merged : undefined);
 
-    const label = (activeTemplate.name && activeTemplate.name.trim()) || `Promo ${activeTemplate.slot}`;
-    const preview = (activeTemplate.previewBody && activeTemplate.previewBody.trim())
-      || "(No preview available — message body is configured by GymKloud.)";
-    const varsLine = Object.keys(merged).length > 0
-      ? `\n\n--- Values ---\n${Object.entries(merged).map(([k, v]) => `${k}: ${v || "(blank)"}`).join("\n")}`
-      : "";
-    return window.confirm(`Send promotional message: "${label}"?\n\n--- Message preview ---\n${preview}${varsLine}`);
+    return {
+      slot: activeTemplate.slot,
+      name: getPromoTemplateName(activeTemplate),
+      previewBody: (activeTemplate.previewBody && activeTemplate.previewBody.trim())
+        || "No preview available — message body is configured by GymKloud.",
+      variables,
+      customVariables: merged,
+    };
   };
 
   const waOverlay = useWhatsAppOverlay();
@@ -298,7 +319,8 @@ export const MembersTable = ({
     memberName: string, 
     memberPhone: string,
     type: string,
-    customMessage?: string
+    customMessage?: string,
+    customVariables?: Record<string, string>
   ) => {
     if (!waOverlay.startSending(memberName)) return false;
     setSendingWhatsApp(memberId);
@@ -328,7 +350,7 @@ export const MembersTable = ({
             memberIds: [memberId],
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
-            customVariables: type === "promotional" ? promoCustomVariables : undefined,
+            customVariables: type === "promotional" ? (customVariables ?? promoCustomVariables) : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
@@ -380,8 +402,10 @@ export const MembersTable = ({
 
   const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!(await confirmActivePromotionalTemplate())) return;
-    await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
+    const context = await loadActivePromotionalTemplate();
+    if (!context) return;
+    setPromoSendContext(context);
+    setPendingPromoSend({ mode: "single", member });
   };
 
   const handleSendExpiryReminder = async (member: Member, e: React.MouseEvent) => {
@@ -628,11 +652,21 @@ export const MembersTable = ({
     return getSelectedMembersData().some(m => isExpiringOrExpired(m));
   };
 
-  const handleBulkWhatsApp = async (type: string) => {
-    if (selectedMembers.size === 0) return;
+  const handleBulkWhatsApp = async (
+    type: string,
+    options?: { skipPromoDialog?: boolean; memberIds?: string[]; customVariables?: Record<string, string> }
+  ) => {
+    const targetMemberIds = options?.memberIds ?? Array.from(selectedMembers);
+    if (targetMemberIds.length === 0) return;
     
-    const count = selectedMembers.size;
-    if (type === "promotional" && !(await confirmActivePromotionalTemplate())) return;
+    const count = targetMemberIds.length;
+    if (type === "promotional" && !options?.skipPromoDialog) {
+      const context = await loadActivePromotionalTemplate();
+      if (!context) return;
+      setPromoSendContext(context);
+      setPendingPromoSend({ mode: "bulk", memberIds: targetMemberIds });
+      return;
+    }
     if (!waOverlay.startSending(`${count} members`)) return;
     setBulkActionType(type);
     try {
@@ -654,10 +688,10 @@ export const MembersTable = ({
             "apikey": SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            memberIds: Array.from(selectedMembers),
+            memberIds: targetMemberIds,
             type: savedTemplate ? "custom" : type,
             customMessage: savedTemplate,
-            customVariables: type === "promotional" ? promoCustomVariables : undefined,
+            customVariables: type === "promotional" ? (options?.customVariables ?? promoCustomVariables) : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
@@ -706,6 +740,40 @@ export const MembersTable = ({
       waOverlay.markError(error.message);
     } finally {
       setBulkActionType(null);
+    }
+  };
+
+  const updatePromoDialogValue = (key: string, value: string) => {
+    setPromoSendContext((prev) => prev ? {
+      ...prev,
+      customVariables: { ...prev.customVariables, [key]: value },
+    } : prev);
+  };
+
+  const closePromoDialog = () => {
+    setPromoSendContext(null);
+    setPendingPromoSend(null);
+  };
+
+  const confirmPromoSend = async () => {
+    if (!promoSendContext || !pendingPromoSend) return;
+    const values = promoSendContext.customVariables;
+    if (currentBranch?.id) {
+      try {
+        localStorage.setItem(`promo_var_overrides_${currentBranch.id}_${promoSendContext.slot}`, JSON.stringify(values));
+      } catch (_e) { /* noop */ }
+    }
+    setPromoCustomVariables(Object.keys(values).length > 0 ? values : undefined);
+    const pending = pendingPromoSend;
+    closePromoDialog();
+    if (pending.mode === "single") {
+      await sendWhatsAppMessage(pending.member.id, pending.member.name, pending.member.phone, "promotional", undefined, values);
+    } else {
+      await handleBulkWhatsApp("promotional", {
+        skipPromoDialog: true,
+        memberIds: pending.memberIds,
+        customVariables: values,
+      });
     }
   };
 
@@ -1920,6 +1988,51 @@ export const MembersTable = ({
       />
 
       <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
+
+      <Dialog open={!!promoSendContext && !!pendingPromoSend} onOpenChange={(open) => !open && closePromoDialog()}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send promotional message</DialogTitle>
+            <DialogDescription>
+              {promoSendContext?.name} will be sent to {pendingPromoSend?.mode === "bulk" ? `${pendingPromoSend.memberIds.length} members` : pendingPromoSend?.mode === "single" ? pendingPromoSend.member.name : "selected members"}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {promoSendContext && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Message preview</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{promoSendContext.previewBody}</p>
+              </div>
+
+              {promoSendContext.variables.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Message values</p>
+                  {promoSendContext.variables.map((variable) => (
+                    <div key={variable.key} className="grid gap-1.5">
+                      <Label htmlFor={`promo-send-${variable.key}`} className="text-xs">
+                        {getPromoVariableLabel(variable)}
+                      </Label>
+                      <Input
+                        id={`promo-send-${variable.key}`}
+                        value={promoSendContext.customVariables[variable.key] ?? variable.defaultValue ?? ""}
+                        onChange={(event) => updatePromoDialogValue(variable.key, event.target.value)}
+                        placeholder={getPromoDisplayValue(variable, undefined)}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closePromoDialog}>Cancel</Button>
+            <Button onClick={confirmPromoSend}>Send message</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {enrollMember && (
         <BiometricEnrollDialog

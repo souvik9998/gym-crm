@@ -11,6 +11,7 @@ import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import { MegaphoneIcon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
+import { getPromoDisplayValue, getPromoTemplateName, getPromoVariableLabel, getResolvedPromoVariables } from "@/utils/promotionalTemplates";
 
 interface PromoVariable {
   key: string;
@@ -89,7 +90,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       for (const s of visible) {
         const stored = getPromoVariableOverrides(currentBranch.id, s.slot);
         const merged: Record<string, string> = {};
-        for (const v of s.variables ?? []) {
+        for (const v of getResolvedPromoVariables(s)) {
           if (!v?.key) continue;
           merged[v.key] = stored[v.key] ?? v.defaultValue ?? "";
         }
@@ -124,7 +125,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
         const values = overrides[s.slot] ?? {};
         // Only persist keys actually defined on the template.
         const filtered: Record<string, string> = {};
-        for (const v of s.variables ?? []) {
+        for (const v of getResolvedPromoVariables(s)) {
           if (!v?.key) continue;
           filtered[v.key] = values[v.key] ?? v.defaultValue ?? "";
         }
@@ -152,7 +153,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
     }
     setSavedSlot(activeSlot);
     const chosen = slots.find((s) => s.slot === activeSlot);
-    const label = chosen?.name?.trim() || (activeSlot ? `Promo ${activeSlot}` : "");
+        const label = chosen ? getPromoTemplateName(chosen) : (activeSlot ? `Promo ${activeSlot}` : "");
     toast.success(activeSlot ? `Active promotional template set to "${label}"` : "Active promotional template cleared");
     setSaving(false);
   };
@@ -205,7 +206,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
               >
                 {slots.map((s) => {
                   const isSelected = activeSlot === s.slot;
-                  const slotVars = s.variables ?? [];
+                  const slotVars = getResolvedPromoVariables(s);
                   return (
                     <div
                       key={s.slot}
@@ -220,7 +221,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
                         <RadioGroupItem value={String(s.slot)} id={`promo-${s.slot}`} className="mt-0.5" />
                         <div className="space-y-1 flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <p className="text-sm font-medium">{(s.name && s.name.trim()) || `Promo ${s.slot}`}</p>
+                            <p className="text-sm font-medium">{getPromoTemplateName(s)}</p>
                             {savedSlot === s.slot && (
                               <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Active</Badge>
                             )}
@@ -247,15 +248,15 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
                               <div key={v.key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
                                 <Label
                                   htmlFor={`promo-${s.slot}-${v.key}`}
-                                  className="text-[11px] sm:text-xs font-mono text-muted-foreground sm:col-span-1"
+                                  className="text-[11px] sm:text-xs text-muted-foreground sm:col-span-1"
                                 >
-                                  {v.key}
+                                  {getPromoVariableLabel(v)}
                                 </Label>
                                 <Input
                                   id={`promo-${s.slot}-${v.key}`}
                                   value={overrides[s.slot]?.[v.key] ?? v.defaultValue ?? ""}
                                   onChange={(e) => updateOverride(s.slot, v.key, e.target.value)}
-                                  placeholder={v.defaultValue || `value for ${v.key}`}
+                                  placeholder={getPromoDisplayValue(v, undefined)}
                                   disabled={!whatsappEnabled || saving}
                                   className="h-8 text-xs sm:col-span-2"
                                 />
