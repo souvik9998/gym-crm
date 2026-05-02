@@ -163,6 +163,16 @@ export default function MessagingProviderTab({ tenantId }: Props) {
     finally { setSaving(false); }
   };
 
+  const savePromotionalTemplates = async (promos: PromoTemplateSlot[]) => {
+    setSaving(true);
+    try {
+      await callAction("save-messaging-config", { promotional_templates: promos });
+      toast.success("Promotional templates saved");
+      await refresh();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
   const testSend = async () => {
     if (!testPhone.trim()) { toast.error("Enter a test phone number (with country code)"); return; }
     setTesting(true);
