@@ -1,6 +1,7 @@
 import { useBranch } from "@/contexts/BranchContext";
 import { TimeSlotManagement } from "@/components/admin/staff/TimeSlotManagement";
 import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
+import { TimeSlotsSkeleton } from "@/components/ui/skeleton-loaders";
 
 /**
  * Admin-only Time Slots page.
@@ -13,6 +14,8 @@ import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 const AdminTimeSlots = () => {
   const { currentBranch } = useBranch();
   const { staff, trainers, isLoading } = useStaffPageData();
+
+  if (isLoading) return <TimeSlotsSkeleton />;
 
   return (
     <div className="w-full">
