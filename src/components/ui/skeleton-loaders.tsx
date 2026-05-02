@@ -277,14 +277,230 @@ BranchAnalyticsSkeleton.displayName = "BranchAnalyticsSkeleton";
 
 export const SettingsSectionSkeleton = memo(() => (
   <div className="w-full px-1 sm:px-0 animate-fade-in-soft">
-    <div className="hidden lg:flex border-b border-border/60 mb-6 gap-1">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-28 rounded-none" />)}</div>
-    <div className="lg:hidden mb-4"><Skeleton className="h-10 w-full rounded-lg" /></div>
+    {/* Mobile: dropdown selector */}
+    <div className="lg:hidden mb-4">
+      <Skeleton className="h-10 w-full rounded-lg" />
+    </div>
+    {/* Desktop: horizontal tab strip */}
+    <div className="hidden lg:flex border-b border-border/60 mb-6 gap-1">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <div key={i} className="px-5 py-2.5">
+          <Skeleton className={cn("h-4", i === 0 ? "w-20" : i === 1 ? "w-24" : i === 2 ? "w-24" : i === 3 ? "w-20" : i === 4 ? "w-16" : i === 5 ? "w-16" : "w-24")} />
+        </div>
+      ))}
+    </div>
+
+    {/* Two stacked content cards (matches Packages/General style with icon + title + grid of fields) */}
     <div className="space-y-4 lg:space-y-6">
-      {Array.from({ length: 2 }).map((_, i) => <Card key={i} className="border border-border/40 shadow-sm"><CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4 space-y-2"><Skeleton className="h-5 lg:h-6 w-44" /><Skeleton className="h-3 lg:h-4 w-72 max-w-full" /></CardHeader><CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0"><div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }).map((_, j) => <div key={j} className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-10 w-full" /></div>)}</div><Skeleton className="h-9 w-32" /></CardContent></Card>)}
+      {Array.from({ length: 2 }).map((_, i) => (
+        <Card key={i} className="border border-border/40 shadow-sm overflow-hidden">
+          <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+            <div className="flex items-center gap-3">
+              <Skeleton className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl" />
+              <div className="space-y-2 flex-1 min-w-0">
+                <Skeleton className="h-5 lg:h-6 w-44" />
+                <Skeleton className="h-3 lg:h-4 w-64 max-w-full" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0">
+            {/* Inline form row (mimics duration / price grid in muted box) */}
+            <div className="grid gap-2 lg:gap-4 grid-cols-3 p-3 lg:p-4 bg-muted/30 rounded-xl border border-border/30">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="space-y-1.5 lg:space-y-2">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-9 lg:h-10 w-full" />
+                </div>
+              ))}
+            </div>
+            {/* List rows */}
+            <div className="space-y-2">
+              {Array.from({ length: 3 }).map((_, j) => (
+                <div key={j} className="flex items-center justify-between gap-3 p-3 rounded-lg border border-border/30">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <Skeleton className="h-8 w-8 rounded-lg" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <Skeleton className="h-4 w-40 max-w-full" />
+                      <Skeleton className="h-3 w-24" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-8 w-8 rounded-md" />
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end">
+              <Skeleton className="h-9 w-32 rounded-lg" />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   </div>
 ));
 SettingsSectionSkeleton.displayName = "SettingsSectionSkeleton";
+
+export const CalendarSectionSkeleton = memo(() => (
+  <div className="p-4 lg:p-6 max-w-6xl mx-auto animate-fade-in-soft">
+    {/* Page header */}
+    <div className="mb-4 lg:mb-6 space-y-2">
+      <Skeleton className="h-7 lg:h-8 w-32" />
+      <Skeleton className="h-4 w-72 max-w-full" />
+    </div>
+
+    <div className="space-y-3 lg:space-y-6">
+      {/* Calendar Card */}
+      <Card className="border border-border/40 shadow-sm overflow-hidden">
+        <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 lg:gap-3">
+            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+              <Skeleton className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl" />
+              <div className="space-y-1.5 min-w-0">
+                <Skeleton className="h-4 lg:h-6 w-28" />
+                <Skeleton className="h-3 lg:h-4 w-56 max-w-full" />
+              </div>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Skeleton className="h-8 lg:h-9 flex-1 sm:w-32 rounded-xl" />
+              <Skeleton className="h-8 lg:h-9 flex-1 sm:w-28 rounded-xl" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-3 lg:p-6 pt-1 lg:pt-2">
+          {/* Month nav */}
+          <div className="flex items-center justify-between mb-2.5 lg:mb-4">
+            <Skeleton className="h-8 w-8 rounded-lg" />
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-8 w-8 rounded-lg" />
+          </div>
+          {/* Weekday headers */}
+          <div className="grid grid-cols-7 gap-1 mb-1.5">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="h-3 lg:h-4 w-6 lg:w-10 mx-auto" />
+            ))}
+          </div>
+          {/* Calendar grid (6 weeks) */}
+          <div className="grid grid-cols-7 gap-1 lg:gap-1.5">
+            {Array.from({ length: 42 }).map((_, i) => (
+              <Skeleton key={i} className="min-h-[68px] sm:min-h-[72px] lg:min-h-[100px] rounded-lg lg:rounded-xl" />
+            ))}
+          </div>
+          {/* Legend */}
+          <div className="flex items-center gap-3 mt-3 lg:mt-4 pt-2.5 lg:pt-3 border-t border-border/30 flex-wrap">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-1.5">
+                <Skeleton className="w-2.5 h-2.5 rounded-full" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Upcoming Events / Holidays cards */}
+      {Array.from({ length: 2 }).map((_, idx) => (
+        <Card key={idx} className="border border-border/40 shadow-sm overflow-hidden">
+          <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
+            <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+              <Skeleton className="w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl" />
+              <div className="space-y-1.5 min-w-0">
+                <Skeleton className="h-4 lg:h-6 w-40" />
+                <Skeleton className="h-3 lg:h-4 w-52 max-w-full" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="p-3 lg:p-6 pt-0 space-y-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="flex items-center justify-between gap-3 p-2.5 lg:p-4 rounded-lg lg:rounded-xl border border-border/30">
+                <div className="flex items-center gap-2.5 lg:gap-3 min-w-0 flex-1">
+                  <Skeleton className="w-10 h-10 lg:w-12 lg:h-12 rounded-lg lg:rounded-xl" />
+                  <div className="space-y-1.5 min-w-0 flex-1">
+                    <Skeleton className="h-4 w-40 max-w-full" />
+                    <Skeleton className="h-3 w-32 max-w-full" />
+                  </div>
+                </div>
+                <Skeleton className="h-4 w-4 rounded" />
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  </div>
+));
+CalendarSectionSkeleton.displayName = "CalendarSectionSkeleton";
+
+export const ActivityLogsSectionSkeleton = memo(() => (
+  <div className="max-w-7xl mx-auto animate-fade-in-soft">
+    {/* Top tabs (Admin / User / Staff / WhatsApp) */}
+    <div className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto rounded-md gap-1">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-7 lg:h-9 w-full rounded-sm" />
+      ))}
+    </div>
+
+    {/* Sub tabs (Statistics / Activity Logs) */}
+    <div className="grid w-full max-w-[240px] lg:max-w-xs grid-cols-2 h-8 lg:h-10 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 rounded-md gap-1">
+      {Array.from({ length: 2 }).map((_, i) => (
+        <Skeleton key={i} className="h-full w-full rounded-sm" />
+      ))}
+    </div>
+
+    {/* Logs Card */}
+    <Card>
+      <CardHeader className="p-3 lg:p-6 pb-2 space-y-2">
+        <Skeleton className="h-5 lg:h-6 w-32" />
+        <Skeleton className="h-3 lg:h-4 w-64 max-w-full" />
+      </CardHeader>
+      <CardContent className="space-y-3 lg:space-y-4 p-3 lg:p-6 pt-0">
+        {/* Filter row */}
+        <div className="space-y-1.5 lg:space-y-0 lg:flex lg:flex-wrap lg:items-center lg:gap-3">
+          <div className="flex items-center gap-1.5 lg:gap-3 lg:flex-1">
+            <Skeleton className="h-8 lg:h-12 flex-1 min-w-[120px] lg:min-w-[200px] rounded-md" />
+            <Skeleton className="h-8 lg:h-12 w-[90px] lg:w-[180px] rounded-md" />
+          </div>
+          <div className="flex items-center gap-1.5 lg:gap-3">
+            <Skeleton className="h-8 lg:h-12 w-32 lg:w-48 rounded-md" />
+            <Skeleton className="h-8 w-9 rounded-md" />
+          </div>
+        </div>
+
+        {/* Table (desktop) / Card list (mobile) */}
+        <div className="hidden lg:block rounded-md border">
+          <div className="border-b p-3 grid grid-cols-5 gap-4">
+            {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-4 w-24" />)}
+          </div>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="border-b last:border-0 p-3 grid grid-cols-5 gap-4 items-center">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-5 w-24 rounded-full" />
+              <Skeleton className="h-4 w-full max-w-[280px]" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-8 ml-auto rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="lg:hidden space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="p-3 rounded-lg border bg-card">
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0 space-y-1.5">
+                  <Skeleton className="h-4 w-full max-w-[240px]" />
+                  <div className="flex items-center gap-2">
+                    <Skeleton className="h-5 w-20 rounded-full" />
+                    <Skeleton className="h-4 w-16 rounded" />
+                  </div>
+                  <Skeleton className="h-3 w-24" />
+                </div>
+                <Skeleton className="h-8 w-8 rounded-md shrink-0" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  </div>
+));
+ActivityLogsSectionSkeleton.displayName = "ActivityLogsSectionSkeleton";
 
 export const EventsSectionSkeleton = memo(() => (
   <div className="space-y-4 lg:space-y-6 animate-fade-in-soft">
