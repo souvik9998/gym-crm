@@ -319,7 +319,8 @@ export const MembersTable = ({
     memberName: string, 
     memberPhone: string,
     type: string,
-    customMessage?: string
+    customMessage?: string,
+    customVariables?: Record<string, string>
   ) => {
     if (!waOverlay.startSending(memberName)) return false;
     setSendingWhatsApp(memberId);
@@ -349,7 +350,7 @@ export const MembersTable = ({
             memberIds: [memberId],
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
-            customVariables: type === "promotional" ? promoCustomVariables : undefined,
+            customVariables: type === "promotional" ? (customVariables ?? promoCustomVariables) : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
@@ -401,8 +402,10 @@ export const MembersTable = ({
 
   const handleSendPromotional = async (member: Member, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!(await confirmActivePromotionalTemplate())) return;
-    await sendWhatsAppMessage(member.id, member.name, member.phone, "promotional");
+    const context = await loadActivePromotionalTemplate();
+    if (!context) return;
+    setPromoSendContext(context);
+    setPendingPromoSend({ mode: "single", member });
   };
 
   const handleSendExpiryReminder = async (member: Member, e: React.MouseEvent) => {
