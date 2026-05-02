@@ -30,7 +30,8 @@ export type MessageCategory =
   | "invoice_link"
   | "check_in"
   | "password_reset"
-  | "daily_summary_admin";
+  | "daily_summary_admin"
+  | "holiday_notification";
 
 export type ProviderName = "periskope" | "zavu" | "none";
 
@@ -94,6 +95,8 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   check_in:            ["name", "check_in_time", "branch_name"],
   password_reset:      ["name", "reset_link", "branch_name"],
   daily_summary_admin: ["summary_text"],
+  // Template: gk_holiday_notification — {{1}}=branch_name, {{2}}=date, {{3}}=closed_status
+  holiday_notification: ["branch_name", "date", "closed_status"],
 };
 
 // User-friendly metadata for the Super Admin UI
@@ -122,6 +125,7 @@ export const MESSAGE_CATEGORIES: Array<{
   { key: "staff_credentials",   group: "Manual / Admin",   label: "Staff Credentials",   description: "Login credentials sent to new staff." },
   { key: "password_reset",      group: "Manual / Admin",   label: "Password Reset",      description: "Password-reset link." },
   { key: "daily_summary_admin", group: "Manual / Admin",   label: "Daily Admin Summary", description: "Daily owner/admin summary message." },
+  { key: "holiday_notification",group: "Manual / Admin",   label: "Holiday Notification",description: "Sent to members when a gym holiday / closure is announced." },
 ];
 
 // -------------------------------------------------------------------------

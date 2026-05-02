@@ -537,17 +537,37 @@ const HolidayCalendarTab = () => {
         memberIds = filtered.map((m: any) => m.id);
       }
 
-      // Send via send-whatsapp edge function with custom message
+      // Build closed_status string from form fields
+      const dateStr = selectedDate ? format(selectedDate, "EEEE, dd MMMM yyyy") : "";
+      let closedStatus = "";
+      if (formType === "full_day") {
+        closedStatus = `Full Day (${formatTime12h(formStartTime)} – ${formatTime12h(formEndTime)})`;
+      } else if (formType === "half_day") {
+        closedStatus = `Half Day · Open ${formatTime12h(formStartTime)} – ${formatTime12h(formEndTime)}`;
+      } else if (formType === "late_opening") {
+        closedStatus = `Late Opening · Opens at ${formatTime12h(formOpenTime)}`;
+      } else if (formType === "early_closing") {
+        closedStatus = `Early Closing · Closes at ${formatTime12h(formCloseTime)}`;
+      } else {
+        closedStatus = "Closed";
+      }
+
+      // Send via send-whatsapp edge function using approved holiday template
       const { data: { session } } = await supabase.auth.getSession();
       const { data, error } = await supabase.functions.invoke("send-whatsapp", {
         body: {
           memberIds,
-          type: "custom",
+          type: "holiday_notification",
           customMessage: formWhatsAppMessage,
           isManual: false,
           adminUserId: session?.user?.id || null,
           branchId: currentBranch.id,
           branchName: currentBranch.name,
+          holidayDetails: {
+            date: dateStr,
+            closed_status: closedStatus,
+            holiday_name: formName?.trim() || undefined,
+          },
         },
       });
 
