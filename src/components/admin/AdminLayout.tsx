@@ -9,6 +9,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
