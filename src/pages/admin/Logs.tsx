@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense, lazy } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -7,12 +7,14 @@ import {
   UserGroupIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
-import WhatsAppLogsTab from "@/components/admin/WhatsAppLogsTab";
-import AdminActivityLogsTab from "@/components/admin/AdminActivityLogsTab";
-import UserActivityLogsTab from "@/components/admin/UserActivityLogsTab";
-import StaffActivityLogsTab from "@/components/admin/StaffActivityLogsTab";
 import { PageTour } from "@/components/guide/PageTour";
 import { LOGS_STEPS } from "@/components/guide/tourSteps";
+import { ActivityLogsSectionSkeleton, TableSkeleton } from "@/components/ui/skeleton-loaders";
+
+const WhatsAppLogsTab = lazy(() => import("@/components/admin/WhatsAppLogsTab"));
+const AdminActivityLogsTab = lazy(() => import("@/components/admin/AdminActivityLogsTab"));
+const UserActivityLogsTab = lazy(() => import("@/components/admin/UserActivityLogsTab"));
+const StaffActivityLogsTab = lazy(() => import("@/components/admin/StaffActivityLogsTab"));
 
 const Logs = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -58,19 +60,27 @@ const Logs = () => {
           </TabsList>
 
           <TabsContent value="activity" className="mt-0">
-            <AdminActivityLogsTab refreshKey={refreshKey} />
+            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+              <AdminActivityLogsTab refreshKey={refreshKey} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="user" className="mt-0">
-            <UserActivityLogsTab refreshKey={refreshKey} />
+            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+              <UserActivityLogsTab refreshKey={refreshKey} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="staff" className="mt-0">
-            <StaffActivityLogsTab refreshKey={refreshKey} />
+            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+              <StaffActivityLogsTab refreshKey={refreshKey} />
+            </Suspense>
           </TabsContent>
 
           <TabsContent value="whatsapp" className="mt-0">
-            <WhatsAppLogsTab refreshKey={refreshKey} />
+            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+              <WhatsAppLogsTab refreshKey={refreshKey} />
+            </Suspense>
           </TabsContent>
         </Tabs>
         <PageTour tourId="logs" steps={LOGS_STEPS} autoStart={false} />
@@ -79,3 +89,4 @@ const Logs = () => {
 };
 
 export default Logs;
+
