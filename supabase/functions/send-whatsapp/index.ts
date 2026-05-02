@@ -82,11 +82,12 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if WhatsApp is enabled for the specific branch
+    // Check if WhatsApp is enabled for the specific branch + load active promo slot
+    let activePromoSlot: number | null = null;
     if (branchId) {
       const { data: settings } = await supabase
         .from("gym_settings")
-        .select("whatsapp_enabled")
+        .select("whatsapp_enabled, active_promotional_slot")
         .eq("branch_id", branchId)
         .limit(1)
         .maybeSingle();
@@ -100,6 +101,8 @@ Deno.serve(async (req) => {
           }
         );
       }
+      const slot = (settings?.active_promotional_slot ?? null) as number | null;
+      activePromoSlot = slot && slot >= 1 && slot <= 4 ? slot : null;
     } else {
       // Fallback: Check if WhatsApp is enabled globally (for backward compatibility)
       const { data: settings } = await supabase
