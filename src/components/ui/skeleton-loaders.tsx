@@ -196,44 +196,39 @@ export const PaymentHistorySkeleton = memo(() => (
 PaymentHistorySkeleton.displayName = "PaymentHistorySkeleton";
 
 /**
- * Inline loading spinner — modern dual-ring with counter-rotating accent.
- * Inherits color via `text-*` so it adapts to any context.
+ * Inline prix-clip ring spinner. Inherits color via `currentColor`.
  */
 export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) => {
   const sizeClasses = {
-    sm: "w-4 h-4",
-    md: "w-6 h-6",
-    lg: "w-8 h-8",
+    sm: "w-4 h-4 border-2",
+    md: "w-6 h-6 border-[3px]",
+    lg: "w-8 h-8 border-[3px]",
   };
 
   return (
     <span
-      className={`relative inline-flex ${sizeClasses[size]} text-primary ${className ?? ""}`}
+      className={`relative inline-block rounded-full text-primary animate-[spinner-orbit_1s_linear_infinite] ${className ?? ""}`}
       role="status"
       aria-label="Loading"
     >
-      <span className="absolute inset-0 rounded-full border-2 border-current/20 border-t-current animate-[spinner-orbit_0.7s_linear_infinite]" />
-      <span className="absolute inset-[20%] rounded-full border-2 border-current/30 border-b-current animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
+      <span
+        className={`block box-border rounded-full border-current animate-[prix-clip-fix_2s_linear_infinite] ${sizeClasses[size]}`}
+      />
     </span>
   );
 });
 InlineSpinner.displayName = "InlineSpinner";
 
 /**
- * Full page loading state — modern stacked spinner with a soft halo so
- * route transitions feel polished and quick instead of blank.
+ * Full-page loader using the prix-clip ring pattern with a soft halo.
  */
 export const PageLoader = memo(() => (
   <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
-    <div className="relative w-14 h-14 text-primary">
-      {/* Soft halo */}
-      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.4s_ease-in-out_infinite]" />
-      {/* Outer fast ring */}
-      <span className="absolute inset-0 rounded-full border-[3px] border-primary/15 border-t-primary animate-[spinner-orbit_0.7s_linear_infinite]" />
-      {/* Counter-rotating inner ring */}
-      <span className="absolute inset-2 rounded-full border-2 border-primary/25 border-b-primary animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
-      {/* Pulsing center dot */}
-      <span className="absolute inset-[42%] rounded-full bg-primary animate-[spinner-pulse_1.2s_ease-in-out_infinite]" />
+    <div className="relative w-12 h-12 text-primary">
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
+      <span className="absolute inset-0 rounded-full animate-[spinner-orbit_1s_linear_infinite]">
+        <span className="block w-full h-full box-border rounded-full border-[5px] border-current animate-[prix-clip-fix_2s_linear_infinite]" />
+      </span>
     </div>
     <p className="text-xs font-medium text-muted-foreground tracking-wide animate-pulse">
       Loading…
