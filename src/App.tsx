@@ -130,7 +130,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/dashboard" element={
-        <Suspense fallback={<PageLoader />}><AdminDashboard /></Suspense>
+        <Suspense fallback={<DashboardFullSkeleton />}><AdminDashboard /></Suspense>
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
