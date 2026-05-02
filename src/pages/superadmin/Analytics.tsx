@@ -131,19 +131,9 @@ export default function SuperAdminAnalytics() {
     setSelectedBranchId("all");
   }, [selectedTenantId, branches]);
 
-  if (roleLoading || isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Skeleton key={i} className="h-32" />
-          ))}
-        </div>
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+  // Defer to route-level <Suspense> fallback (AdminSectionSkeleton) — no
+  // internal full-page skeleton swap.
+  if (roleLoading || isLoading) return null;
 
   if (!isSuperAdmin) {
     return null;

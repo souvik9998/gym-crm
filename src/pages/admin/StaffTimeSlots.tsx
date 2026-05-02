@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { AdminSectionSkeleton } from "@/components/ui/skeleton-loaders";
+
 import { ChartBarIcon, ClockIcon, UserGroupIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
@@ -132,9 +132,10 @@ const StaffTimeSlots = () => {
     return map;
   }, [trainerStaff]);
 
-  if (staffLoading) {
-    return <AdminSectionSkeleton />;
-  }
+  // Note: no full-page skeleton during staffLoading — the route-level
+  // <Suspense> fallback (AdminSectionSkeleton) already covers chunk + initial
+  // load. Returning another skeleton here would cause a visible skeleton swap.
+  if (staffLoading) return null;
 
   if (!isStaffLoggedIn) return null;
 
