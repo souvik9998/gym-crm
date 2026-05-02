@@ -132,9 +132,10 @@ const StaffTimeSlots = () => {
     return map;
   }, [trainerStaff]);
 
-  if (staffLoading) {
-    return <AdminSectionSkeleton />;
-  }
+  // Note: no full-page skeleton during staffLoading — the route-level
+  // <Suspense> fallback (AdminSectionSkeleton) already covers chunk + initial
+  // load. Returning another skeleton here would cause a visible skeleton swap.
+  if (staffLoading) return null;
 
   if (!isStaffLoggedIn) return null;
 
