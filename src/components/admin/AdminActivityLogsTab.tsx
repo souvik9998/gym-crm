@@ -42,7 +42,7 @@ import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import { toast } from "@/components/ui/sonner";
 import { useInfiniteAdminLogsQuery, useAdminLogStats, type AdminActivityLog } from "@/hooks/queries";
-import { TableSkeleton, InfiniteScrollSkeleton } from "@/components/ui/skeleton-loaders";
+import { TableSkeleton, InfiniteScrollSkeleton, ActivityLogsContentSkeleton } from "@/components/ui/skeleton-loaders";
 
 // Stats interface removed - using AdminLogStats from useLogStats hook
 
@@ -233,7 +233,7 @@ const AdminActivityLogsTab = ({ refreshKey }: AdminActivityLogsTabProps) => {
   const isDataConfirmedEmpty = !isLoading && !isFetching && data !== undefined && filteredLogs.length === 0;
 
   if (showLoading) {
-    return <TableSkeleton rows={8} columns={5} />;
+    return <ActivityLogsContentSkeleton />;
   }
 
   return (
