@@ -45,9 +45,17 @@ interface Props {
 
 export default function PromotionalTemplatesEditor({ initial, onSave, saving = false }: Props) {
   const [slots, setSlots] = useState<PromoTemplateSlot[]>(() => normalize(initial));
+  // Track the last "remote" signature we synced from so we don't blow away
+  // local edits every time the parent re-renders with a fresh array reference.
+  const lastSyncedRef = React.useRef<string>(JSON.stringify(normalize(initial)));
 
   useEffect(() => {
-    setSlots(normalize(initial));
+    const incoming = normalize(initial);
+    const sig = JSON.stringify(incoming);
+    if (sig !== lastSyncedRef.current) {
+      lastSyncedRef.current = sig;
+      setSlots(incoming);
+    }
   }, [initial]);
 
   const update = useCallback((slotNum: number, patch: Partial<PromoTemplateSlot>) => {
