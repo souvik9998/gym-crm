@@ -85,7 +85,7 @@ const StatCard = memo(({
         </p>
       </div>
       <div className={`w-7 h-7 md:w-9 md:h-9 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} />
+        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} strokeWidth={1.75} />
       </div>
     </CardContent>
 
