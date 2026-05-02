@@ -258,19 +258,19 @@ const PlatformRoutes = () => (
         <CreateTenant />
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TenantDetail /></Suspense>
+        <TenantDetail />
       } />
       <Route path="/superadmin/users" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminUsers /></Suspense>
+        <SuperAdminUsers />
       } />
       <Route path="/superadmin/analytics" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminAnalytics /></Suspense>
+        <SuperAdminAnalytics />
       } />
       <Route path="/superadmin/audit-logs" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AuditLogs /></Suspense>
+        <AuditLogs />
       } />
       <Route path="/superadmin/settings" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminSettings /></Suspense>
+        <SuperAdminSettings />
       } />
     </Route>
 
