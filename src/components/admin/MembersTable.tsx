@@ -328,6 +328,7 @@ export const MembersTable = ({
             memberIds: [memberId],
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
+            customVariables: type === "promotional" ? promoCustomVariables : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
