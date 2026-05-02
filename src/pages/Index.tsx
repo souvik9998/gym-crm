@@ -249,19 +249,10 @@ const Index = () => {
             </div>
           )}
         </div>
-        {isBranchLoading && !branchInfo ? (
-          <div className="flex flex-col items-center gap-2">
-            <div className="h-9 w-48 bg-muted animate-pulse rounded-lg" />
-            <div className="h-5 w-56 bg-muted/60 animate-pulse rounded-md" />
-          </div>
-        ) : (
-          <>
-            <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
-              {branchInfo?.name || "Gym Portal"}
-            </h1>
-            <p className="text-muted-foreground text-lg">Member Registration Portal</p>
-          </>
-        )}
+        <h1 className="text-3xl md:text-4xl font-semibold text-foreground mb-2">
+          {branchInfo?.name || "Gym Portal"}
+        </h1>
+        <p className="text-muted-foreground text-lg">Member Registration Portal</p>
       </header>
 
       {/* Main Content */}
