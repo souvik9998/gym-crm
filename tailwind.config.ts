@@ -164,6 +164,10 @@ export default {
   				'0%, 100%': { transform: 'scale(0.85)', opacity: '0.6' },
   				'50%': { transform: 'scale(1)', opacity: '1' }
   			},
+  			'spinner-bounce': {
+  				'0%, 100%': { transform: 'scale(0.4)', opacity: '0.5' },
+  				'50%': { transform: 'scale(1)', opacity: '1' }
+  			},
   			'refresh-spin': {
   				from: { transform: 'rotate(0deg)' },
   				to: { transform: 'rotate(-360deg)' }
@@ -199,6 +203,7 @@ export default {
   			shimmer: 'shimmer 1.6s ease-in-out infinite',
   			'spinner-orbit': 'spinner-orbit 0.8s linear infinite',
   			'spinner-pulse': 'spinner-pulse 1.2s ease-in-out infinite',
+  			'spinner-bounce': 'spinner-bounce 1.2s ease-in-out infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
   			wave: 'wave 2.4s ease-in-out 1',
   			'scale-in': 'scale-in 0.18s ease-out'
