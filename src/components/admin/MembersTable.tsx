@@ -244,9 +244,13 @@ export const MembersTable = ({
   // the merged customVariables (Super-Admin defaults + admin overrides) along
   // with the send call without re-fetching.
   const [promoCustomVariables, setPromoCustomVariables] = useState<Record<string, string> | undefined>(undefined);
+  const [promoSendContext, setPromoSendContext] = useState<PromoSendContext | null>(null);
+  const [pendingPromoSend, setPendingPromoSend] = useState<PendingPromoSend | null>(null);
+  const [loadingPromoDialog, setLoadingPromoDialog] = useState(false);
 
-  const confirmActivePromotionalTemplate = async (): Promise<boolean> => {
-    if (!currentBranch?.id) return false;
+  const loadActivePromotionalTemplate = async (): Promise<PromoSendContext | null> => {
+    if (!currentBranch?.id) return null;
+    setLoadingPromoDialog(true);
     const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=get-promotional-templates`, {
       method: "POST",
@@ -257,10 +261,11 @@ export const MembersTable = ({
       },
       body: JSON.stringify({ branchId: currentBranch.id }),
     });
+    setLoadingPromoDialog(false);
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       toast.error(data?.error || "Could not load active promotional template");
-      return false;
+      return null;
     }
     const activeSlot = data?.data?.active_promotional_slot as number | null;
     type ApiSlot = {
@@ -275,7 +280,7 @@ export const MembersTable = ({
     const activeTemplate = slots.find((s) => s.slot === activeSlot && s.enabled !== false && s.templateId?.trim());
     if (!activeTemplate) {
       toast.error("Select an active promotional template in WhatsApp settings before sending.");
-      return false;
+      return null;
     }
 
     // Merge: Super-Admin defaults <- admin's localStorage overrides for this branch+slot.
@@ -285,8 +290,9 @@ export const MembersTable = ({
       const raw = localStorage.getItem(overridesKey);
       if (raw) savedOverrides = JSON.parse(raw) ?? {};
     } catch (_e) { /* noop */ }
+    const variables = getResolvedPromoVariables(activeTemplate);
     const merged: Record<string, string> = {};
-    for (const v of activeTemplate.variables ?? []) {
+    for (const v of variables) {
       if (!v?.key) continue;
       const override = savedOverrides[v.key];
       const val = (typeof override === "string" && override.length > 0)
@@ -296,13 +302,14 @@ export const MembersTable = ({
     }
     setPromoCustomVariables(Object.keys(merged).length > 0 ? merged : undefined);
 
-    const label = (activeTemplate.name && activeTemplate.name.trim()) || `Promo ${activeTemplate.slot}`;
-    const preview = (activeTemplate.previewBody && activeTemplate.previewBody.trim())
-      || "(No preview available — message body is configured by GymKloud.)";
-    const varsLine = Object.keys(merged).length > 0
-      ? `\n\n--- Values ---\n${Object.entries(merged).map(([k, v]) => `${k}: ${v || "(blank)"}`).join("\n")}`
-      : "";
-    return window.confirm(`Send promotional message: "${label}"?\n\n--- Message preview ---\n${preview}${varsLine}`);
+    return {
+      slot: activeTemplate.slot,
+      name: getPromoTemplateName(activeTemplate),
+      previewBody: (activeTemplate.previewBody && activeTemplate.previewBody.trim())
+        || "No preview available — message body is configured by GymKloud.",
+      variables,
+      customVariables: merged,
+    };
   };
 
   const waOverlay = useWhatsAppOverlay();
