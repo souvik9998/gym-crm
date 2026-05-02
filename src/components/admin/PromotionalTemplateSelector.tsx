@@ -89,7 +89,9 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       return;
     }
     setSavedSlot(activeSlot);
-    toast.success(activeSlot ? `Active promotional template set to "Promo ${activeSlot}"` : "Active promotional template cleared");
+    const chosen = slots.find((s) => s.slot === activeSlot);
+    const label = chosen?.name?.trim() || (activeSlot ? `Promo ${activeSlot}` : "");
+    toast.success(activeSlot ? `Active promotional template set to "${label}"` : "Active promotional template cleared");
     setSaving(false);
   };
 
