@@ -1438,11 +1438,10 @@ interface UsageUpdateRequest {
         }
 
         if (nextSlot !== null) {
-          const { data: tenantId } = await supabase.rpc("get_tenant_from_branch", { _branch_id: branchId });
           const { data: cfg } = await supabase
             .from("tenant_messaging_config")
             .select("promotional_templates")
-            .eq("tenant_id", tenantId)
+            .eq("tenant_id", tenantIdForSlot)
             .maybeSingle();
           const configured = (Array.isArray(cfg?.promotional_templates) ? cfg!.promotional_templates : []).some(
             (t: any) => Number(t?.slot) === nextSlot && typeof t?.templateId === "string" && t.templateId.trim().length > 0,
