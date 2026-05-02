@@ -879,6 +879,15 @@ Deno.serve(async (req) => {
           : `🏋️ *Holiday Notice - ${resolvedBranchName}*\n\nDear Member,\n\n*${resolvedBranchName}* will be *closed* on *${holidayDetails.date}*${holidayDetails.holiday_name ? ` for *${holidayDetails.holiday_name}*` : ""}.\n\n🚫 *Closed:* ${holidayDetails.closed_status}\n\nRegular hours will resume the next working day.\n\nThank you for your understanding! 💪`;
       }
 
+      // Per-send overrides from admin (e.g. promotional offer/url) — these
+      // take precedence over auto-built values, but empty strings keep the
+      // auto-built defaults so name/branch_name still resolve per recipient.
+      if (customVariables && typeof customVariables === "object") {
+        for (const [k, v] of Object.entries(customVariables)) {
+          if (typeof v === "string" && v.trim().length > 0) variables[k] = v;
+        }
+      }
+
       const result = await sendMessage(
         formattedPhone,
         message,
