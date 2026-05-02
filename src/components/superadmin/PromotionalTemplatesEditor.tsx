@@ -86,21 +86,29 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
   };
 
   const handleSave = async () => {
-    // Light validation: enabled slots must have name + templateId
-    const invalid = slots.find((s) => s.enabled && (!s.name.trim() || !s.templateId.trim()));
+    const prepared = slots.map((s) => ({
+      ...s,
+      enabled: s.enabled || !!s.templateId.trim(),
+      name: s.name.trim() || (s.templateId.trim() ? `Promo ${s.slot}` : ""),
+      templateId: s.templateId.trim(),
+    }));
+    // Light validation: enabled/given slots must have a template id. Name defaults to Promo 1-4.
+    const invalid = prepared.find((s) => s.enabled && !s.templateId);
     if (invalid) {
-      toast.error(`Promo ${invalid.slot}: Name and Template ID are required when enabled.`);
+      toast.error(`Promo ${invalid.slot}: Template ID is required when enabled.`);
       return;
     }
     // Variable key uniqueness within a slot
-    for (const s of slots) {
+    for (const s of prepared) {
       const keys = s.variables.map((v) => v.key.trim()).filter(Boolean);
       if (new Set(keys).size !== keys.length) {
         toast.error(`Promo ${s.slot}: variable keys must be unique.`);
         return;
       }
     }
-    await onSave(slots);
+    await onSave(prepared);
+    lastSyncedRef.current = JSON.stringify(normalize(prepared));
+    setSlots(normalize(prepared));
   };
 
   return (
