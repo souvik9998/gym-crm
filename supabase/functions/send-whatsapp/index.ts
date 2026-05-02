@@ -57,6 +57,7 @@ Deno.serve(async (req) => {
       dailyPassUserId,
       type = "manual",
       customMessage,
+      customVariables,
       isManual = false,
       adminUserId,
       branchId,
