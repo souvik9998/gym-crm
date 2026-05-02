@@ -334,13 +334,6 @@ const BranchAnalytics = () => {
               ))}
             </div>
 
-            {/* Loading Spinner */}
-            <div className="flex items-center justify-center py-8">
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                <p className="text-sm text-muted-foreground">Loading branch analytics...</p>
-              </div>
-            </div>
           </div>
         ) : (
           <>
@@ -863,13 +856,6 @@ const BranchAnalytics = () => {
                   </div>
                 </div>
 
-                {/* Loading Spinner */}
-                <div className="flex items-center justify-center py-8">
-                  <div className="flex flex-col items-center gap-3">
-                    <div className="w-8 h-8 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <p className="text-sm text-muted-foreground">Loading trainer analytics...</p>
-                  </div>
-                </div>
               </div>
             ) : (
               <Tabs defaultValue="overview" className="w-full">
