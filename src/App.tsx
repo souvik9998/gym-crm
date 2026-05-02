@@ -272,10 +272,15 @@ const PlatformRoutes = () => (
 
 const RoutesByDomain = () => {
   const { mode, isLoading } = useDomainContext();
-  // While resolving tenant domain, render nothing so the page-level
-  // skeleton (RegistrationPageSkeleton / DashboardFullSkeleton) is the
-  // ONLY loading UI the user sees — avoids the spinner→skeleton flash.
-  if (isLoading) return null;
+  // While resolving tenant domain, show the centered spinner so the user
+  // never sees a blank screen on initial load.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <PageLoader />
+      </div>
+    );
+  }
   return mode === "tenant" ? <TenantDomainRoutes /> : <PlatformRoutes />;
 };
 
