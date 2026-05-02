@@ -226,6 +226,11 @@ export const MembersTable = ({
     return savedTemplate || undefined;
   };
 
+  // Last loaded promo context for the active slot — kept here so we can pass
+  // the merged customVariables (Super-Admin defaults + admin overrides) along
+  // with the send call without re-fetching.
+  const [promoCustomVariables, setPromoCustomVariables] = useState<Record<string, string> | undefined>(undefined);
+
   const confirmActivePromotionalTemplate = async (): Promise<boolean> => {
     if (!currentBranch?.id) return false;
     const { data: { session } } = await supabase.auth.getSession();
@@ -244,16 +249,46 @@ export const MembersTable = ({
       return false;
     }
     const activeSlot = data?.data?.active_promotional_slot as number | null;
-    const slots = (data?.data?.promotional_templates ?? []) as Array<{ slot: number; enabled?: boolean; name?: string; templateId?: string; previewBody?: string }>;
+    type ApiSlot = {
+      slot: number;
+      enabled?: boolean;
+      name?: string;
+      templateId?: string;
+      previewBody?: string;
+      variables?: Array<{ key: string; defaultValue?: string }>;
+    };
+    const slots = (data?.data?.promotional_templates ?? []) as ApiSlot[];
     const activeTemplate = slots.find((s) => s.slot === activeSlot && s.enabled !== false && s.templateId?.trim());
     if (!activeTemplate) {
       toast.error("Select an active promotional template in WhatsApp settings before sending.");
       return false;
     }
+
+    // Merge: Super-Admin defaults <- admin's localStorage overrides for this branch+slot.
+    const overridesKey = `promo_var_overrides_${currentBranch.id}_${activeTemplate.slot}`;
+    let savedOverrides: Record<string, string> = {};
+    try {
+      const raw = localStorage.getItem(overridesKey);
+      if (raw) savedOverrides = JSON.parse(raw) ?? {};
+    } catch (_e) { /* noop */ }
+    const merged: Record<string, string> = {};
+    for (const v of activeTemplate.variables ?? []) {
+      if (!v?.key) continue;
+      const override = savedOverrides[v.key];
+      const val = (typeof override === "string" && override.length > 0)
+        ? override
+        : (v.defaultValue ?? "");
+      merged[v.key] = val;
+    }
+    setPromoCustomVariables(Object.keys(merged).length > 0 ? merged : undefined);
+
     const label = (activeTemplate.name && activeTemplate.name.trim()) || `Promo ${activeTemplate.slot}`;
     const preview = (activeTemplate.previewBody && activeTemplate.previewBody.trim())
       || "(No preview available — message body is configured by GymKloud.)";
-    return window.confirm(`Send promotional message: "${label}"?\n\n--- Message preview ---\n${preview}`);
+    const varsLine = Object.keys(merged).length > 0
+      ? `\n\n--- Values ---\n${Object.entries(merged).map(([k, v]) => `${k}: ${v || "(blank)"}`).join("\n")}`
+      : "";
+    return window.confirm(`Send promotional message: "${label}"?\n\n--- Message preview ---\n${preview}${varsLine}`);
   };
 
   const waOverlay = useWhatsAppOverlay();
