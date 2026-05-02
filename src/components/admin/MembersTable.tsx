@@ -250,7 +250,7 @@ export const MembersTable = ({
       toast.error("Select an active promotional template in WhatsApp settings before sending.");
       return false;
     }
-    return window.confirm(`Send promotional message using ${activeTemplate.name || `Promo ${activeTemplate.slot}`}?\n\n${activeTemplate.previewBody || "Preview is not configured for this template."}`);
+    return window.confirm(`Send promotional message using Promo ${activeTemplate.slot}?\n\nTemplate ID: ${activeTemplate.templateId}\n\nThe message body, language and variables are configured in Zavu against this template ID.`);
   };
 
   const waOverlay = useWhatsAppOverlay();

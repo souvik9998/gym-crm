@@ -89,7 +89,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       return;
     }
     setSavedSlot(activeSlot);
-    toast.success(activeSlot ? `Active promotional template set to "${slots.find((s) => s.slot === activeSlot)?.name ?? `Promo ${activeSlot}`}"` : "Active promotional template cleared");
+    toast.success(activeSlot ? `Active promotional template set to "Promo ${activeSlot}"` : "Active promotional template cleared");
     setSaving(false);
   };
 
@@ -143,19 +143,14 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
                     <RadioGroupItem value={String(s.slot)} id={`promo-${s.slot}`} className="mt-0.5" />
                     <div className="space-y-1 flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium">{s.name || `Promo ${s.slot}`}</p>
+                        <p className="text-sm font-medium">{`Promo ${s.slot}`}</p>
                         {savedSlot === s.slot && (
                           <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Active</Badge>
                         )}
                       </div>
-                      {s.description && (
-                        <p className="text-[11px] lg:text-xs text-muted-foreground">{s.description}</p>
-                      )}
-                      {s.previewBody && (
-                        <pre className="text-[10px] lg:text-[11px] text-muted-foreground bg-muted/40 rounded p-2 mt-1 whitespace-pre-wrap font-mono max-h-24 overflow-auto">
-                          {s.previewBody}
-                        </pre>
-                      )}
+                      <p className="text-[10px] lg:text-[11px] text-muted-foreground font-mono truncate">
+                        ID: {s.templateId}
+                      </p>
                     </div>
                   </label>
                 ))}
