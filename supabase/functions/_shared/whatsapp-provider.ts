@@ -434,10 +434,10 @@ async function sendViaZavu(
   const positionalFallback = (position: number) => {
     const fallbacks: Record<number, string> = {
       1: String(variables.name ?? variables.member_name ?? "Member"),
-      2: String(variables.branch_name ?? variables.gym_name ?? "Your Gym"),
-      3: String(variables.offer ?? variables.discount ?? "limited time offer"),
-      4: String(variables.duration ?? variables.validity ?? variables.days ?? "limited period"),
-      5: String(variables.limit ?? variables.seats ?? variables.url ?? variables.link ?? "Contact the gym"),
+      2: String(variables.offer ?? variables.discount ?? "limited time offer"),
+      3: String(variables.duration ?? variables.validity ?? variables.days ?? "limited period"),
+      4: String(variables.limit ?? variables.seats ?? "50"),
+      5: String(variables.url ?? variables.link ?? "Contact the gym"),
       6: String(variables.branch_name ?? variables.gym_name ?? "Your Gym"),
     };
     return fallbacks[position] ?? `Value ${position}`;
