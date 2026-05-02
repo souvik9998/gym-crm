@@ -164,6 +164,13 @@ export default {
   				'0%, 100%': { transform: 'scale(0.85)', opacity: '0.6' },
   				'50%': { transform: 'scale(1)', opacity: '1' }
   			},
+  			'prix-clip-fix': {
+  				'0%':   { clipPath: 'polygon(50% 50%, 0 0, 0 0, 0 0, 0 0, 0 0)' },
+  				'25%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 0, 100% 0, 100% 0)' },
+  				'50%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 100% 100%, 100% 100%)' },
+  				'75%':  { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 100%)' },
+  				'100%': { clipPath: 'polygon(50% 50%, 0 0, 100% 0, 100% 100%, 0 100%, 0 0)' }
+  			},
   			'refresh-spin': {
   				from: { transform: 'rotate(0deg)' },
   				to: { transform: 'rotate(-360deg)' }
