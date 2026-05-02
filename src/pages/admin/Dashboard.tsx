@@ -19,6 +19,12 @@ import {
   BarsArrowDownIcon,
   BarsArrowUpIcon,
 } from "@heroicons/react/24/outline";
+import {
+  UsersIcon as UsersIconSolid,
+  ArrowTrendingUpIcon as ArrowTrendingUpIconSolid,
+  ExclamationTriangleIcon as ExclamationTriangleIconSolid,
+  CreditCardIcon as CreditCardIconSolid,
+} from "@heroicons/react/24/solid";
 import { MembersTable } from "@/components/admin/MembersTable";
 import { PaymentHistory } from "@/components/admin/PaymentHistory";
 import DailyPassTable from "@/components/admin/DailyPassTable";
