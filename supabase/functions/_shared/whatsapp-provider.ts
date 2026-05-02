@@ -54,6 +54,12 @@ export interface SendArgs {
   branchId?: string | null;
   /** Optional tenant override; otherwise resolved from branchId. */
   tenantId?: string | null;
+  /**
+   * For category="promotional" only: which of the 4 super-admin-configured
+   * promotional template slots to use (1-4). When omitted, send fails with
+   * "promotional_template_not_selected" so the caller can prompt the admin.
+   */
+  promotionalSlot?: number | null;
 }
 
 export interface SendResult {
