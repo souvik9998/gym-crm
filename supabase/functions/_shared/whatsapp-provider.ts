@@ -431,10 +431,22 @@ async function sendViaZavu(
 
   const templateVariableCount = await getZavuTemplateVariableCount(apiKey, templateId);
   const templateVariables: Record<string, string> = {};
+  const positionalFallback = (position: number) => {
+    const fallbacks: Record<number, string> = {
+      1: String(variables.name ?? variables.member_name ?? "Member"),
+      2: String(variables.branch_name ?? variables.gym_name ?? "Your Gym"),
+      3: String(variables.offer ?? variables.discount ?? "limited time offer"),
+      4: String(variables.duration ?? variables.validity ?? variables.days ?? "limited period"),
+      5: String(variables.limit ?? variables.seats ?? variables.url ?? variables.link ?? "Contact the gym"),
+      6: String(variables.branch_name ?? variables.gym_name ?? "Your Gym"),
+    };
+    return fallbacks[position] ?? `Value ${position}`;
+  };
 
   // Map admin-defined variable keys to positional {{1}}, {{2}}, ...
   variableOrder.forEach((key, i) => {
-    templateVariables[String(i + 1)] = variables[key] ?? "";
+    const value = variables[key] ?? "";
+    templateVariables[String(i + 1)] = value.trim() || positionalFallback(i + 1);
   });
 
   // If Zavu reports the approved template needs more variables than the admin
@@ -442,15 +454,9 @@ async function sendViaZavu(
   // but no variable keys were defined yet), backfill the missing positions
   // with sensible defaults so the send is not rejected for parameter-count mismatch.
   if (templateVariableCount && templateVariableCount > Object.keys(templateVariables).length) {
-    const fallbacks: string[] = [
-      String(variables.name ?? variables.member_name ?? "Member"),
-      String(variables.branch_name ?? variables.gym_name ?? ""),
-      String(variables.offer ?? ""),
-      String(variables.url ?? variables.link ?? ""),
-    ];
     for (let i = 1; i <= templateVariableCount; i++) {
       if (!templateVariables[String(i)]) {
-        templateVariables[String(i)] = fallbacks[i - 1] ?? "";
+        templateVariables[String(i)] = positionalFallback(i);
       }
     }
   }
