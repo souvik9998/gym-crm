@@ -150,23 +150,23 @@ const PlatformRoutes = () => (
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<StaffManagementSkeleton />}><StaffManagement /></Suspense>
+          <StaffManagement />
         </ProtectedRoute>
       } />
       <Route path="/admin/time-slots" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<TimeSlotsSkeleton />}><AdminTimeSlots /></Suspense>
+          <AdminTimeSlots />
         </ProtectedRoute>
       } />
       <Route path="/admin/trainers" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TrainersPage /></Suspense>
+        <TrainersPage />
       } />
       <Route path="/admin/logs" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><Logs /></Suspense>
+        <Logs />
       } />
       <Route path="/admin/branch-analytics" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
-          <Suspense fallback={<BranchAnalyticsSkeleton />}><BranchAnalytics /></Suspense>
+          <BranchAnalytics />
         </ProtectedRoute>
       } />
     </Route>
