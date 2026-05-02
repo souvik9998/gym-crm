@@ -7,17 +7,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { MegaphoneIcon } from "@heroicons/react/24/outline";
+import { Plus, Trash2 } from "lucide-react";
 
 export interface PromoVariable {
   key: string;
   description?: string;
+  // Default value the gym admin will see pre-filled. Admin can override
+  // before sending; Super Admin's default is used as fallback.
+  defaultValue?: string;
 }
 
 // The Super Admin configures the Zavu template ID (used to actually send the
-// message via Zavu) PLUS a friendly name and a preview body. The name and
-// preview body are shown to the gym admin so they can recognise which
-// promotional message they are sending — the Zavu template ID is never shown
-// outside Super Admin.
+// message via Zavu) PLUS a friendly name, a preview body and the variable
+// list with default values. Name + preview body + default variables are
+// shown to the gym admin so they can recognise / customise the message.
 export interface PromoTemplateSlot {
   slot: number;
   enabled: boolean;
@@ -36,6 +39,7 @@ const blankSlot = (slot: number): PromoTemplateSlot => ({
   templateId: "",
   name: "",
   previewBody: "",
+  variables: [],
 });
 
 interface Props {
@@ -66,20 +70,64 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
     [],
   );
 
+  const updateVariable = useCallback(
+    (slotNum: number, idx: number, patch: Partial<PromoVariable>) => {
+      setSlots((prev) =>
+        prev.map((s) => {
+          if (s.slot !== slotNum) return s;
+          const vars = [...(s.variables ?? [])];
+          vars[idx] = { ...vars[idx], ...patch };
+          return { ...s, variables: vars };
+        }),
+      );
+    },
+    [],
+  );
+
+  const addVariable = useCallback((slotNum: number) => {
+    setSlots((prev) =>
+      prev.map((s) =>
+        s.slot === slotNum
+          ? {
+              ...s,
+              variables: [...(s.variables ?? []), { key: "", defaultValue: "", description: "" }],
+            }
+          : s,
+      ),
+    );
+  }, []);
+
+  const removeVariable = useCallback((slotNum: number, idx: number) => {
+    setSlots((prev) =>
+      prev.map((s) => {
+        if (s.slot !== slotNum) return s;
+        const vars = [...(s.variables ?? [])];
+        vars.splice(idx, 1);
+        return { ...s, variables: vars };
+      }),
+    );
+  }, []);
+
   const handleSave = async () => {
     const prepared: PromoTemplateSlot[] = slots.map((s) => {
       const tplId = (s.templateId ?? "").trim();
       const name = (s.name ?? "").trim();
       const body = (s.previewBody ?? "").trim();
+      const cleanedVars = (s.variables ?? [])
+        .map((v) => ({
+          key: (v.key ?? "").trim(),
+          defaultValue: (v.defaultValue ?? "").trim(),
+          description: (v.description ?? "").trim(),
+        }))
+        .filter((v) => v.key.length > 0);
       return {
         slot: s.slot,
         templateId: tplId,
-        // A slot is "available to admin" when it has a Zavu template ID configured.
         enabled: tplId.length > 0,
         name: name || `Promo ${s.slot}`,
         previewBody: body,
         description: s.description ?? "",
-        variables: Array.isArray(s.variables) ? s.variables : [],
+        variables: cleanedVars,
       };
     });
     await onSave(prepared);
@@ -97,10 +145,10 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
           <MegaphoneIcon className="w-5 h-5" /> Promotional Templates
         </CardTitle>
         <CardDescription>
-          Configure up to 4 promotional templates for this gym. The <b>Zavu Template ID</b>
-          is used in the background to actually send the message and is never shown to
-          the gym admin. The <b>Name</b> and <b>Preview Body</b> are shown to the admin
-          so they can recognise which message they are sending.
+          Configure up to 4 promotional templates. The <b>Zavu Template ID</b> is used in
+          the background and is never shown to the gym admin. The <b>Name</b>,{" "}
+          <b>Preview Body</b> and <b>Variables</b> (with default values) are shown to
+          the admin — they can override variable values before sending.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -136,7 +184,7 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
                   <Input
                     value={s.name ?? ""}
                     onChange={(e) => updateSlot(s.slot, { name: e.target.value })}
-                    placeholder={`e.g. Diwali Offer, New Year Promo, Summer Discount`}
+                    placeholder="e.g. Diwali Offer, New Year Promo, Summer Discount"
                   />
                 </div>
 
@@ -145,12 +193,11 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
                   <Textarea
                     value={s.previewBody ?? ""}
                     onChange={(e) => updateSlot(s.slot, { previewBody: e.target.value })}
-                    placeholder="Type the exact message preview the admin should see before sending. Use {{1}}, {{2}}… or words like {name}, {branch_name} as placeholders."
+                    placeholder="Type the exact message preview the admin should see before sending. Reference variables like {{name}}, {{offer}}, {{url}}."
                     rows={4}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    This is for showcase only — Zavu uses its own approved body for the
-                    actual message. Keep this preview close to the approved content.
+                    Showcase only — Zavu uses its own approved body for the actual send.
                   </p>
                 </div>
 
@@ -165,6 +212,77 @@ export default function PromotionalTemplatesEditor({ initial, onSave, saving = f
                   <p className="text-[11px] text-muted-foreground">
                     Required to send. Leave blank to disable this slot.
                   </p>
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-border/60">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs">Variables &amp; Default Values</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => addVariable(s.slot)}
+                    >
+                      <Plus className="w-3 h-3 mr-1" /> Add variable
+                    </Button>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    List variables in the same order as <code>{"{{1}}, {{2}}…"}</code> in
+                    the Zavu template. Default values are used unless the admin overrides
+                    them before sending. Common keys: <code>name</code>, <code>branch_name</code>,
+                    <code>offer</code>, <code>url</code>.
+                  </p>
+                  {(s.variables ?? []).length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      No variables yet. Add one for each <code>{"{{n}}"}</code> in the Zavu template.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {(s.variables ?? []).map((v, idx) => (
+                        <div
+                          key={idx}
+                          className="grid grid-cols-12 gap-2 items-start p-2 rounded-md bg-background border border-border/50"
+                        >
+                          <div className="col-span-1 flex items-center justify-center pt-2">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                              {`{{${idx + 1}}}`}
+                            </Badge>
+                          </div>
+                          <div className="col-span-4">
+                            <Input
+                              value={v.key}
+                              onChange={(e) => updateVariable(s.slot, idx, { key: e.target.value })}
+                              placeholder="key (e.g. offer)"
+                              className="h-8 text-xs font-mono"
+                            />
+                          </div>
+                          <div className="col-span-6">
+                            <Input
+                              value={v.defaultValue ?? ""}
+                              onChange={(e) =>
+                                updateVariable(s.slot, idx, { defaultValue: e.target.value })
+                              }
+                              placeholder="default value (admin can override)"
+                              className="h-8 text-xs"
+                            />
+                          </div>
+                          <div className="col-span-1 flex justify-end">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => removeVariable(s.slot, idx)}
+                              aria-label="Remove variable"
+                            >
+                              <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -186,6 +304,15 @@ function normalize(initial: PromoTemplateSlot[]): PromoTemplateSlot[] {
   for (const t of initial ?? []) {
     if (t && Number.isInteger(t.slot) && t.slot >= 1 && t.slot <= 4) {
       const tplId = (t.templateId ?? "").trim();
+      const vars: PromoVariable[] = Array.isArray(t.variables)
+        ? t.variables.map((v) => ({
+            key: typeof v?.key === "string" ? v.key : "",
+            defaultValue: typeof (v as PromoVariable)?.defaultValue === "string"
+              ? (v as PromoVariable).defaultValue
+              : "",
+            description: typeof v?.description === "string" ? v.description : "",
+          }))
+        : [];
       bySlot.set(t.slot, {
         slot: t.slot,
         templateId: tplId,
@@ -193,7 +320,7 @@ function normalize(initial: PromoTemplateSlot[]): PromoTemplateSlot[] {
         name: t.name ?? "",
         description: t.description ?? "",
         previewBody: t.previewBody ?? "",
-        variables: Array.isArray(t.variables) ? t.variables : [],
+        variables: vars,
       });
     }
   }
