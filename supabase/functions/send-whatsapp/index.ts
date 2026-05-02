@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
       type = "manual",
       customMessage,
       customVariables,
+      promotionalPreviewBody,
+      promotionalTemplateName,
       isManual = false,
       adminUserId,
       branchId,
@@ -888,6 +890,38 @@ Deno.serve(async (req) => {
         }
       }
 
+      // For promotional sends, build the log message_content from the
+      // Super-Admin-configured preview body so admins see the actual template
+      // (with substituted variables) in the WhatsApp logs — not the hardcoded
+      // fallback. The provider call still uses the approved Zavu templateId.
+      let logMessage = message;
+      if (effectiveType === "promotional" && promotionalPreviewBody && promotionalPreviewBody.trim().length > 0) {
+        let body = promotionalPreviewBody;
+        // Substitute {{key}} and {{N}} positional placeholders with merged values.
+        body = body.replace(/{{\s*([\w-]+)\s*}}/g, (_m, key) => {
+          const v = variables[key];
+          if (typeof v === "string" && v.trim().length > 0) return v;
+          // positional fallbacks for {{1}}..{{N}}
+          if (/^\d+$/.test(key)) {
+            const pos = Number(key);
+            const positional: Record<number, string> = {
+              1: variables.name ?? member.name ?? "Member",
+              2: variables.offer ?? "limited time offer",
+              3: variables.duration ?? "limited period",
+              4: variables.limit ?? "50",
+              5: variables.url ?? "Contact the gym",
+              6: variables.branch_name ?? memberBranchName ?? branchName ?? "Your Gym",
+            };
+            return positional[pos] ?? "";
+          }
+          return "";
+        });
+        const header = promotionalTemplateName && promotionalTemplateName.trim().length > 0
+          ? `[${promotionalTemplateName.trim()}]\n`
+          : "";
+        logMessage = `${header}${body}`;
+      }
+
       const result = await sendMessage(
         formattedPhone,
         message,
@@ -901,7 +935,7 @@ Deno.serve(async (req) => {
         recipient_phone: member.phone,
         recipient_name: member.name,
         notification_type: effectiveType,
-        message_content: message,
+        message_content: logMessage,
         status: result.success ? "sent" : "failed",
         error_message: result.error || null,
         is_manual: isManual,

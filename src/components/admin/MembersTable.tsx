@@ -351,6 +351,8 @@ export const MembersTable = ({
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
             customVariables: type === "promotional" ? (customVariables ?? promoCustomVariables) : undefined,
+            promotionalPreviewBody: type === "promotional" ? promoSendContext?.previewBody : undefined,
+            promotionalTemplateName: type === "promotional" ? promoSendContext?.name : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
@@ -692,6 +694,8 @@ export const MembersTable = ({
             type: savedTemplate ? "custom" : type,
             customMessage: savedTemplate,
             customVariables: type === "promotional" ? (options?.customVariables ?? promoCustomVariables) : undefined,
+            promotionalPreviewBody: type === "promotional" ? promoSendContext?.previewBody : undefined,
+            promotionalTemplateName: type === "promotional" ? promoSendContext?.name : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
@@ -765,7 +769,10 @@ export const MembersTable = ({
     }
     setPromoCustomVariables(Object.keys(values).length > 0 ? values : undefined);
     const pending = pendingPromoSend;
-    closePromoDialog();
+    // Capture context BEFORE closing the dialog so it's still available to the
+    // send call (which reads promoSendContext for previewBody/name to log).
+    const ctxSnapshot = promoSendContext;
+    setPendingPromoSend(null);
     if (pending.mode === "single") {
       await sendWhatsAppMessage(pending.member.id, pending.member.name, pending.member.phone, "promotional", undefined, values);
     } else {
@@ -775,6 +782,9 @@ export const MembersTable = ({
         customVariables: values,
       });
     }
+    // Now safe to clear the context (used only for log preview body).
+    setPromoSendContext(null);
+    void ctxSnapshot;
   };
 
   const toggleMemberSelection = (memberId: string, e: React.MouseEvent) => {
