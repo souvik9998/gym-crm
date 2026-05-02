@@ -652,15 +652,19 @@ export const MembersTable = ({
     return getSelectedMembersData().some(m => isExpiringOrExpired(m));
   };
 
-  const handleBulkWhatsApp = async (type: string) => {
-    if (selectedMembers.size === 0) return;
+  const handleBulkWhatsApp = async (
+    type: string,
+    options?: { skipPromoDialog?: boolean; memberIds?: string[]; customVariables?: Record<string, string> }
+  ) => {
+    const targetMemberIds = options?.memberIds ?? Array.from(selectedMembers);
+    if (targetMemberIds.length === 0) return;
     
-    const count = selectedMembers.size;
-    if (type === "promotional") {
+    const count = targetMemberIds.length;
+    if (type === "promotional" && !options?.skipPromoDialog) {
       const context = await loadActivePromotionalTemplate();
       if (!context) return;
       setPromoSendContext(context);
-      setPendingPromoSend({ mode: "bulk", memberIds: Array.from(selectedMembers) });
+      setPendingPromoSend({ mode: "bulk", memberIds: targetMemberIds });
       return;
     }
     if (!waOverlay.startSending(`${count} members`)) return;
@@ -684,10 +688,10 @@ export const MembersTable = ({
             "apikey": SUPABASE_ANON_KEY,
           },
           body: JSON.stringify({
-            memberIds: Array.from(selectedMembers),
+            memberIds: targetMemberIds,
             type: savedTemplate ? "custom" : type,
             customMessage: savedTemplate,
-            customVariables: type === "promotional" ? promoCustomVariables : undefined,
+            customVariables: type === "promotional" ? (options?.customVariables ?? promoCustomVariables) : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
