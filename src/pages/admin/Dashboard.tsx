@@ -382,13 +382,13 @@ const AdminDashboard = () => {
             <StatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
-              icon={UsersIcon}
+              icon={UsersIconSolid}
               index={0}
             />
             <StatCard 
               value={displayStats.activeMembers} 
               label="Active Members" 
-              icon={ArrowTrendingUpIcon}
+              icon={ArrowTrendingUpIconSolid}
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
@@ -397,7 +397,7 @@ const AdminDashboard = () => {
             <StatCard 
               value={displayStats.expiringSoon} 
               label="Expiring Soon" 
-              icon={ExclamationTriangleIcon}
+              icon={ExclamationTriangleIconSolid}
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
@@ -406,7 +406,7 @@ const AdminDashboard = () => {
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
               label="This Month" 
-              icon={CreditCardIcon}
+              icon={CreditCardIconSolid}
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
