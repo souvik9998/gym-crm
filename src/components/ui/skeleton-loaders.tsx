@@ -2,6 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { memo } from "react";
+import { cn } from "@/lib/utils";
 
 /**
  * Dashboard stats skeleton — neutral, color-free placeholders that mirror
