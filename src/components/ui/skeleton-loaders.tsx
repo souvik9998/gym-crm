@@ -347,8 +347,13 @@ export const CalendarSectionSkeleton = memo(() => (
       <Skeleton className="h-7 lg:h-8 w-32" />
       <Skeleton className="h-4 w-72 max-w-full" />
     </div>
+    <CalendarSectionSkeletonBody />
+  </div>
+));
+CalendarSectionSkeleton.displayName = "CalendarSectionSkeleton";
 
-    <div className="space-y-3 lg:space-y-6">
+export const CalendarSectionSkeletonBody = memo(() => (
+  <div className="space-y-3 lg:space-y-6 animate-fade-in-soft">{/* body only — no page header */}
       {/* Calendar Card */}
       <Card className="border border-border/40 shadow-sm overflow-hidden">
         <CardHeader className="p-3 lg:p-6 pb-2 lg:pb-4">
