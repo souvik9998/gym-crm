@@ -125,7 +125,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
         const values = overrides[s.slot] ?? {};
         // Only persist keys actually defined on the template.
         const filtered: Record<string, string> = {};
-        for (const v of s.variables ?? []) {
+        for (const v of getResolvedPromoVariables(s)) {
           if (!v?.key) continue;
           filtered[v.key] = values[v.key] ?? v.defaultValue ?? "";
         }
