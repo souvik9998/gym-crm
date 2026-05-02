@@ -136,7 +136,7 @@ export const AdminHeader = ({
     <>
     <header
       className={cn(
-        "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-11 md:h-12 lg:h-14 flex items-center px-3 md:px-4 lg:px-5",
+        "sticky top-0 z-30 bg-card/95 backdrop-blur-md border-b border-border h-14 md:h-16 lg:h-[68px] flex items-center px-3 md:px-4 lg:px-5",
         className
       )}
     >
