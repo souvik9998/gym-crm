@@ -8,7 +8,7 @@ import { BranchProvider } from "@/contexts/BranchContext";
 import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { DomainProvider, useDomainContext } from "@/contexts/DomainContext";
-import { PageLoader, DashboardFullSkeleton } from "@/components/ui/skeleton-loaders";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import { queryClient } from "@/lib/queryClient";
