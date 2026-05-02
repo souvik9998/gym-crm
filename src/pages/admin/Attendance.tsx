@@ -47,10 +47,10 @@ const Attendance = () => {
     enabled: !!currentBranch?.id,
   });
 
-  // Show full-page skeleton while branch context or attendance mode is loading
-  if (!currentBranch?.id || isModeLoading) {
-    return <AttendanceSkeleton />;
-  }
+  // No full-page skeleton swap — route-level <Suspense> fallback already
+  // showed AdminSectionSkeleton. Render nothing until branch + mode resolve,
+  // then transition straight into real content.
+  if (!currentBranch?.id || isModeLoading) return null;
 
   const isSlotMode = attendanceMode === "time_slot";
 
