@@ -163,7 +163,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/attendance" element={
-        <Suspense fallback={<PageLoader />}><Attendance /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><Attendance /></Suspense>
       } />
     </Route>
 
@@ -173,13 +173,13 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/qr-code" element={
-        <Suspense fallback={<PageLoader />}><AdminQRCode /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AdminQRCode /></Suspense>
       } />
       <Route path="/admin/settings" element={
-        <Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AdminSettings /></Suspense>
       } />
       <Route path="/admin/calendar" element={
-        <Suspense fallback={<PageLoader />}><AdminCalendar /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AdminCalendar /></Suspense>
       } />
     </Route>
 
@@ -189,7 +189,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/analytics" element={
-        <Suspense fallback={<PageLoader />}><AdminAnalytics /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AdminAnalytics /></Suspense>
       } />
     </Route>
 
@@ -199,7 +199,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<PageLoader />}><AdminLedger /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><AdminLedger /></Suspense>
       } />
     </Route>
 
@@ -209,10 +209,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/events" element={
-        <Suspense fallback={<PageLoader />}><Events /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><Events /></Suspense>
       } />
       <Route path="/admin/events/:eventId" element={
-        <Suspense fallback={<PageLoader />}><EventDetail /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><EventDetail /></Suspense>
       } />
     </Route>
 
