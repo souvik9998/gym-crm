@@ -189,7 +189,7 @@ async function loadConfig(
     .from("tenant_messaging_config")
     .select(
       "active_provider, periskope_api_key_encrypted, periskope_api_key_iv, periskope_phone, " +
-        "zavu_api_key_encrypted, zavu_api_key_iv, zavu_sender_id, zavu_templates",
+        "zavu_api_key_encrypted, zavu_api_key_iv, zavu_sender_id, zavu_templates, promotional_templates",
     )
     .eq("tenant_id", tenantId)
     .maybeSingle();
@@ -200,7 +200,15 @@ async function loadConfig(
     return null;
   }
 
-  const cfg = (data as TenantMessagingConfig | null) ?? null;
+  const raw = (data as Record<string, unknown> | null) ?? null;
+  const cfg = raw
+    ? ({
+        ...raw,
+        promotional_templates: Array.isArray(raw.promotional_templates)
+          ? (raw.promotional_templates as PromotionalTemplateSlot[])
+          : [],
+      } as TenantMessagingConfig)
+    : null;
   configByTenantCache.set(tenantId, cfg);
   return cfg;
 }
