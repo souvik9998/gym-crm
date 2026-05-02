@@ -85,14 +85,8 @@ export default function SuperAdminUsers() {
     }
   }, [searchQuery, users]);
 
-  if (roleLoading || isLoading) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+  // Defer to route-level <Suspense> fallback (AdminSectionSkeleton).
+  if (roleLoading || isLoading) return null;
 
   if (!isSuperAdmin) {
     return null;

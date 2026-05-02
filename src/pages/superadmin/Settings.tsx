@@ -121,14 +121,8 @@ export default function SuperAdminSettings() {
     }
   };
 
-  if (roleLoading || isLoadingSettings) {
-    return (
-      <div className="space-y-6">
-        <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-96" />
-      </div>
-    );
-  }
+  // Defer to route-level <Suspense> fallback (AdminSectionSkeleton).
+  if (roleLoading || isLoadingSettings) return null;
 
   if (!isSuperAdmin) {
     return null;

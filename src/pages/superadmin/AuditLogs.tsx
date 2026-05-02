@@ -104,17 +104,8 @@ export default function AuditLogs() {
     return <DocumentTextIcon className="w-4 h-4" />;
   };
 
-  if (roleLoading || isLoading) {
-    return (
-      <div className="min-h-screen bg-background p-6">
-        <div className="max-w-7xl mx-auto space-y-6">
-          <Skeleton className="h-10 w-64" />
-          <Skeleton className="h-12 w-full max-w-sm" />
-          <Skeleton className="h-96" />
-        </div>
-      </div>
-    );
-  }
+  // Defer to route-level <Suspense> fallback (AdminSectionSkeleton).
+  if (roleLoading || isLoading) return null;
 
   if (!isSuperAdmin) {
     return null;
