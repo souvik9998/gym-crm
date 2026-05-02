@@ -33,11 +33,14 @@ const MESSAGE_CATEGORIES: Array<{ key: string; label: string; description: strin
   { key: "holiday_notification",group: "Manual / Admin",   label: "Holiday Notification",description: "Sent to members when a gym holiday / closure is announced from the Calendar.", vars: ["branch_name", "date", "closed_status"] },
 ];
 
+import PromotionalTemplatesEditor, { type PromoTemplateSlot } from "./PromotionalTemplatesEditor";
+
 interface MessagingConfig {
   active_provider: "periskope" | "zavu" | "none";
   periskope: { connected: boolean; phone: string | null; verified_at: string | null };
   zavu: { connected: boolean; sender_id: string | null; verified_at: string | null };
   zavu_templates: Record<string, string>;
+  promotional_templates: PromoTemplateSlot[];
 }
 
 interface Props { tenantId: string; }
