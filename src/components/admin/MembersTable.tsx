@@ -77,7 +77,7 @@ type PromoSendContext = {
 };
 type PendingPromoSend =
   | { mode: "single"; member: Member }
-  | { mode: "bulk" };
+  | { mode: "bulk"; memberIds: string[] };
 
 const FeatureHint = ({
   icon,
