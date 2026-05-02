@@ -593,7 +593,7 @@ export const MembersTable = ({
     if (selectedMembers.size === 0) return;
     
     const count = selectedMembers.size;
-      if (type === "promotional" && !(await confirmActivePromotionalTemplate())) return;
+    if (type === "promotional" && !(await confirmActivePromotionalTemplate())) return;
     if (!waOverlay.startSending(`${count} members`)) return;
     setBulkActionType(type);
     try {
