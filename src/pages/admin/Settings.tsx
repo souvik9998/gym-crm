@@ -32,6 +32,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { User } from "@supabase/supabase-js";
 
 import { WhatsAppAutoSendSettings } from "@/components/admin/WhatsAppAutoSendSettings";
+import { PromotionalTemplateSelector } from "@/components/admin/PromotionalTemplateSelector";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { BranchManagement } from "@/components/admin/BranchManagement";
