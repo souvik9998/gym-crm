@@ -1989,6 +1989,51 @@ export const MembersTable = ({
 
       <WhatsAppSendingOverlay {...waOverlay.overlayProps} />
 
+      <Dialog open={!!promoSendContext && !!pendingPromoSend} onOpenChange={(open) => !open && closePromoDialog()}>
+        <DialogContent className="max-h-[88vh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Send promotional message</DialogTitle>
+            <DialogDescription>
+              {promoSendContext?.name} will be sent to {pendingPromoSend?.mode === "bulk" ? `${pendingPromoSend.memberIds.length} members` : pendingPromoSend?.member.name}.
+            </DialogDescription>
+          </DialogHeader>
+
+          {promoSendContext && (
+            <div className="space-y-4">
+              <div className="rounded-lg border border-border bg-muted/20 p-3">
+                <p className="mb-2 text-xs font-medium text-muted-foreground">Message preview</p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">{promoSendContext.previewBody}</p>
+              </div>
+
+              {promoSendContext.variables.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-medium text-muted-foreground">Message values</p>
+                  {promoSendContext.variables.map((variable) => (
+                    <div key={variable.key} className="grid gap-1.5">
+                      <Label htmlFor={`promo-send-${variable.key}`} className="text-xs">
+                        {getPromoVariableLabel(variable)}
+                      </Label>
+                      <Input
+                        id={`promo-send-${variable.key}`}
+                        value={promoSendContext.customVariables[variable.key] ?? variable.defaultValue ?? ""}
+                        onChange={(event) => updatePromoDialogValue(variable.key, event.target.value)}
+                        placeholder={getPromoDisplayValue(variable, undefined)}
+                        className="h-9 text-sm"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closePromoDialog}>Cancel</Button>
+            <Button onClick={confirmPromoSend}>Send message</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {enrollMember && (
         <BiometricEnrollDialog
           open={!!enrollMember}
