@@ -204,8 +204,9 @@ export default {
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 1.6s ease-in-out infinite',
-  			'spinner-orbit': 'spinner-orbit 0.8s linear infinite',
+  			'spinner-orbit': 'spinner-orbit 1s linear infinite',
   			'spinner-pulse': 'spinner-pulse 1.2s ease-in-out infinite',
+  			'prix-clip-fix': 'prix-clip-fix 2s linear infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
   			wave: 'wave 2.4s ease-in-out 1',
   			'scale-in': 'scale-in 0.18s ease-out'
