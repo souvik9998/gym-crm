@@ -10,21 +10,11 @@ import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { DomainProvider, useDomainContext } from "@/contexts/DomainContext";
 import {
   AdminSectionSkeleton,
-  AnalyticsSectionSkeleton,
-  AttendanceSectionSkeleton,
-  BranchAnalyticsSkeleton,
   DashboardFullSkeleton,
-  EventsSectionSkeleton,
   PageLoader,
-  SettingsSectionSkeleton,
-  StaffManagementSkeleton,
-  SuperAdminFormSkeleton,
-  SuperAdminTableSkeleton,
-  TimeSlotsSkeleton,
 } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
-import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
 import { queryClient } from "@/lib/queryClient";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
