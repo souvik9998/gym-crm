@@ -8,7 +8,7 @@ import { BranchProvider } from "@/contexts/BranchContext";
 import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { DomainProvider, useDomainContext } from "@/contexts/DomainContext";
-import { PageLoader } from "@/components/ui/skeleton-loaders";
+import { AdminSectionSkeleton, DashboardFullSkeleton, PageLoader } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
 import { queryClient } from "@/lib/queryClient";
@@ -130,29 +130,29 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/dashboard" element={
-        <Suspense fallback={<PageLoader />}>
+        <Suspense fallback={<DashboardFullSkeleton />}>
           <AdminDashboard />
         </Suspense>
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<PageLoader />}><StaffManagement /></Suspense>
+          <Suspense fallback={<AdminSectionSkeleton />}><StaffManagement /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/time-slots" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<PageLoader />}><AdminTimeSlots /></Suspense>
+          <Suspense fallback={<AdminSectionSkeleton />}><AdminTimeSlots /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/trainers" element={
-        <Suspense fallback={<PageLoader />}><TrainersPage /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><TrainersPage /></Suspense>
       } />
       <Route path="/admin/logs" element={
-        <Suspense fallback={<PageLoader />}><Logs /></Suspense>
+        <Suspense fallback={<AdminSectionSkeleton />}><Logs /></Suspense>
       } />
       <Route path="/admin/branch-analytics" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
-          <Suspense fallback={<PageLoader />}><BranchAnalytics /></Suspense>
+          <Suspense fallback={<AdminSectionSkeleton />}><BranchAnalytics /></Suspense>
         </ProtectedRoute>
       } />
     </Route>
