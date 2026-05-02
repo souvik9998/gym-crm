@@ -858,8 +858,22 @@ Deno.serve(async (req) => {
       // (expiring_today vs expiring_2days vs expired_reminder).
       const effectiveType = resolveReminderType(type, memberEndDate);
 
-      const message = generateMessage(member.name, memberEndDate, effectiveType, paymentInfo, memberBranchName, branchName);
-      const variables = buildMemberVariables(member.name, memberEndDate, memberBranchName || branchName, paymentInfo);
+      let message = generateMessage(member.name, memberEndDate, effectiveType, paymentInfo, memberBranchName, branchName);
+      let variables = buildMemberVariables(member.name, memberEndDate, memberBranchName || branchName, paymentInfo);
+
+      if (type === "holiday_notification" && holidayDetails) {
+        const resolvedBranchName = memberBranchName || branchName || "Your Gym";
+        variables = {
+          branch_name: resolvedBranchName,
+          date: holidayDetails.date,
+          closed_status: holidayDetails.closed_status,
+        };
+        // fallbackText for non-template providers (Periskope)
+        message = customMessage && customMessage.trim().length > 0
+          ? customMessage
+          : `🏋️ *Holiday Notice - ${resolvedBranchName}*\n\nDear Member,\n\n*${resolvedBranchName}* will be *closed* on *${holidayDetails.date}*${holidayDetails.holiday_name ? ` for *${holidayDetails.holiday_name}*` : ""}.\n\n🚫 *Closed:* ${holidayDetails.closed_status}\n\nRegular hours will resume the next working day.\n\nThank you for your understanding! 💪`;
+      }
+
       const result = await sendMessage(
         formattedPhone,
         message,
