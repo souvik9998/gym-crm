@@ -30,7 +30,8 @@ export type MessageCategory =
   | "invoice_link"
   | "check_in"
   | "password_reset"
-  | "daily_summary_admin";
+  | "daily_summary_admin"
+  | "holiday_notification";
 
 export type ProviderName = "periskope" | "zavu" | "none";
 
