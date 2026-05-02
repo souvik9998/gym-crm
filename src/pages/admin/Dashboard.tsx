@@ -97,7 +97,7 @@ const StatCard = memo(({
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
         <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-5 h-5 ${iconClass}`} />
+          <Icon className={`w-5 h-5 ${iconClass}`} strokeWidth={1.75} />
         </div>
       </div>
     </CardContent>
