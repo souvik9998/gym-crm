@@ -371,3 +371,20 @@ export default function MessagingProviderTab({ tenantId }: Props) {
     </div>
   );
 }
+
+// Wrapper that stabilises the `initial` prop reference so the editor's internal
+// state isn't reset every time the parent re-renders (e.g. user typing in the
+// test-phone field). It only updates when the actual template content changes.
+const MemoizedPromoEditor = ({
+  templates,
+  onSave,
+  saving,
+}: {
+  templates: PromoTemplateSlot[] | undefined;
+  onSave: (t: PromoTemplateSlot[]) => Promise<void>;
+  saving: boolean;
+}) => {
+  const sig = JSON.stringify(templates ?? []);
+  const stable = useMemo(() => (templates ?? []) as PromoTemplateSlot[], [sig]);
+  return <PromotionalTemplatesEditor initial={stable} onSave={onSave} saving={saving} />;
+};
