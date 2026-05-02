@@ -660,7 +660,7 @@ export const MembersTable = ({
       const context = await loadActivePromotionalTemplate();
       if (!context) return;
       setPromoSendContext(context);
-      setPendingPromoSend({ mode: "bulk" });
+      setPendingPromoSend({ mode: "bulk", memberIds: Array.from(selectedMembers) });
       return;
     }
     if (!waOverlay.startSending(`${count} members`)) return;
