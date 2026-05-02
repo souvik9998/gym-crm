@@ -142,6 +142,10 @@ export default {
   					transform: 'translateY(0)'
   				}
   			},
+  			'fade-in-soft': {
+  				from: { opacity: '0' },
+  				to: { opacity: '1' }
+  			},
   			'slide-up': {
   				from: {
   					opacity: '0',
@@ -202,6 +206,7 @@ export default {
   			'accordion-down': 'accordion-down 0.2s ease-out',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
+  			'fade-in-soft': 'fade-in-soft 0.35s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
   			shimmer: 'shimmer 1.6s ease-in-out infinite',
   			'spinner-orbit': 'spinner-orbit 1s linear infinite',
