@@ -133,16 +133,40 @@ export function NotificationCenter() {
     });
   }, [notifications]);
 
-  // When popover opens, mark all current notifications as seen and persist
+  // Mark current notifications as seen — used both when popover opens AND
+  // whenever fresh notifications arrive while the popover is already open.
+  // This guarantees the badge clears once the user has actually viewed the list,
+  // even if a refetch was mid-flight when they clicked.
+  const markAllSeen = (notifs: AdminNotification[]) => {
+    if (notifs.length === 0) return;
+    setSeenIds((prev) => {
+      let added = false;
+      const next = new Set(prev);
+      notifs.forEach((n) => {
+        if (!next.has(n.id)) {
+          next.add(n.id);
+          added = true;
+        }
+      });
+      if (!added) return prev;
+      persistSeenIds(next);
+      return next;
+    });
+  };
+
+  // Keep badge in sync while popover is open: any new notification arriving
+  // while the panel is visible is considered "seen" immediately.
+  useEffect(() => {
+    if (!open) return;
+    markAllSeen(notifications);
+  }, [open, notifications]);
+
   const handleOpenChange = (isOpen: boolean) => {
     setOpen(isOpen);
     if (isOpen) {
-      setSeenIds((prev) => {
-        const next = new Set(prev);
-        notifications.forEach((n) => next.add(n.id));
-        persistSeenIds(next);
-        return next;
-      });
+      // Mark seen immediately on open (covers the case where notifications
+      // were already loaded before the click).
+      markAllSeen(notifications);
     }
   };
 
