@@ -40,6 +40,7 @@ import { buildPublicUrl } from "@/lib/publicUrl";
 import { ShareIcon, TicketIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import ShareCalendarDialog from "./ShareCalendarDialog";
+import { CalendarSectionSkeletonBody } from "@/components/ui/skeleton-loaders";
 
 interface CalendarEvent {
   id: string;
@@ -636,6 +637,10 @@ const HolidayCalendarTab = () => {
       openAddDialog(day, nationalName || "");
     }
   };
+
+  if (isLoading) {
+    return <CalendarSectionSkeletonBody />;
+  }
 
   return (
     <div className="space-y-3 lg:space-y-6 overflow-x-hidden">
