@@ -593,11 +593,12 @@ export const MembersTable = ({
     if (selectedMembers.size === 0) return;
     
     const count = selectedMembers.size;
+      if (type === "promotional" && !(await confirmActivePromotionalTemplate())) return;
     if (!waOverlay.startSending(`${count} members`)) return;
     setBulkActionType(type);
     try {
       // Get saved template for the message type
-      const savedTemplate = getSavedTemplate(type);
+      const savedTemplate = type === "promotional" ? undefined : getSavedTemplate(type);
 
       // Get current admin user
       const { data: { session } } = await supabase.auth.getSession();
