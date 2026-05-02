@@ -351,6 +351,8 @@ export const MembersTable = ({
             type: messageToSend ? "custom" : type,
             customMessage: messageToSend,
             customVariables: type === "promotional" ? (customVariables ?? promoCustomVariables) : undefined,
+            promotionalPreviewBody: type === "promotional" ? promoSendContext?.previewBody : undefined,
+            promotionalTemplateName: type === "promotional" ? promoSendContext?.name : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
