@@ -743,6 +743,40 @@ export const MembersTable = ({
     }
   };
 
+  const updatePromoDialogValue = (key: string, value: string) => {
+    setPromoSendContext((prev) => prev ? {
+      ...prev,
+      customVariables: { ...prev.customVariables, [key]: value },
+    } : prev);
+  };
+
+  const closePromoDialog = () => {
+    setPromoSendContext(null);
+    setPendingPromoSend(null);
+  };
+
+  const confirmPromoSend = async () => {
+    if (!promoSendContext || !pendingPromoSend) return;
+    const values = promoSendContext.customVariables;
+    if (currentBranch?.id) {
+      try {
+        localStorage.setItem(`promo_var_overrides_${currentBranch.id}_${promoSendContext.slot}`, JSON.stringify(values));
+      } catch (_e) { /* noop */ }
+    }
+    setPromoCustomVariables(Object.keys(values).length > 0 ? values : undefined);
+    const pending = pendingPromoSend;
+    closePromoDialog();
+    if (pending.mode === "single") {
+      await sendWhatsAppMessage(pending.member.id, pending.member.name, pending.member.phone, "promotional", undefined, values);
+    } else {
+      await handleBulkWhatsApp("promotional", {
+        skipPromoDialog: true,
+        memberIds: pending.memberIds,
+        customVariables: values,
+      });
+    }
+  };
+
   const toggleMemberSelection = (memberId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setSelectedMembers(prev => {
