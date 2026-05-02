@@ -69,7 +69,11 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import LedgerDetailDialog from "@/components/admin/LedgerDetailDialog";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { STALE_TIMES } from "@/lib/queryClient";
