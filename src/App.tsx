@@ -270,7 +270,10 @@ const PlatformRoutes = () => (
 
 const RoutesByDomain = () => {
   const { mode, isLoading } = useDomainContext();
-  if (isLoading) return <PageLoader />;
+  // While resolving tenant domain, render nothing so the page-level
+  // skeleton (RegistrationPageSkeleton / DashboardFullSkeleton) is the
+  // ONLY loading UI the user sees — avoids the spinner→skeleton flash.
+  if (isLoading) return null;
   return mode === "tenant" ? <TenantDomainRoutes /> : <PlatformRoutes />;
 };
 

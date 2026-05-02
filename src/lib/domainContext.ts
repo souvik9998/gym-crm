@@ -43,6 +43,7 @@ const PLATFORM_HOST_SUFFIXES = [
   "gymkloud.in",
   "lovable.app",
   "lovable.dev",
+  "lovableproject.com",
   "localhost",
 ];
 
