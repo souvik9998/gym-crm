@@ -657,6 +657,7 @@ export const MembersTable = ({
             memberIds: Array.from(selectedMembers),
             type: savedTemplate ? "custom" : type,
             customMessage: savedTemplate,
+            customVariables: type === "promotional" ? promoCustomVariables : undefined,
             isManual: true,
             adminUserId: adminUserId,
             branchId: currentBranch?.id,
