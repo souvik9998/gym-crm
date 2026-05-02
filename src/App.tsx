@@ -238,7 +238,7 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><StaffDashboard /></Suspense>
       } />
       <Route path="/staff/time-slots" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><StaffTimeSlots /></Suspense>
+        <Suspense fallback={<TimeSlotsSkeleton />}><StaffTimeSlots /></Suspense>
       } />
     </Route>
 
@@ -251,10 +251,10 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminDashboard /></Suspense>
       } />
       <Route path="/superadmin/tenants" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TenantList /></Suspense>
+        <Suspense fallback={<SuperAdminTableSkeleton />}><TenantList /></Suspense>
       } />
       <Route path="/superadmin/tenants/new" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><CreateTenant /></Suspense>
+        <Suspense fallback={<SuperAdminFormSkeleton />}><CreateTenant /></Suspense>
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
         <Suspense fallback={<AdminSectionSkeleton />}><TenantDetail /></Suspense>
