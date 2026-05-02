@@ -14,6 +14,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Phone, Calendar, MoreVertical, User, Pencil, Dumbbell, ArrowUpDown, ArrowUp, ArrowDown, MessageCircle, Receipt, UserCheck, UserX, Clock, AlertTriangle, Download, Fingerprint, UserPlus, Sparkles, ArrowRight, Search, Zap, ShieldCheck, Filter } from "lucide-react";
 import { useIsMobile, useIsTabletOrBelow } from "@/hooks/use-mobile";
 import {
@@ -46,6 +49,7 @@ import { checkMemberBiometricStatus, fetchBiometricDevices } from "@/api/biometr
 import { useAuth } from "@/contexts/AuthContext";
 import { useTimeBuckets } from "@/hooks/queries/useTimeBuckets";
 import { matchesTimeFilter } from "@/components/admin/staff/timeslots/timeSlotUtils";
+import { getPromoDisplayValue, getPromoTemplateName, getPromoVariableLabel, getResolvedPromoVariables, type PromoVariable } from "@/utils/promotionalTemplates";
 
 // Use MemberWithSubscription from the API
 type Member = MemberWithSubscription;
@@ -64,6 +68,16 @@ interface MembersTableProps {
 
 type SortField = "name" | "phone" | "status" | "trainer" | "expiry" | "end_date" | "join_date";
 type SortOrder = "asc" | "desc";
+type PromoSendContext = {
+  slot: number;
+  name: string;
+  previewBody: string;
+  variables: PromoVariable[];
+  customVariables: Record<string, string>;
+};
+type PendingPromoSend =
+  | { mode: "single"; member: Member }
+  | { mode: "bulk" };
 
 const FeatureHint = ({
   icon,
