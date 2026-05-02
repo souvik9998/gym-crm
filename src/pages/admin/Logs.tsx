@@ -9,7 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { PageTour } from "@/components/guide/PageTour";
 import { LOGS_STEPS } from "@/components/guide/tourSteps";
-import { ActivityLogsSectionSkeleton, TableSkeleton } from "@/components/ui/skeleton-loaders";
+import { ActivityLogsContentSkeleton } from "@/components/ui/skeleton-loaders";
 
 const WhatsAppLogsTab = lazy(() => import("@/components/admin/WhatsAppLogsTab"));
 const AdminActivityLogsTab = lazy(() => import("@/components/admin/AdminActivityLogsTab"));
@@ -60,25 +60,25 @@ const Logs = () => {
           </TabsList>
 
           <TabsContent value="activity" className="mt-0">
-            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+            <Suspense fallback={<ActivityLogsContentSkeleton  />}>
               <AdminActivityLogsTab refreshKey={refreshKey} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="user" className="mt-0">
-            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+            <Suspense fallback={<ActivityLogsContentSkeleton  />}>
               <UserActivityLogsTab refreshKey={refreshKey} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="staff" className="mt-0">
-            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+            <Suspense fallback={<ActivityLogsContentSkeleton  />}>
               <StaffActivityLogsTab refreshKey={refreshKey} />
             </Suspense>
           </TabsContent>
 
           <TabsContent value="whatsapp" className="mt-0">
-            <Suspense fallback={<TableSkeleton rows={8} columns={5} />}>
+            <Suspense fallback={<ActivityLogsContentSkeleton  />}>
               <WhatsAppLogsTab refreshKey={refreshKey} />
             </Suspense>
           </TabsContent>
