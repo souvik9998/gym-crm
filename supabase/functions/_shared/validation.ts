@@ -412,6 +412,10 @@ export const SendWhatsAppSchema = z.object({
     "holiday_notification"
   ]).optional(),
   customMessage: z.string().max(2000).optional(),
+  // Per-send variable overrides for templated providers (e.g. Zavu promotional).
+  // Keys must match the variable keys configured by the Super Admin for the
+  // active promotional template slot.
+  customVariables: z.record(z.string().max(500)).optional(),
   isManual: z.boolean().optional(),
   adminUserId: UUIDSchema.optional().nullable(),
   branchId: UUIDSchema.optional(),

@@ -1502,7 +1502,7 @@ interface UsageUpdateRequest {
             name?: string;
             templateId?: string;
             description?: string;
-            variables?: Array<{ key: string; description?: string }>;
+            variables?: Array<{ key: string; description?: string; defaultValue?: string }>;
             previewBody?: string;
           }>;
         };
@@ -1613,6 +1613,7 @@ interface UsageUpdateRequest {
                     .map((v) => ({
                       key: v.key.trim().slice(0, 60),
                       description: typeof v.description === "string" ? v.description.trim().slice(0, 200) : "",
+                      defaultValue: typeof v.defaultValue === "string" ? v.defaultValue.slice(0, 500) : "",
                     }))
                 : [],
             }));

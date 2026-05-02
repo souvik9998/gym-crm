@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +12,11 @@ import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import { MegaphoneIcon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
 
-interface PromoVariable { key: string; description?: string }
+interface PromoVariable {
+  key: string;
+  description?: string;
+  defaultValue?: string;
+}
 interface PromoSlot {
   slot: number;
   enabled: boolean;
@@ -25,6 +30,23 @@ interface PromoSlot {
 const SUPPORT_EMAIL = "hello@gymkloud.in";
 const SUPPORT_PHONE = "+91 70010 90471";
 
+// localStorage key for the admin's per-branch + per-slot variable overrides.
+const overrideStorageKey = (branchId: string, slot: number) =>
+  `promo_var_overrides_${branchId}_${slot}`;
+
+// Helper used by MembersTable at send time so the right values flow through.
+export function getPromoVariableOverrides(branchId: string, slot: number): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(overrideStorageKey(branchId, slot));
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === "object") return parsed as Record<string, string>;
+  } catch (_e) {
+    /* noop */
+  }
+  return {};
+}
+
 export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsappEnabled?: boolean }) => {
   const { currentBranch } = useBranch();
   const [slots, setSlots] = useState<PromoSlot[]>([]);
@@ -33,6 +55,8 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
+  // overrides[slot][key] = string value
+  const [overrides, setOverrides] = useState<Record<number, Record<string, string>>>({});
 
   const fetchData = useCallback(async () => {
     if (!currentBranch?.id) return;
@@ -59,6 +83,19 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       setActiveSlot(cur);
       setSavedSlot(cur);
       setSlots(visible);
+
+      // Hydrate overrides from localStorage (admin's previously saved edits).
+      const hydrated: Record<number, Record<string, string>> = {};
+      for (const s of visible) {
+        const stored = getPromoVariableOverrides(currentBranch.id, s.slot);
+        const merged: Record<string, string> = {};
+        for (const v of s.variables ?? []) {
+          if (!v?.key) continue;
+          merged[v.key] = stored[v.key] ?? v.defaultValue ?? "";
+        }
+        hydrated[s.slot] = merged;
+      }
+      setOverrides(hydrated);
     } catch (e) {
       console.warn("[promo-templates] load failed:", e);
       setSlots([]);
@@ -69,9 +106,34 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
+  const updateOverride = useCallback((slot: number, key: string, value: string) => {
+    setOverrides((prev) => ({
+      ...prev,
+      [slot]: { ...(prev[slot] ?? {}), [key]: value },
+    }));
+  }, []);
+
   const handleSave = async () => {
     if (!currentBranch?.id) return;
     setSaving(true);
+
+    // Persist variable overrides for ALL configured slots (not just active),
+    // so admin's edits survive even if they switch active slot later.
+    try {
+      for (const s of slots) {
+        const values = overrides[s.slot] ?? {};
+        // Only persist keys actually defined on the template.
+        const filtered: Record<string, string> = {};
+        for (const v of s.variables ?? []) {
+          if (!v?.key) continue;
+          filtered[v.key] = values[v.key] ?? v.defaultValue ?? "";
+        }
+        localStorage.setItem(overrideStorageKey(currentBranch.id, s.slot), JSON.stringify(filtered));
+      }
+    } catch (_e) {
+      /* localStorage may be unavailable; ignore */
+    }
+
     const { data: { session } } = await supabase.auth.getSession();
     const res = await fetch(`${getEdgeFunctionUrl("tenant-operations")}?action=set-active-promotional-slot`, {
       method: "POST",
@@ -96,6 +158,12 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
   };
 
   const empty = !loading && slots.length === 0;
+  const dirty = useMemo(() => {
+    if (activeSlot !== savedSlot) return true;
+    // We don't compare overrides vs storage here; saving always re-persists them,
+    // and they're always saved alongside the active-slot save.
+    return false;
+  }, [activeSlot, savedSlot]);
 
   return (
     <>
@@ -106,7 +174,8 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
             Promotional Template
           </CardTitle>
           <CardDescription className="text-xs lg:text-sm">
-            Pick which approved promotional template to use when sending promo messages to members. Templates are configured by GymKloud for your gym.
+            Pick which promotional template to use, and customise the values that appear in
+            the message. Default values are set by GymKloud — change them to match your offer.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 lg:p-6 pt-0 lg:pt-0 space-y-3">
@@ -134,47 +203,87 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
                 disabled={!whatsappEnabled || saving}
                 className="space-y-2"
               >
-                {slots.map((s) => (
-                  <label
-                    key={s.slot}
-                    htmlFor={`promo-${s.slot}`}
-                    className={`flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                      activeSlot === s.slot ? "border-primary bg-primary/5" : "border-border hover:bg-muted/30"
-                    }`}
-                  >
-                    <RadioGroupItem value={String(s.slot)} id={`promo-${s.slot}`} className="mt-0.5" />
-                    <div className="space-y-1 flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <p className="text-sm font-medium">{(s.name && s.name.trim()) || `Promo ${s.slot}`}</p>
-                        {savedSlot === s.slot && (
-                          <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Active</Badge>
-                        )}
-                      </div>
-                      {s.previewBody && s.previewBody.trim().length > 0 ? (
-                        <p className="text-[11px] lg:text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">
-                          {s.previewBody}
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-muted-foreground italic">
-                          No preview available — message body is configured by GymKloud.
-                        </p>
+                {slots.map((s) => {
+                  const isSelected = activeSlot === s.slot;
+                  const slotVars = s.variables ?? [];
+                  return (
+                    <div
+                      key={s.slot}
+                      className={`rounded-lg border transition-colors ${
+                        isSelected ? "border-primary bg-primary/5" : "border-border"
+                      }`}
+                    >
+                      <label
+                        htmlFor={`promo-${s.slot}`}
+                        className="flex items-start gap-3 p-3 cursor-pointer"
+                      >
+                        <RadioGroupItem value={String(s.slot)} id={`promo-${s.slot}`} className="mt-0.5" />
+                        <div className="space-y-1 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium">{(s.name && s.name.trim()) || `Promo ${s.slot}`}</p>
+                            {savedSlot === s.slot && (
+                              <Badge className="bg-emerald-600 hover:bg-emerald-700 text-[10px]">Active</Badge>
+                            )}
+                          </div>
+                          {s.previewBody && s.previewBody.trim().length > 0 ? (
+                            <p className="text-[11px] lg:text-xs text-muted-foreground whitespace-pre-wrap line-clamp-4">
+                              {s.previewBody}
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground italic">
+                              No preview available — message body is configured by GymKloud.
+                            </p>
+                          )}
+                        </div>
+                      </label>
+
+                      {isSelected && slotVars.length > 0 && (
+                        <div className="px-3 pb-3 pt-1 border-t border-border/50 space-y-2">
+                          <p className="text-[11px] font-medium text-muted-foreground">
+                            Message values (you can edit these)
+                          </p>
+                          <div className="grid gap-2">
+                            {slotVars.map((v) => (
+                              <div key={v.key} className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-center">
+                                <Label
+                                  htmlFor={`promo-${s.slot}-${v.key}`}
+                                  className="text-[11px] sm:text-xs font-mono text-muted-foreground sm:col-span-1"
+                                >
+                                  {v.key}
+                                </Label>
+                                <Input
+                                  id={`promo-${s.slot}-${v.key}`}
+                                  value={overrides[s.slot]?.[v.key] ?? v.defaultValue ?? ""}
+                                  onChange={(e) => updateOverride(s.slot, v.key, e.target.value)}
+                                  placeholder={v.defaultValue || `value for ${v.key}`}
+                                  disabled={!whatsappEnabled || saving}
+                                  className="h-8 text-xs sm:col-span-2"
+                                />
+                              </div>
+                            ))}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Tip: <code>name</code> and <code>branch_name</code> are auto-filled per
+                            recipient if left blank.
+                          </p>
+                        </div>
                       )}
                     </div>
-                  </label>
-                ))}
+                  );
+                })}
               </RadioGroup>
 
               <div className="flex items-center justify-between pt-1">
                 <p className="text-[10px] lg:text-xs text-muted-foreground">
-                  {activeSlot === savedSlot ? "✓ Saved" : "Unsaved change"}
+                  {dirty ? "Unsaved change" : "✓ Saved"}
                 </p>
                 <Button
                   size="sm"
                   onClick={handleSave}
-                  disabled={!whatsappEnabled || saving || activeSlot === savedSlot}
+                  disabled={!whatsappEnabled || saving}
                   className="h-8 text-xs"
                 >
-                  {saving ? "Saving..." : "Save selection"}
+                  {saving ? "Saving..." : "Save"}
                 </Button>
               </div>
             </>
