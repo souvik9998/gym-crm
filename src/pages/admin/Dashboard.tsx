@@ -366,13 +366,9 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Grid */}
-        {statsLoading && !stats ? (
-          <div key="stats-skeleton" className="animate-fade-in-soft">
-            <DashboardStatsSkeleton />
-          </div>
-        ) : (
-          <div key="stats-content" className="animate-fade-in-soft">
+        {/* Stats Grid — render immediately with displayStats (zeros while loading,
+            then values populate). Avoids a second skeleton flash after Suspense. */}
+        <div className="animate-fade-in-soft">
           <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
@@ -408,8 +404,7 @@ const AdminDashboard = () => {
               index={3}
             />
           </div>
-          </div>
-        )}
+        </div>
 
         {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-sm">

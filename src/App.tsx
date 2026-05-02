@@ -130,7 +130,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/dashboard" element={
-        <Suspense fallback={null}>
+        <Suspense fallback={<DashboardFullSkeleton />}>
           <AdminDashboard />
         </Suspense>
       } />
