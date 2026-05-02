@@ -77,8 +77,9 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
     return data.pages.flatMap(page => page.data);
   }, [data]);
   
-  // Total count from the first page
+  // Total count + total amount come from the backend (independent of pagination)
   const totalCount = data?.pages[0]?.totalCount || 0;
+  const totalAmount = data?.pages[0]?.totalAmount || 0;
   
   // Show loading when initially loading OR when data hasn't been fetched yet
   const showLoading = isLoading || (isFetching && !data) || data === undefined;
