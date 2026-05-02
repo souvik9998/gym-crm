@@ -416,6 +416,12 @@ export const SendWhatsAppSchema = z.object({
   // Keys must match the variable keys configured by the Super Admin for the
   // active promotional template slot.
   customVariables: z.record(z.string().max(500)).optional(),
+  // For promotional sends: human-readable preview body (with {{N}} placeholders)
+  // and friendly template name configured by Super Admin. Used to populate the
+  // WhatsApp notification log so admins see the actual message that was sent
+  // rather than a hardcoded fallback.
+  promotionalPreviewBody: z.string().max(2000).optional(),
+  promotionalTemplateName: z.string().max(200).optional(),
   isManual: z.boolean().optional(),
   adminUserId: UUIDSchema.optional().nullable(),
   branchId: UUIDSchema.optional(),
