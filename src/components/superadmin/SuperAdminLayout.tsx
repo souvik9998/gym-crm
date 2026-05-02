@@ -1,18 +1,22 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-
 import { SuperAdminSidebar } from "./SuperAdminSidebar";
 import { SuperAdminHeader } from "./SuperAdminHeader";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 
 export function SuperAdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isSuperAdmin, isLoading } = useAuth();
 
-  // Defer to route-level <Suspense> skeleton — render nothing while auth
-  // resolves so the user sees ONE seamless skeleton instead of a layout
-  // skeleton swapping into a content skeleton.
-  if (isLoading) return null;
+  // Show centered spinner while auth resolves — never a blank screen.
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <PageLoader />
+      </div>
+    );
+  }
 
   if (!isSuperAdmin) {
     navigate("/admin/login");
