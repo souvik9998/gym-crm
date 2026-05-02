@@ -1287,7 +1287,7 @@ interface UsageUpdateRequest {
           .from("tenant_messaging_config")
           .select(
             "active_provider, periskope_api_key_encrypted, periskope_phone, periskope_verified_at, " +
-              "zavu_api_key_encrypted, zavu_sender_id, zavu_verified_at, zavu_templates"
+              "zavu_api_key_encrypted, zavu_sender_id, zavu_verified_at, zavu_templates, promotional_templates"
           )
           .eq("tenant_id", tenantId)
           .maybeSingle();
@@ -1310,6 +1310,9 @@ interface UsageUpdateRequest {
                 verified_at: cfg?.zavu_verified_at ?? null,
               },
               zavu_templates: (cfg?.zavu_templates as Record<string, string>) ?? {},
+              promotional_templates: Array.isArray(cfg?.promotional_templates)
+                ? (cfg!.promotional_templates as unknown[])
+                : [],
             },
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
