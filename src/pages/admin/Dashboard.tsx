@@ -366,45 +366,51 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Grid — render immediately with displayStats (zeros while loading,
-            then values populate). Avoids a second skeleton flash after Suspense. */}
-        <div className="animate-fade-in-soft">
-          <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
-            <StatCard 
-              value={displayStats.totalMembers} 
-              label="Total Members" 
-              icon={UsersIcon}
-              index={0}
-            />
-            <StatCard 
-              value={displayStats.activeMembers} 
-              label="Active Members" 
-              icon={ArrowTrendingUpIcon}
-              colorClass="text-success"
-              bgClass="bg-success/10"
-              iconClass="text-success"
-              index={1}
-            />
-            <StatCard 
-              value={displayStats.expiringSoon} 
-              label="Expiring Soon" 
-              icon={ExclamationTriangleIcon}
-              colorClass="text-warning"
-              bgClass="bg-warning/10"
-              iconClass="text-warning"
-              index={2}
-            />
-            <StatCard 
-              value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
-              label="This Month" 
-              icon={CreditCardIcon}
-              colorClass="text-accent"
-              bgClass="bg-accent/10"
-              iconClass="text-accent"
-              index={3}
-            />
+        {/* Stats Grid — spinner-then-skeleton-then-content pattern:
+            Suspense PageLoader covers chunk load, then this skeleton covers data fetch. */}
+        {statsLoading && !stats ? (
+          <div key="stats-skeleton" className="animate-fade-in-soft">
+            <DashboardStatsSkeleton />
           </div>
-        </div>
+        ) : (
+          <div key="stats-content" className="animate-fade-in-soft">
+            <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
+              <StatCard 
+                value={displayStats.totalMembers} 
+                label="Total Members" 
+                icon={UsersIcon}
+                index={0}
+              />
+              <StatCard 
+                value={displayStats.activeMembers} 
+                label="Active Members" 
+                icon={ArrowTrendingUpIcon}
+                colorClass="text-success"
+                bgClass="bg-success/10"
+                iconClass="text-success"
+                index={1}
+              />
+              <StatCard 
+                value={displayStats.expiringSoon} 
+                label="Expiring Soon" 
+                icon={ExclamationTriangleIcon}
+                colorClass="text-warning"
+                bgClass="bg-warning/10"
+                iconClass="text-warning"
+                index={2}
+              />
+              <StatCard 
+                value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
+                label="This Month" 
+                icon={CreditCardIcon}
+                colorClass="text-accent"
+                bgClass="bg-accent/10"
+                iconClass="text-accent"
+                index={3}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-sm">
