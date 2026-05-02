@@ -431,9 +431,8 @@ export const CalendarSectionSkeletonBody = memo(() => (
         </Card>
       ))}
     </div>
-  </div>
 ));
-CalendarSectionSkeleton.displayName = "CalendarSectionSkeleton";
+CalendarSectionSkeletonBody.displayName = "CalendarSectionSkeletonBody";
 
 export const ActivityLogsSectionSkeleton = memo(() => (
   <div className="max-w-7xl mx-auto animate-fade-in-soft">
