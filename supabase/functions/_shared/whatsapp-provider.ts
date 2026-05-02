@@ -145,7 +145,7 @@ export interface PromotionalTemplateSlot {
   templateId: string;
   description: string;
   previewBody: string;
-  variables: Array<{ key: string; description?: string }>;
+  variables: Array<{ key: string; description?: string; defaultValue?: string }>;
 }
 
 interface TenantMessagingConfig {
@@ -633,6 +633,21 @@ export async function sendWhatsAppForTenant(
         variableOrder = Array.isArray(slot.variables)
           ? slot.variables.map((v) => v.key)
           : [];
+
+        // Apply Super-Admin-configured default values for any variable that
+        // the caller didn't override. This is the single source of truth for
+        // promotional template values when admin doesn't customise them.
+        if (Array.isArray(slot.variables)) {
+          for (const v of slot.variables) {
+            if (!v?.key) continue;
+            const incoming = args.variables[v.key];
+            if (typeof incoming !== "string" || incoming.trim().length === 0) {
+              if (typeof v.defaultValue === "string" && v.defaultValue.length > 0) {
+                args.variables[v.key] = v.defaultValue;
+              }
+            }
+          }
+        }
       } else {
         templateId = (config.zavu_templates ?? {})[effectiveCategory];
       }
