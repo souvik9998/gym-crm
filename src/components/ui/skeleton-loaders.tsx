@@ -196,7 +196,7 @@ export const PaymentHistorySkeleton = memo(() => (
 PaymentHistorySkeleton.displayName = "PaymentHistorySkeleton";
 
 /**
- * Inline loading spinner — 3 orbiting dots around a pulsing core.
+ * Inline loading spinner — modern dual-ring with counter-rotating accent.
  * Inherits color via `text-*` so it adapts to any context.
  */
 export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "md" | "lg"; className?: string }) => {
@@ -205,63 +205,39 @@ export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "
     md: "w-6 h-6",
     lg: "w-8 h-8",
   };
-  const dotSize = {
-    sm: "w-1 h-1",
-    md: "w-1.5 h-1.5",
-    lg: "w-2 h-2",
-  };
 
   return (
     <span
-      className={`relative inline-flex items-center justify-center ${sizeClasses[size]} text-primary ${className ?? ""}`}
+      className={`relative inline-flex ${sizeClasses[size]} text-primary ${className ?? ""}`}
       role="status"
       aria-label="Loading"
     >
-      {/* Orbiting dots */}
-      <span className="absolute inset-0 animate-[spinner-orbit_1.1s_linear_infinite]">
-        <span className={`absolute left-1/2 top-0 -translate-x-1/2 ${dotSize[size]} rounded-full bg-current`} />
-      </span>
-      <span className="absolute inset-0 animate-[spinner-orbit_1.1s_linear_infinite]" style={{ animationDelay: "-0.37s" }}>
-        <span className={`absolute left-1/2 top-0 -translate-x-1/2 ${dotSize[size]} rounded-full bg-current opacity-70`} />
-      </span>
-      <span className="absolute inset-0 animate-[spinner-orbit_1.1s_linear_infinite]" style={{ animationDelay: "-0.73s" }}>
-        <span className={`absolute left-1/2 top-0 -translate-x-1/2 ${dotSize[size]} rounded-full bg-current opacity-40`} />
-      </span>
+      <span className="absolute inset-0 rounded-full border-2 border-current/20 border-t-current animate-[spinner-orbit_0.7s_linear_infinite]" />
+      <span className="absolute inset-[20%] rounded-full border-2 border-current/30 border-b-current animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
     </span>
   );
 });
 InlineSpinner.displayName = "InlineSpinner";
 
 /**
- * Full page loading state — orbiting trio with a soft halo + pulsing core.
- * No text, just a delightful loading pattern that keeps motion alive.
+ * Full page loading state — modern stacked spinner with a soft halo so
+ * route transitions feel polished and quick instead of blank.
  */
 export const PageLoader = memo(() => (
-  <div className="flex items-center justify-center py-16 animate-fade-in">
-    <div className="relative w-16 h-16 text-primary">
+  <div className="flex flex-col items-center justify-center py-16 gap-4 animate-fade-in">
+    <div className="relative w-14 h-14 text-primary">
       {/* Soft halo */}
-      <span className="absolute inset-0 rounded-full bg-primary/10 blur-2xl animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
-
-      {/* Orbiting trio */}
-      <span className="absolute inset-0 animate-[spinner-orbit_1.2s_linear_infinite]">
-        <span className="absolute left-1/2 top-0 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-current shadow-[0_0_12px_hsl(var(--primary)/0.6)]" />
-      </span>
-      <span
-        className="absolute inset-0 animate-[spinner-orbit_1.2s_linear_infinite]"
-        style={{ animationDelay: "-0.4s" }}
-      >
-        <span className="absolute left-1/2 top-0 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-current opacity-70 shadow-[0_0_10px_hsl(var(--primary)/0.45)]" />
-      </span>
-      <span
-        className="absolute inset-0 animate-[spinner-orbit_1.2s_linear_infinite]"
-        style={{ animationDelay: "-0.8s" }}
-      >
-        <span className="absolute left-1/2 top-0 -translate-x-1/2 w-2.5 h-2.5 rounded-full bg-current opacity-40 shadow-[0_0_8px_hsl(var(--primary)/0.3)]" />
-      </span>
-
-      {/* Pulsing core */}
-      <span className="absolute inset-[38%] rounded-full bg-current animate-[spinner-pulse_1.2s_ease-in-out_infinite]" />
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.4s_ease-in-out_infinite]" />
+      {/* Outer fast ring */}
+      <span className="absolute inset-0 rounded-full border-[3px] border-primary/15 border-t-primary animate-[spinner-orbit_0.7s_linear_infinite]" />
+      {/* Counter-rotating inner ring */}
+      <span className="absolute inset-2 rounded-full border-2 border-primary/25 border-b-primary animate-[spinner-orbit_1.1s_linear_infinite_reverse]" />
+      {/* Pulsing center dot */}
+      <span className="absolute inset-[42%] rounded-full bg-primary animate-[spinner-pulse_1.2s_ease-in-out_infinite]" />
     </div>
+    <p className="text-xs font-medium text-muted-foreground tracking-wide animate-pulse">
+      Loading…
+    </p>
   </div>
 ));
 PageLoader.displayName = "PageLoader";
