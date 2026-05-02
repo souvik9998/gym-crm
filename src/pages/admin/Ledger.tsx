@@ -518,7 +518,8 @@ const AdminLedger = () => {
 
   const handleExport = () => {
     try {
-      const exportData = entries.map((entry) => ({
+      const sourceEntries = hasActiveFilters ? filteredEntries : entries;
+      const exportData = sourceEntries.map((entry) => ({
         Date: format(parseISO(entry.entry_date), "dd MMM yyyy"),
         Type: entry.entry_type === "income" ? "Income" : "Expense",
         Category: getCategoryLabel(entry.category, entry.entry_type),
