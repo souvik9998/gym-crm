@@ -69,7 +69,7 @@ const StatCard = memo(({
 }) => (
   <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
     {/* Mobile/Tablet layout - icon on right, text and number on left */}
-    <CardContent className="p-3 md:p-4 lg:hidden flex items-center justify-between">
+    <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between">
       <div className="flex-1 min-w-0 pr-2">
         <p className={`text-lg md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
           {value}
@@ -78,20 +78,20 @@ const StatCard = memo(({
           {label}
         </p>
       </div>
-      <div className={`w-10 h-10 md:w-11 md:h-11 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
-        <Icon className={`w-5 h-5 md:w-5.5 md:h-5.5 ${iconClass}`} />
+      <div className={`w-9 h-9 md:w-10 md:h-10 ${bgClass} rounded-xl flex items-center justify-center flex-shrink-0 transition-transform duration-300 active:scale-90`}>
+        <Icon className={`w-4.5 h-4.5 md:w-5 md:h-5 ${iconClass}`} />
       </div>
     </CardContent>
 
     {/* Desktop layout */}
-    <CardContent className="hidden lg:block lg:p-5">
+    <CardContent className="hidden lg:block lg:p-4">
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
           <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
-        <div className={`p-3 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-6 h-6 ${iconClass}`} />
+        <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
+          <Icon className={`w-5 h-5 ${iconClass}`} />
         </div>
       </div>
     </CardContent>
