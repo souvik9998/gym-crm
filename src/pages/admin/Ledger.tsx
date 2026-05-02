@@ -605,25 +605,21 @@ const AdminLedger = () => {
     });
   };
 
-  // Calculate totals
+  // Calculate totals (with transaction counts and savings rate)
   const totals = useMemo(() => {
-    const income = entries
-      .filter((e) => e.entry_type === "income")
-      .reduce((sum, e) => sum + Number(e.amount), 0);
-    const expense = entries
-      .filter((e) => e.entry_type === "expense")
-      .reduce((sum, e) => sum + Number(e.amount), 0);
-    return {
-      income,
-      expense,
-      profit: income - expense,
-    };
+    let income = 0, expense = 0, incomeCount = 0, expenseCount = 0;
+    entries.forEach((e) => {
+      if (e.entry_type === "income") { income += Number(e.amount); incomeCount++; }
+      else { expense += Number(e.amount); expenseCount++; }
+    });
+    const profit = income - expense;
+    const savingsRate = income > 0 ? (profit / income) * 100 : 0;
+    return { income, expense, profit, incomeCount, expenseCount, savingsRate };
   }, [entries]);
 
   // Chart data - group by date
   const chartData = useMemo(() => {
     const grouped: Record<string, { date: string; income: number; expense: number }> = {};
-    
     entries.forEach((entry) => {
       if (!grouped[entry.entry_date]) {
         grouped[entry.entry_date] = { date: entry.entry_date, income: 0, expense: 0 };
@@ -634,7 +630,6 @@ const AdminLedger = () => {
         grouped[entry.entry_date].expense += Number(entry.amount);
       }
     });
-
     return Object.values(grouped)
       .sort((a, b) => a.date.localeCompare(b.date))
       .map((item) => ({
@@ -647,6 +642,66 @@ const AdminLedger = () => {
     const categories = entryType === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
     return categories.find((c) => c.value === category)?.label || category;
   };
+
+  // Category breakdown for donut/list
+  const categoryBreakdown = useMemo(() => {
+    const map: Record<string, { category: string; type: "income" | "expense"; amount: number; count: number }> = {};
+    entries.forEach((e) => {
+      const key = `${e.entry_type}:${e.category}`;
+      if (!map[key]) map[key] = { category: e.category, type: e.entry_type, amount: 0, count: 0 };
+      map[key].amount += Number(e.amount);
+      map[key].count += 1;
+    });
+    return Object.values(map).sort((a, b) => b.amount - a.amount);
+  }, [entries]);
+
+  const topExpenseCategories = useMemo(
+    () => categoryBreakdown.filter((c) => c.type === "expense").slice(0, 5),
+    [categoryBreakdown]
+  );
+
+  // Filtered entries (search + type + category)
+  const filteredEntries = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    return entries.filter((e) => {
+      if (typeFilter !== "all" && e.entry_type !== typeFilter) return false;
+      if (categoryFilter !== "all" && e.category !== categoryFilter) return false;
+      if (q) {
+        const haystack = `${e.description} ${getCategoryLabel(e.category, e.entry_type)} ${e.notes ?? ""}`.toLowerCase();
+        if (!haystack.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [entries, searchQuery, typeFilter, categoryFilter]);
+
+  const availableCategories = useMemo(() => {
+    const set = new Set<string>();
+    entries.forEach((e) => {
+      if (typeFilter === "all" || e.entry_type === typeFilter) set.add(e.category);
+    });
+    return Array.from(set);
+  }, [entries, typeFilter]);
+
+  const hasActiveFilters = !!searchQuery || typeFilter !== "all" || categoryFilter !== "all";
+  const clearFilters = () => { setSearchQuery(""); setTypeFilter("all"); setCategoryFilter("all"); };
+
+  // Category color palette (used in donut + chips)
+  const CATEGORY_COLORS = [
+    "hsl(var(--primary))",
+    "hsl(var(--success))",
+    "hsl(var(--destructive))",
+    "hsl(var(--warning))",
+    "hsl(var(--accent))",
+    "hsl(217 91% 60%)",
+    "hsl(280 65% 60%)",
+    "hsl(35 90% 55%)",
+    "hsl(160 70% 45%)",
+  ];
+
+  const dateRangeLabel = useMemo(() => {
+    return `${format(dateRange.start, "dd MMM")} – ${format(dateRange.end, "dd MMM yyyy")}`;
+  }, [dateRange]);
+
 
   if (showSkeleton) {
     return <LedgerSkeleton />;
