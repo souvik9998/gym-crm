@@ -132,6 +132,16 @@ export const MESSAGE_CATEGORIES: Array<{
 // Internal: tenant config cache (one per request lifecycle)
 // -------------------------------------------------------------------------
 
+export interface PromotionalTemplateSlot {
+  slot: number;            // 1-4
+  enabled: boolean;
+  name: string;
+  templateId: string;
+  description: string;
+  previewBody: string;
+  variables: Array<{ key: string; description?: string }>;
+}
+
 interface TenantMessagingConfig {
   active_provider: ProviderName;
   periskope_api_key_encrypted: string | null;
@@ -141,6 +151,7 @@ interface TenantMessagingConfig {
   zavu_api_key_iv: string | null;
   zavu_sender_id: string | null;
   zavu_templates: Record<string, string>;
+  promotional_templates: PromotionalTemplateSlot[];
 }
 
 interface ResolvedConfig {
