@@ -1794,6 +1794,8 @@ const AdminSettings = () => {
 
             <WhatsAppAutoSendSettings whatsappEnabled={whatsappEnabled} />
 
+            <PromotionalTemplateSelector whatsappEnabled={whatsappEnabled} />
+
             <ManualAutomationTriggers />
           </TabsContent>
 
