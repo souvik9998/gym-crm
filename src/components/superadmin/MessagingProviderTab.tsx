@@ -347,6 +347,13 @@ export default function MessagingProviderTab({ tenantId }: Props) {
         </Card>
       )}
 
+      {/* Promotional 4-slot templates (independent of active provider — admin always sees these) */}
+      <PromotionalTemplatesEditor
+        initial={config?.promotional_templates ?? []}
+        onSave={savePromotionalTemplates}
+        saving={saving}
+      />
+
       {/* Test send */}
       <Card>
         <CardHeader>
