@@ -42,6 +42,15 @@ import {
   ArrowTrendingUpIcon,
   ArrowTrendingDownIcon,
   BookOpenIcon,
+  MagnifyingGlassIcon,
+  FunnelIcon,
+  ChartBarIcon,
+  CurrencyRupeeIcon,
+  SparklesIcon,
+  EyeIcon,
+  XMarkIcon,
+  Squares2X2Icon,
+  ChartPieIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "@/components/ui/sonner";
 import { format, subDays, startOfMonth, endOfMonth, parseISO } from "date-fns";
