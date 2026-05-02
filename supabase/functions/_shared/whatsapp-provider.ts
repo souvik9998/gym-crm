@@ -633,6 +633,12 @@ export async function sendWhatsAppForTenant(
         variableOrder = Array.isArray(slot.variables)
           ? slot.variables.map((v) => v.key)
           : [];
+        if (variableOrder.length === 0) {
+          const previewCount = countTemplatePlaceholders(slot.previewBody);
+          if (previewCount > 0) {
+            variableOrder = Array.from({ length: previewCount }, (_, i) => String(i + 1));
+          }
+        }
 
         // Apply Super-Admin-configured default values for any variable that
         // the caller didn't override. This is the single source of truth for
