@@ -368,11 +368,11 @@ const AdminDashboard = () => {
 
         {/* Stats Grid */}
         {statsLoading && !stats ? (
-          <div key="stats-skeleton" className="animate-fade-in">
+          <div key="stats-skeleton" className="animate-fade-in-soft">
             <DashboardStatsSkeleton />
           </div>
         ) : (
-          <div key="stats-content" className="animate-fade-in">
+          <div key="stats-content" className="animate-fade-in-soft">
           <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
               value={displayStats.totalMembers} 
