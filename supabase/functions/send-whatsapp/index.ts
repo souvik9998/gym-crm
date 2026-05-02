@@ -58,6 +58,8 @@ Deno.serve(async (req) => {
       type = "manual",
       customMessage,
       customVariables,
+      promotionalPreviewBody,
+      promotionalTemplateName,
       isManual = false,
       adminUserId,
       branchId,
