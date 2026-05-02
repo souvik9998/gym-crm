@@ -10,21 +10,11 @@ import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { DomainProvider, useDomainContext } from "@/contexts/DomainContext";
 import {
   AdminSectionSkeleton,
-  AnalyticsSectionSkeleton,
-  AttendanceSectionSkeleton,
-  BranchAnalyticsSkeleton,
   DashboardFullSkeleton,
-  EventsSectionSkeleton,
   PageLoader,
-  SettingsSectionSkeleton,
-  StaffManagementSkeleton,
-  SuperAdminFormSkeleton,
-  SuperAdminTableSkeleton,
-  TimeSlotsSkeleton,
 } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
-import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
 import { queryClient } from "@/lib/queryClient";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
@@ -37,37 +27,37 @@ import AdminLogin from "./pages/admin/Login";
 import ResetPassword from "./pages/admin/ResetPassword";
 import CheckIn from "./pages/CheckIn";
 import NotFound from "./pages/NotFound";
+import StaffDashboard from "./pages/admin/StaffDashboard";
+import StaffTimeSlots from "./pages/admin/StaffTimeSlots";
+import AdminQRCode from "./pages/admin/QRCode";
+import AdminSettings from "./pages/admin/Settings";
+import AdminCalendar from "./pages/admin/Calendar";
+import AdminAnalytics from "./pages/admin/Analytics";
+import BranchAnalytics from "./pages/admin/BranchAnalytics";
+import AdminLedger from "./pages/admin/Ledger";
+import Logs from "./pages/admin/Logs";
+import StaffManagement from "./pages/admin/StaffManagement";
+import AdminTimeSlots from "./pages/admin/AdminTimeSlots";
+import TrainersPage from "./pages/admin/Trainers";
+import Attendance from "./pages/admin/Attendance";
+import Events from "./pages/admin/Events";
+import EventDetail from "./pages/admin/EventDetail";
+import TenantList from "./pages/superadmin/TenantList";
+import TenantDetail from "./pages/superadmin/TenantDetail";
+import CreateTenant from "./pages/superadmin/CreateTenant";
+import AuditLogs from "./pages/superadmin/AuditLogs";
+import SuperAdminUsers from "./pages/superadmin/Users";
+import SuperAdminAnalytics from "./pages/superadmin/Analytics";
+import SuperAdminSettings from "./pages/superadmin/Settings";
 const InvoicePage = lazyWithRetry(() => import("./pages/Invoice"));
 
 // Lazy load admin pages for better initial load time
 const AdminDashboard = lazyWithRetry(() => import("./pages/admin/Dashboard"));
-const StaffDashboard = lazyWithRetry(() => import("./pages/admin/StaffDashboard"));
-const StaffTimeSlots = lazyWithRetry(() => import("./pages/admin/StaffTimeSlots"));
-const AdminQRCode = lazyWithRetry(() => import("./pages/admin/QRCode"));
-const AdminSettings = lazyWithRetry(() => import("./pages/admin/Settings"));
-const AdminCalendar = lazyWithRetry(() => import("./pages/admin/Calendar"));
-const AdminAnalytics = lazyWithRetry(() => import("./pages/admin/Analytics"));
-const BranchAnalytics = lazyWithRetry(() => import("./pages/admin/BranchAnalytics"));
-const AdminLedger = lazyWithRetry(() => import("./pages/admin/Ledger"));
-const Logs = lazyWithRetry(() => import("./pages/admin/Logs"));
-const StaffManagement = lazyWithRetry(() => import("./pages/admin/StaffManagement"));
-const AdminTimeSlots = lazyWithRetry(() => import("./pages/admin/AdminTimeSlots"));
-const TrainersPage = lazyWithRetry(() => import("./pages/admin/Trainers"));
-const Attendance = lazyWithRetry(() => import("./pages/admin/Attendance"));
-const Events = lazyWithRetry(() => import("./pages/admin/Events"));
-const EventDetail = lazyWithRetry(() => import("./pages/admin/EventDetail"));
 const EventRegistration = lazyWithRetry(() => import("./pages/EventRegistration"));
 const PublicCalendar = lazyWithRetry(() => import("./pages/PublicCalendar"));
 
 // Lazy load Super Admin pages
 const SuperAdminDashboard = lazyWithRetry(() => import("./pages/superadmin/Dashboard"));
-const TenantList = lazyWithRetry(() => import("./pages/superadmin/TenantList"));
-const TenantDetail = lazyWithRetry(() => import("./pages/superadmin/TenantDetail"));
-const CreateTenant = lazyWithRetry(() => import("./pages/superadmin/CreateTenant"));
-const AuditLogs = lazyWithRetry(() => import("./pages/superadmin/AuditLogs"));
-const SuperAdminUsers = lazyWithRetry(() => import("./pages/superadmin/Users"));
-const SuperAdminAnalytics = lazyWithRetry(() => import("./pages/superadmin/Analytics"));
-const SuperAdminSettings = lazyWithRetry(() => import("./pages/superadmin/Settings"));
 
 // Import SuperAdmin layout
 import { SuperAdminLayout } from "@/components/superadmin/SuperAdminLayout";
@@ -150,23 +140,23 @@ const PlatformRoutes = () => (
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<StaffManagementSkeleton />}><StaffManagement /></Suspense>
+          <StaffManagement />
         </ProtectedRoute>
       } />
       <Route path="/admin/time-slots" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<TimeSlotsSkeleton />}><AdminTimeSlots /></Suspense>
+          <AdminTimeSlots />
         </ProtectedRoute>
       } />
       <Route path="/admin/trainers" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TrainersPage /></Suspense>
+        <TrainersPage />
       } />
       <Route path="/admin/logs" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><Logs /></Suspense>
+        <Logs />
       } />
       <Route path="/admin/branch-analytics" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
-          <Suspense fallback={<BranchAnalyticsSkeleton />}><BranchAnalytics /></Suspense>
+          <BranchAnalytics />
         </ProtectedRoute>
       } />
     </Route>
@@ -177,7 +167,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/attendance" element={
-        <Suspense fallback={<AttendanceSectionSkeleton />}><Attendance /></Suspense>
+        <Attendance />
       } />
     </Route>
 
@@ -187,13 +177,13 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/qr-code" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminQRCode /></Suspense>
+        <AdminQRCode />
       } />
       <Route path="/admin/settings" element={
-        <Suspense fallback={<SettingsSectionSkeleton />}><AdminSettings /></Suspense>
+        <AdminSettings />
       } />
       <Route path="/admin/calendar" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminCalendar /></Suspense>
+        <AdminCalendar />
       } />
     </Route>
 
@@ -203,7 +193,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/analytics" element={
-        <Suspense fallback={<AnalyticsSectionSkeleton />}><AdminAnalytics /></Suspense>
+        <AdminAnalytics />
       } />
     </Route>
 
@@ -213,7 +203,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<LedgerSkeleton />}><AdminLedger /></Suspense>
+        <AdminLedger />
       } />
     </Route>
 
@@ -223,10 +213,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/events" element={
-        <Suspense fallback={<EventsSectionSkeleton />}><Events /></Suspense>
+        <Events />
       } />
       <Route path="/admin/events/:eventId" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><EventDetail /></Suspense>
+        <EventDetail />
       } />
     </Route>
 
@@ -236,10 +226,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/staff/dashboard" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><StaffDashboard /></Suspense>
+        <StaffDashboard />
       } />
       <Route path="/staff/time-slots" element={
-        <Suspense fallback={<TimeSlotsSkeleton />}><StaffTimeSlots /></Suspense>
+        <StaffTimeSlots />
       } />
     </Route>
 
@@ -252,25 +242,25 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminDashboard /></Suspense>
       } />
       <Route path="/superadmin/tenants" element={
-        <Suspense fallback={<SuperAdminTableSkeleton />}><TenantList /></Suspense>
+        <TenantList />
       } />
       <Route path="/superadmin/tenants/new" element={
-        <Suspense fallback={<SuperAdminFormSkeleton />}><CreateTenant /></Suspense>
+        <CreateTenant />
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TenantDetail /></Suspense>
+        <TenantDetail />
       } />
       <Route path="/superadmin/users" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminUsers /></Suspense>
+        <SuperAdminUsers />
       } />
       <Route path="/superadmin/analytics" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminAnalytics /></Suspense>
+        <SuperAdminAnalytics />
       } />
       <Route path="/superadmin/audit-logs" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AuditLogs /></Suspense>
+        <AuditLogs />
       } />
       <Route path="/superadmin/settings" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminSettings /></Suspense>
+        <SuperAdminSettings />
       } />
     </Route>
 
