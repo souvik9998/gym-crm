@@ -408,6 +408,7 @@ const AdminDashboard = () => {
               index={3}
             />
           </div>
+          </div>
         )}
 
         {/* Tabs for Members & Payments */}
