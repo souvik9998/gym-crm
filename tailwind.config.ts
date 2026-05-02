@@ -153,12 +153,16 @@ export default {
   				}
   			},
   			shimmer: {
-  				from: {
-  					backgroundPosition: '200% 0'
-  				},
-  				to: {
-  					backgroundPosition: '-200% 0'
-  				}
+  				'0%': { transform: 'translateX(-100%)' },
+  				'100%': { transform: 'translateX(100%)' }
+  			},
+  			'spinner-orbit': {
+  				'0%': { transform: 'rotate(0deg)' },
+  				'100%': { transform: 'rotate(360deg)' }
+  			},
+  			'spinner-pulse': {
+  				'0%, 100%': { transform: 'scale(0.85)', opacity: '0.6' },
+  				'50%': { transform: 'scale(1)', opacity: '1' }
   			},
   			'refresh-spin': {
   				from: { transform: 'rotate(0deg)' },
@@ -192,7 +196,9 @@ export default {
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'fade-in': 'fade-in 0.5s ease-out forwards',
   			'slide-up': 'slide-up 0.6s ease-out forwards',
-  			shimmer: 'shimmer 3s ease-in-out infinite',
+  			shimmer: 'shimmer 1.6s ease-in-out infinite',
+  			'spinner-orbit': 'spinner-orbit 0.8s linear infinite',
+  			'spinner-pulse': 'spinner-pulse 1.2s ease-in-out infinite',
   			'coachmark-pulse': 'coachmark-pulse 2.4s ease-in-out infinite',
   			wave: 'wave 2.4s ease-in-out 1',
   			'scale-in': 'scale-in 0.18s ease-out'
