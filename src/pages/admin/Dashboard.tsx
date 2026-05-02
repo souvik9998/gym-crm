@@ -45,7 +45,7 @@ import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useDashboardStats, useInvalidateDashboard } from "@/hooks/queries";
 import { useDashboardStore } from "@/stores/dashboardStore";
-import { DashboardStatsSkeleton } from "@/components/ui/skeleton-loaders";
+
 import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
 import { DashboardTour } from "@/components/guide/DashboardTour";
 
