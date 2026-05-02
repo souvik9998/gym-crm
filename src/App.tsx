@@ -130,27 +130,29 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/dashboard" element={
-        <Suspense fallback={<DashboardFullSkeleton />}><AdminDashboard /></Suspense>
+        <Suspense fallback={null}>
+          <AdminDashboard />
+        </Suspense>
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<PageLoader />}><StaffManagement /></Suspense>
+          <Suspense fallback={null}><StaffManagement /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/time-slots" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<PageLoader />}><AdminTimeSlots /></Suspense>
+          <Suspense fallback={null}><AdminTimeSlots /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/trainers" element={
-        <Suspense fallback={<PageLoader />}><TrainersPage /></Suspense>
+        <Suspense fallback={null}><TrainersPage /></Suspense>
       } />
       <Route path="/admin/logs" element={
-        <Suspense fallback={<PageLoader />}><Logs /></Suspense>
+        <Suspense fallback={null}><Logs /></Suspense>
       } />
       <Route path="/admin/branch-analytics" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
-          <Suspense fallback={<PageLoader />}><BranchAnalytics /></Suspense>
+          <Suspense fallback={null}><BranchAnalytics /></Suspense>
         </ProtectedRoute>
       } />
     </Route>
@@ -161,7 +163,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/attendance" element={
-        <Suspense fallback={<PageLoader />}><Attendance /></Suspense>
+        <Suspense fallback={null}><Attendance /></Suspense>
       } />
     </Route>
 
@@ -171,13 +173,13 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/qr-code" element={
-        <Suspense fallback={<PageLoader />}><AdminQRCode /></Suspense>
+        <Suspense fallback={null}><AdminQRCode /></Suspense>
       } />
       <Route path="/admin/settings" element={
-        <Suspense fallback={<PageLoader />}><AdminSettings /></Suspense>
+        <Suspense fallback={null}><AdminSettings /></Suspense>
       } />
       <Route path="/admin/calendar" element={
-        <Suspense fallback={<PageLoader />}><AdminCalendar /></Suspense>
+        <Suspense fallback={null}><AdminCalendar /></Suspense>
       } />
     </Route>
 
@@ -187,7 +189,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/analytics" element={
-        <Suspense fallback={<PageLoader />}><AdminAnalytics /></Suspense>
+        <Suspense fallback={null}><AdminAnalytics /></Suspense>
       } />
     </Route>
 
@@ -197,7 +199,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<PageLoader />}><AdminLedger /></Suspense>
+        <Suspense fallback={null}><AdminLedger /></Suspense>
       } />
     </Route>
 
@@ -207,10 +209,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/events" element={
-        <Suspense fallback={<PageLoader />}><Events /></Suspense>
+        <Suspense fallback={null}><Events /></Suspense>
       } />
       <Route path="/admin/events/:eventId" element={
-        <Suspense fallback={<PageLoader />}><EventDetail /></Suspense>
+        <Suspense fallback={null}><EventDetail /></Suspense>
       } />
     </Route>
 
@@ -220,10 +222,10 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/staff/dashboard" element={
-        <Suspense fallback={<PageLoader />}><StaffDashboard /></Suspense>
+        <Suspense fallback={null}><StaffDashboard /></Suspense>
       } />
       <Route path="/staff/time-slots" element={
-        <Suspense fallback={<PageLoader />}><StaffTimeSlots /></Suspense>
+        <Suspense fallback={null}><StaffTimeSlots /></Suspense>
       } />
     </Route>
 
@@ -233,28 +235,28 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/superadmin/dashboard" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminDashboard /></Suspense>
+        <Suspense fallback={null}><SuperAdminDashboard /></Suspense>
       } />
       <Route path="/superadmin/tenants" element={
-        <Suspense fallback={<PageLoader />}><TenantList /></Suspense>
+        <Suspense fallback={null}><TenantList /></Suspense>
       } />
       <Route path="/superadmin/tenants/new" element={
-        <Suspense fallback={<PageLoader />}><CreateTenant /></Suspense>
+        <Suspense fallback={null}><CreateTenant /></Suspense>
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
-        <Suspense fallback={<PageLoader />}><TenantDetail /></Suspense>
+        <Suspense fallback={null}><TenantDetail /></Suspense>
       } />
       <Route path="/superadmin/users" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminUsers /></Suspense>
+        <Suspense fallback={null}><SuperAdminUsers /></Suspense>
       } />
       <Route path="/superadmin/analytics" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminAnalytics /></Suspense>
+        <Suspense fallback={null}><SuperAdminAnalytics /></Suspense>
       } />
       <Route path="/superadmin/audit-logs" element={
-        <Suspense fallback={<PageLoader />}><AuditLogs /></Suspense>
+        <Suspense fallback={null}><AuditLogs /></Suspense>
       } />
       <Route path="/superadmin/settings" element={
-        <Suspense fallback={<PageLoader />}><SuperAdminSettings /></Suspense>
+        <Suspense fallback={null}><SuperAdminSettings /></Suspense>
       } />
     </Route>
 
