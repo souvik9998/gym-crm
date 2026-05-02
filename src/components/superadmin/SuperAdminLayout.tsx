@@ -1,6 +1,6 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { Skeleton } from "@/components/ui/skeleton";
+
 import { SuperAdminSidebar } from "./SuperAdminSidebar";
 import { SuperAdminHeader } from "./SuperAdminHeader";
 
