@@ -1333,12 +1333,22 @@ interface UsageUpdateRequest {
           periskope,
           zavu,
           zavu_templates,
+          promotional_templates,
         } = body as {
           tenantId?: string;
           active_provider?: "periskope" | "zavu" | "none";
           periskope?: { apiKey?: string; phone?: string };
           zavu?: { apiKey?: string; senderId?: string };
           zavu_templates?: Record<string, string>;
+          promotional_templates?: Array<{
+            slot: number;
+            enabled?: boolean;
+            name?: string;
+            templateId?: string;
+            description?: string;
+            variables?: Array<{ key: string; description?: string }>;
+            previewBody?: string;
+          }>;
         };
 
         if (!tenantId) {
