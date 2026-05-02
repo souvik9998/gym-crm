@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
+import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
 import { queryClient } from "@/lib/queryClient";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
@@ -212,7 +213,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminLedger /></Suspense>
+        <Suspense fallback={<LedgerSkeleton />}><AdminLedger /></Suspense>
       } />
     </Route>
 
