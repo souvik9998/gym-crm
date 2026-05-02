@@ -40,6 +40,7 @@ import { buildPublicUrl } from "@/lib/publicUrl";
 import { ShareIcon, TicketIcon, MapPinIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import ShareCalendarDialog from "./ShareCalendarDialog";
+import { CalendarSectionSkeletonBody } from "@/components/ui/skeleton-loaders";
 
 interface CalendarEvent {
   id: string;
@@ -638,10 +639,7 @@ const HolidayCalendarTab = () => {
   };
 
   if (isLoading) {
-    // Render nothing here — the parent Suspense fallback (CalendarSectionSkeleton)
-    // already covers the initial load. Returning a fragment keeps a single skeleton
-    // visible (no swap/flicker) until data is ready.
-    return <CalendarSectionSkeletonInline />;
+    return <CalendarSectionSkeletonBody />;
   }
 
   return (
