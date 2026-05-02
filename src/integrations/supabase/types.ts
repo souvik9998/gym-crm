@@ -1251,6 +1251,7 @@ export type Database = {
       }
       gym_settings: {
         Row: {
+          active_promotional_slot: number | null
           assessment_field_settings: Json
           branch_id: string | null
           gym_address: string | null
@@ -1278,6 +1279,7 @@ export type Database = {
           whatsapp_enabled: boolean | null
         }
         Insert: {
+          active_promotional_slot?: number | null
           assessment_field_settings?: Json
           branch_id?: string | null
           gym_address?: string | null
@@ -1305,6 +1307,7 @@ export type Database = {
           whatsapp_enabled?: boolean | null
         }
         Update: {
+          active_promotional_slot?: number | null
           assessment_field_settings?: Json
           branch_id?: string | null
           gym_address?: string | null
@@ -3001,6 +3004,7 @@ export type Database = {
           periskope_api_key_iv: string | null
           periskope_phone: string | null
           periskope_verified_at: string | null
+          promotional_templates: Json
           qstash_scheduler_enabled: boolean
           tenant_id: string
           updated_at: string
@@ -3018,6 +3022,7 @@ export type Database = {
           periskope_api_key_iv?: string | null
           periskope_phone?: string | null
           periskope_verified_at?: string | null
+          promotional_templates?: Json
           qstash_scheduler_enabled?: boolean
           tenant_id: string
           updated_at?: string
@@ -3035,6 +3040,7 @@ export type Database = {
           periskope_api_key_iv?: string | null
           periskope_phone?: string | null
           periskope_verified_at?: string | null
+          promotional_templates?: Json
           qstash_scheduler_enabled?: boolean
           tenant_id?: string
           updated_at?: string
