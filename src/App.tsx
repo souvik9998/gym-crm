@@ -177,7 +177,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/attendance" element={
-        <Suspense fallback={<AttendanceSectionSkeleton />}><Attendance /></Suspense>
+        <Attendance />
       } />
     </Route>
 
@@ -187,13 +187,13 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/qr-code" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminQRCode /></Suspense>
+        <AdminQRCode />
       } />
       <Route path="/admin/settings" element={
-        <Suspense fallback={<SettingsSectionSkeleton />}><AdminSettings /></Suspense>
+        <AdminSettings />
       } />
       <Route path="/admin/calendar" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminCalendar /></Suspense>
+        <AdminCalendar />
       } />
     </Route>
 
@@ -203,7 +203,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/analytics" element={
-        <Suspense fallback={<AnalyticsSectionSkeleton />}><AdminAnalytics /></Suspense>
+        <AdminAnalytics />
       } />
     </Route>
 
@@ -213,7 +213,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<LedgerSkeleton />}><AdminLedger /></Suspense>
+        <AdminLedger />
       } />
     </Route>
 
