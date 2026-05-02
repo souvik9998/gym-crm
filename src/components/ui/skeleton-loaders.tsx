@@ -434,17 +434,10 @@ export const CalendarSectionSkeletonBody = memo(() => (
 ));
 CalendarSectionSkeletonBody.displayName = "CalendarSectionSkeletonBody";
 
-export const ActivityLogsSectionSkeleton = memo(() => (
-  <div className="max-w-7xl mx-auto animate-fade-in-soft">
-    {/* Top tabs (Admin / User / Staff / WhatsApp) */}
-    <div className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto rounded-md gap-1">
-      {Array.from({ length: 4 }).map((_, i) => (
-        <Skeleton key={i} className="h-7 lg:h-9 w-full rounded-sm" />
-      ))}
-    </div>
-
+export const ActivityLogsContentSkeleton = memo(() => (
+  <div className="space-y-6 animate-fade-in-soft">
     {/* Sub tabs (Statistics / Activity Logs) */}
-    <div className="grid w-full max-w-[240px] lg:max-w-xs grid-cols-2 h-8 lg:h-10 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 rounded-md gap-1">
+    <div className="grid w-full max-w-[240px] lg:max-w-xs grid-cols-2 h-8 lg:h-10 bg-muted/50 p-0.5 lg:p-1 rounded-md gap-1">
       {Array.from({ length: 2 }).map((_, i) => (
         <Skeleton key={i} className="h-full w-full rounded-sm" />
       ))}
@@ -503,6 +496,19 @@ export const ActivityLogsSectionSkeleton = memo(() => (
         </div>
       </CardContent>
     </Card>
+  </div>
+));
+ActivityLogsContentSkeleton.displayName = "ActivityLogsContentSkeleton";
+
+export const ActivityLogsSectionSkeleton = memo(() => (
+  <div className="max-w-7xl mx-auto animate-fade-in-soft">
+    {/* Top tabs (Admin / User / Staff / WhatsApp) */}
+    <div className="grid w-full max-w-2xl grid-cols-4 mb-4 lg:mb-6 bg-muted/50 p-0.5 lg:p-1 h-auto rounded-md gap-1">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton key={i} className="h-7 lg:h-9 w-full rounded-sm" />
+      ))}
+    </div>
+    <ActivityLogsContentSkeleton />
   </div>
 ));
 ActivityLogsSectionSkeleton.displayName = "ActivityLogsSectionSkeleton";
