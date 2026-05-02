@@ -23,7 +23,12 @@ export const DashboardStatsSkeleton = memo(() => (
         className={`relative overflow-hidden border border-border/60 shadow-sm bg-gradient-to-br ${STAT_TONES[i]} to-transparent animate-fade-in`}
         style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
       >
-        <CardContent className="p-4 md:p-5">
+        {/* Decorative shimmer wash */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.04] to-transparent animate-[shimmer_2.4s_ease-in-out_infinite]"
+        />
+        <CardContent className="relative p-4 md:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="space-y-2.5 flex-1 min-w-0">
               <Skeleton className="h-3 w-20 rounded-full" />
@@ -41,6 +46,94 @@ export const DashboardStatsSkeleton = memo(() => (
   </div>
 ));
 DashboardStatsSkeleton.displayName = "DashboardStatsSkeleton";
+
+/**
+ * Full dashboard skeleton — hero header + quick actions + stats + chart + list.
+ * Use as the top-level loading fallback for the admin dashboard.
+ */
+export const DashboardFullSkeleton = memo(() => (
+  <div className="space-y-5 md:space-y-6 animate-fade-in">
+    {/* Hero / greeting */}
+    <Card className="relative overflow-hidden border-border/60 bg-gradient-to-br from-primary/5 via-background to-accent/5">
+      <span
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-foreground/[0.05] to-transparent animate-[shimmer_2.2s_ease-in-out_infinite]"
+      />
+      <CardContent className="relative p-5 md:p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-2.5 flex-1 min-w-0">
+            <Skeleton className="h-3 w-24 rounded-full" />
+            <Skeleton className="h-6 md:h-7 w-56 max-w-full" />
+            <Skeleton className="h-3 w-40" />
+          </div>
+          <Skeleton className="hidden sm:block h-10 w-32 rounded-md" />
+        </div>
+      </CardContent>
+    </Card>
+
+    {/* Quick actions */}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {Array.from({ length: 4 }).map((_, i) => (
+        <Skeleton
+          key={i}
+          className="h-12 rounded-xl animate-fade-in"
+          style={{ animationDelay: `${i * 60}ms`, animationFillMode: "backwards" }}
+        />
+      ))}
+    </div>
+
+    {/* Stats */}
+    <DashboardStatsSkeleton />
+
+    {/* Chart + side list */}
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-5">
+      <Card className="lg:col-span-2 border-border/60">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-40" />
+          <Skeleton className="h-3 w-56" />
+        </CardHeader>
+        <CardContent>
+          <div className="h-[220px] md:h-[260px] flex items-end gap-2 md:gap-3 px-1">
+            {Array.from({ length: 14 }).map((_, i) => {
+              const h = 25 + ((i * 13) % 70);
+              return (
+                <Skeleton
+                  key={i}
+                  className="flex-1 rounded-t-md animate-fade-in"
+                  style={{ height: `${h}%`, animationDelay: `${i * 40}ms`, animationFillMode: "backwards" }}
+                />
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border/60">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-3 w-44" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div
+              key={i}
+              className="flex items-center gap-3 animate-fade-in"
+              style={{ animationDelay: `${i * 70}ms`, animationFillMode: "backwards" }}
+            >
+              <Skeleton className="h-9 w-9 rounded-full shrink-0" />
+              <div className="flex-1 space-y-1.5 min-w-0">
+                <Skeleton className="h-3.5 w-3/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+              <Skeleton className="h-5 w-12 rounded-full" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
+  </div>
+));
+DashboardFullSkeleton.displayName = "DashboardFullSkeleton";
 
 /**
  * Table skeleton for members/payments
