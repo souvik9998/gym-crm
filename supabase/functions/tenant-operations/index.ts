@@ -1340,32 +1340,27 @@ interface UsageUpdateRequest {
           );
         }
 
-        const { data: hasBranchAccess } = await supabase.rpc("user_has_branch_access", {
-          _user_id: userId,
-          _branch_id: branchId,
-        });
-        const { data: branchForAuth } = await supabase
-          .from("branches")
-          .select("tenant_id")
-          .eq("id", branchId)
-          .maybeSingle();
-        const tenantIdForAuth = branchForAuth?.tenant_id as string | undefined;
-        const { data: staffSettingsPerm } = await supabase
-          .from("staff")
-          .select("id, staff_branch_assignments!inner(branch_id), staff_permissions(can_change_settings)")
-          .eq("auth_user_id", userId)
-          .eq("is_active", true)
-          .eq("staff_branch_assignments.branch_id", branchId)
-          .maybeSingle();
-        const canManagePromoSelection =
-          isSuperAdmin ||
-          (!!tenantIdForAuth && await (async () => {
-            const { data } = await supabase.rpc("is_tenant_admin", { _user_id: userId, _tenant_id: tenantIdForAuth });
-            return !!data;
-          })()) ||
-          ((staffSettingsPerm as any)?.staff_permissions?.can_change_settings === true);
+        const tenantIdForAuth = branch.tenant_id as string;
+        let authorized = isSuperAdmin;
+        if (!authorized) {
+          const { data: isAdminTenant } = await supabase.rpc("is_tenant_admin", {
+            _user_id: userId,
+            _tenant_id: tenantIdForAuth,
+          });
+          authorized = !!isAdminTenant;
+        }
+        if (!authorized) {
+          const { data: staffSettingsPerm } = await supabase
+            .from("staff")
+            .select("id, staff_branch_assignments!inner(branch_id), staff_permissions(can_change_settings)")
+            .eq("auth_user_id", userId)
+            .eq("is_active", true)
+            .eq("staff_branch_assignments.branch_id", branchId)
+            .maybeSingle();
+          authorized = (staffSettingsPerm as any)?.staff_permissions?.can_change_settings === true;
+        }
 
-        if (!hasBranchAccess || !canManagePromoSelection) {
+        if (!authorized) {
           return new Response(
             JSON.stringify({ error: "Unauthorized" }),
             { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
