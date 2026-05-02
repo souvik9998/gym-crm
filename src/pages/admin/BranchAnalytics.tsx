@@ -55,6 +55,7 @@ import { cn } from "@/lib/utils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { BranchAnalyticsSkeleton } from "@/components/ui/skeleton-loaders";
 import { PeriodSelector, PeriodType, getPeriodDates, getPeriodLabel } from "@/components/admin/PeriodSelector";
 import { useBranchAnalyticsData, type BranchMetrics, type TrainerMetrics, type Insight, type TimeSeriesData } from "@/hooks/queries/useBranchAnalytics";
 
@@ -180,6 +181,8 @@ const BranchAnalytics = () => {
     if (bestTrainer && worst.trainerId === bestTrainer.trainerId) return null;
     return worst;
   }, [filteredTrainerMetrics, bestTrainer]);
+
+  if (isLoading) return <BranchAnalyticsSkeleton />;
 
   return (
     <Fragment>
