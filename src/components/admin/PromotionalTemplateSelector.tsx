@@ -11,6 +11,7 @@ import { SUPABASE_ANON_KEY, getEdgeFunctionUrl } from "@/lib/supabaseConfig";
 import { toast } from "@/components/ui/sonner";
 import { useBranch } from "@/contexts/BranchContext";
 import { MegaphoneIcon, EnvelopeIcon, PhoneIcon } from "@heroicons/react/24/outline";
+import { getPromoDisplayValue, getPromoTemplateName, getPromoVariableLabel, getResolvedPromoVariables } from "@/utils/promotionalTemplates";
 
 interface PromoVariable {
   key: string;
@@ -89,7 +90,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
       for (const s of visible) {
         const stored = getPromoVariableOverrides(currentBranch.id, s.slot);
         const merged: Record<string, string> = {};
-        for (const v of s.variables ?? []) {
+        for (const v of getResolvedPromoVariables(s)) {
           if (!v?.key) continue;
           merged[v.key] = stored[v.key] ?? v.defaultValue ?? "";
         }
@@ -152,7 +153,7 @@ export const PromotionalTemplateSelector = ({ whatsappEnabled = true }: { whatsa
     }
     setSavedSlot(activeSlot);
     const chosen = slots.find((s) => s.slot === activeSlot);
-    const label = chosen?.name?.trim() || (activeSlot ? `Promo ${activeSlot}` : "");
+        const label = chosen ? getPromoTemplateName(chosen) : (activeSlot ? `Promo ${activeSlot}` : "");
     toast.success(activeSlot ? `Active promotional template set to "${label}"` : "Active promotional template cleared");
     setSaving(false);
   };
