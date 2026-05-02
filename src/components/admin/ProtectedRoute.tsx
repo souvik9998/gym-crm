@@ -6,6 +6,7 @@ import { TenantFeaturePermissions } from "@/contexts/AuthContext";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 
 type PermissionKey = keyof StaffPermissions;
 
