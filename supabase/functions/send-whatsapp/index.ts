@@ -531,6 +531,8 @@ Deno.serve(async (req) => {
         case "event_registration":
         case "event_confirmation":
           return "event_confirmation";
+        case "holiday_notification":
+          return "holiday_notification";
         case "promotional":
         case "custom":
         case "manual":
