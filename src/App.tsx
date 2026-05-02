@@ -8,9 +8,23 @@ import { BranchProvider } from "@/contexts/BranchContext";
 import { StaffAuthProvider } from "@/contexts/StaffAuthContext";
 import { StaffBranchBridge } from "@/components/StaffBranchBridge";
 import { DomainProvider, useDomainContext } from "@/contexts/DomainContext";
-import { AdminSectionSkeleton, DashboardFullSkeleton, PageLoader } from "@/components/ui/skeleton-loaders";
+import {
+  AdminSectionSkeleton,
+  AnalyticsSectionSkeleton,
+  AttendanceSectionSkeleton,
+  BranchAnalyticsSkeleton,
+  DashboardFullSkeleton,
+  EventsSectionSkeleton,
+  PageLoader,
+  SettingsSectionSkeleton,
+  StaffManagementSkeleton,
+  SuperAdminFormSkeleton,
+  SuperAdminTableSkeleton,
+  TimeSlotsSkeleton,
+} from "@/components/ui/skeleton-loaders";
 import { ProtectedRoute } from "@/components/admin/ProtectedRoute";
 import { AdminLayoutRoute } from "@/components/admin/AdminLayoutRoute";
+import { LedgerSkeleton } from "@/components/admin/LedgerSkeleton";
 import { queryClient } from "@/lib/queryClient";
 import { lazyWithRetry } from "@/lib/lazyWithRetry";
 import Index from "./pages/Index";
@@ -136,12 +150,12 @@ const PlatformRoutes = () => (
       } />
       <Route path="/admin/staff" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<AdminSectionSkeleton />}><StaffManagement /></Suspense>
+          <Suspense fallback={<StaffManagementSkeleton />}><StaffManagement /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/time-slots" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="staff_management">
-          <Suspense fallback={<AdminSectionSkeleton />}><AdminTimeSlots /></Suspense>
+          <Suspense fallback={<TimeSlotsSkeleton />}><AdminTimeSlots /></Suspense>
         </ProtectedRoute>
       } />
       <Route path="/admin/trainers" element={
@@ -152,7 +166,7 @@ const PlatformRoutes = () => (
       } />
       <Route path="/admin/branch-analytics" element={
         <ProtectedRoute requiredPermission="admin_only" requiredModule="branch_analytics">
-          <Suspense fallback={<AdminSectionSkeleton />}><BranchAnalytics /></Suspense>
+          <Suspense fallback={<BranchAnalyticsSkeleton />}><BranchAnalytics /></Suspense>
         </ProtectedRoute>
       } />
     </Route>
@@ -163,7 +177,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/attendance" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><Attendance /></Suspense>
+        <Suspense fallback={<AttendanceSectionSkeleton />}><Attendance /></Suspense>
       } />
     </Route>
 
@@ -176,7 +190,7 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><AdminQRCode /></Suspense>
       } />
       <Route path="/admin/settings" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminSettings /></Suspense>
+        <Suspense fallback={<SettingsSectionSkeleton />}><AdminSettings /></Suspense>
       } />
       <Route path="/admin/calendar" element={
         <Suspense fallback={<AdminSectionSkeleton />}><AdminCalendar /></Suspense>
@@ -189,7 +203,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/analytics" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminAnalytics /></Suspense>
+        <Suspense fallback={<AnalyticsSectionSkeleton />}><AdminAnalytics /></Suspense>
       } />
     </Route>
 
@@ -199,7 +213,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/ledger" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><AdminLedger /></Suspense>
+        <Suspense fallback={<LedgerSkeleton />}><AdminLedger /></Suspense>
       } />
     </Route>
 
@@ -209,7 +223,7 @@ const PlatformRoutes = () => (
       </ProtectedRoute>
     }>
       <Route path="/admin/events" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><Events /></Suspense>
+        <Suspense fallback={<EventsSectionSkeleton />}><Events /></Suspense>
       } />
       <Route path="/admin/events/:eventId" element={
         <Suspense fallback={<AdminSectionSkeleton />}><EventDetail /></Suspense>
@@ -225,7 +239,7 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><StaffDashboard /></Suspense>
       } />
       <Route path="/staff/time-slots" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><StaffTimeSlots /></Suspense>
+        <Suspense fallback={<TimeSlotsSkeleton />}><StaffTimeSlots /></Suspense>
       } />
     </Route>
 
@@ -238,10 +252,10 @@ const PlatformRoutes = () => (
         <Suspense fallback={<AdminSectionSkeleton />}><SuperAdminDashboard /></Suspense>
       } />
       <Route path="/superadmin/tenants" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><TenantList /></Suspense>
+        <Suspense fallback={<SuperAdminTableSkeleton />}><TenantList /></Suspense>
       } />
       <Route path="/superadmin/tenants/new" element={
-        <Suspense fallback={<AdminSectionSkeleton />}><CreateTenant /></Suspense>
+        <Suspense fallback={<SuperAdminFormSkeleton />}><CreateTenant /></Suspense>
       } />
       <Route path="/superadmin/tenants/:tenantId" element={
         <Suspense fallback={<AdminSectionSkeleton />}><TenantDetail /></Suspense>

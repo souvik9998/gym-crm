@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { EventsSectionSkeleton } from "@/components/ui/skeleton-loaders";
 
 type StatusFilter = "all" | "upcoming" | "ended" | "draft" | "cancelled";
 type SortOption = "date_desc" | "date_asc" | "name_asc" | "most_registered";
@@ -251,6 +252,8 @@ export default function Events() {
     });
     return sorted;
   }, [events, search, statusFilter, sortBy]);
+
+  if (isLoading) return <EventsSectionSkeleton />;
 
   const getEventStats = (event: any) => {
     const regs = event.event_registrations || [];

@@ -147,6 +147,172 @@ export const AdminSectionSkeleton = memo(() => (
 ));
 AdminSectionSkeleton.displayName = "AdminSectionSkeleton";
 
+const SkeletonRows = ({ rows = 5 }: { rows?: number }) => (
+  <div className="space-y-3">
+    {Array.from({ length: rows }).map((_, i) => (
+      <div key={i} className="rounded-xl border border-border/60 bg-card p-4 lg:p-5">
+        <div className="flex items-center gap-3 lg:gap-4">
+          <Skeleton className="h-11 w-11 lg:h-12 lg:w-12 rounded-full shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center gap-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-14 rounded-full" />
+            </div>
+            <Skeleton className="h-3 w-48 max-w-full" />
+          </div>
+          <div className="hidden sm:flex items-center gap-2 shrink-0">
+            <Skeleton className="h-8 w-16 rounded-full" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+            <Skeleton className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+export const StaffManagementSkeleton = memo(() => (
+  <div className="space-y-6 animate-fade-in-soft">
+    <div className="grid w-full max-w-md grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+      {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-8 rounded-md" />)}
+    </div>
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2 space-y-2">
+        <Skeleton className="h-5 lg:h-6 w-40" />
+        <Skeleton className="h-3 lg:h-4 w-72 max-w-full" />
+      </CardHeader>
+      <CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-2 lg:pt-0">
+        <div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="space-y-1 lg:space-y-2">
+              <Skeleton className="h-3 w-24" />
+              <Skeleton className="h-9 lg:h-12 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-3 lg:gap-4 grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="space-y-1 lg:space-y-2">
+              <Skeleton className="h-3 w-20" />
+              <Skeleton className="h-9 lg:h-12 w-full rounded-md" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="h-9 w-32 rounded-md" />
+      </CardContent>
+    </Card>
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-2 space-y-2">
+        <Skeleton className="h-5 lg:h-6 w-36" />
+        <Skeleton className="h-3 lg:h-4 w-28" />
+      </CardHeader>
+      <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0"><SkeletonRows rows={3} /></CardContent>
+    </Card>
+  </div>
+));
+StaffManagementSkeleton.displayName = "StaffManagementSkeleton";
+
+export const TimeSlotsSkeleton = memo(() => (
+  <div className="space-y-4 animate-fade-in-soft">
+    <div className="grid w-full max-w-2xl grid-cols-4 gap-1 rounded-lg bg-muted p-1">
+      {Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-8 rounded-md" />)}
+    </div>
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="space-y-2"><Skeleton className="h-5 w-36" /><Skeleton className="h-3 w-56" /></div>
+          <Skeleton className="h-9 w-full sm:w-32 rounded-md" />
+        </div>
+      </CardHeader>
+      <CardContent className="p-4 lg:p-6 pt-2 lg:pt-0 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-2"><Skeleton className="h-9 flex-1 rounded-md" /><Skeleton className="h-9 w-full sm:w-44 rounded-md" /></div>
+        <SkeletonRows rows={5} />
+      </CardContent>
+    </Card>
+  </div>
+));
+TimeSlotsSkeleton.displayName = "TimeSlotsSkeleton";
+
+export const AttendanceSectionSkeleton = memo(() => (
+  <div className="space-y-3 lg:space-y-3 animate-fade-in-soft">
+    <div className="flex items-center justify-between">
+      <div className="space-y-2"><Skeleton className="h-6 w-32" /><Skeleton className="h-3 w-48" /></div>
+      <Skeleton className="h-6 w-24 rounded-full" />
+    </div>
+    <div className="flex gap-1 rounded-lg bg-muted/50 p-1 overflow-hidden">
+      {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-md" />)}
+    </div>
+    <Card className="border-0 shadow-sm">
+      <CardHeader className="p-3 lg:p-6 space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-3 w-64 max-w-full" /></CardHeader>
+      <CardContent className="p-3 lg:p-6 pt-0 space-y-3"><SkeletonRows rows={6} /></CardContent>
+    </Card>
+  </div>
+));
+AttendanceSectionSkeleton.displayName = "AttendanceSectionSkeleton";
+
+export const AnalyticsSectionSkeleton = memo(() => (
+  <div className="max-w-6xl mx-auto space-y-3 sm:space-y-5 animate-fade-in-soft">
+    <Card className="border-border/60 shadow-sm"><CardContent className="p-3 flex items-center justify-between gap-3"><Skeleton className="h-9 w-40" /><Skeleton className="h-9 w-48" /></CardContent></Card>
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      {Array.from({ length: 4 }).map((_, i) => <Card key={i} className="border-0 shadow-sm"><CardContent className="p-4 space-y-3"><Skeleton className="h-3 w-24" /><Skeleton className="h-7 w-28" /><Skeleton className="h-10 w-full rounded-md" /></CardContent></Card>)}
+    </div>
+    <Card className="border-0 shadow-sm"><CardHeader className="space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-3 w-60" /></CardHeader><CardContent className="space-y-2">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-12 w-full rounded-lg" />)}</CardContent></Card>
+    <div className="grid lg:grid-cols-2 gap-3 sm:gap-5">
+      {Array.from({ length: 2 }).map((_, i) => <Card key={i} className="border-0 shadow-sm"><CardHeader className="space-y-2"><Skeleton className="h-5 w-36" /><Skeleton className="h-3 w-56" /></CardHeader><CardContent><Skeleton className="h-[240px] w-full rounded-lg" /></CardContent></Card>)}
+    </div>
+  </div>
+));
+AnalyticsSectionSkeleton.displayName = "AnalyticsSectionSkeleton";
+
+export const BranchAnalyticsSkeleton = memo(() => (
+  <div className="space-y-3 sm:space-y-6 animate-fade-in-soft">
+    <div className="flex flex-col gap-3 sm:gap-4"><div className="space-y-2"><Skeleton className="h-7 w-72 max-w-full" /><Skeleton className="h-4 w-80 max-w-full" /></div><Card className="border-0 shadow-sm"><CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row gap-2 sm:gap-3"><Skeleton className="h-9 w-full sm:w-64" /><Skeleton className="h-5 w-48" /></CardContent></Card></div>
+    <Card className="border-l-4 border-l-warning"><CardHeader className="space-y-2"><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-64" /></CardHeader><CardContent className="space-y-3">{Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}</CardContent></Card>
+    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">{Array.from({ length: 4 }).map((_, i) => <Card key={i}><CardContent className="p-6 flex items-center justify-between"><div className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-8 w-28" /></div><Skeleton className="h-8 w-8 rounded-xl" /></CardContent></Card>)}</div>
+    <div className="grid lg:grid-cols-2 gap-4">{Array.from({ length: 2 }).map((_, i) => <Card key={i} className="border-l-4"><CardHeader><Skeleton className="h-6 w-32" /></CardHeader><CardContent><Skeleton className="h-7 w-48 mb-4" /><div className="grid grid-cols-2 gap-4">{Array.from({ length: 4 }).map((_, j) => <div key={j} className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-5 w-24" /></div>)}</div></CardContent></Card>)}</div>
+    <Card><CardHeader className="space-y-2"><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-64" /></CardHeader><CardContent><Skeleton className="h-[360px] w-full rounded-lg" /></CardContent></Card>
+  </div>
+));
+BranchAnalyticsSkeleton.displayName = "BranchAnalyticsSkeleton";
+
+export const SettingsSectionSkeleton = memo(() => (
+  <div className="w-full px-1 sm:px-0 animate-fade-in-soft">
+    <div className="hidden lg:flex border-b border-border/60 mb-6 gap-1">{Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-10 w-28 rounded-none" />)}</div>
+    <div className="lg:hidden mb-4"><Skeleton className="h-10 w-full rounded-lg" /></div>
+    <div className="space-y-4 lg:space-y-6">
+      {Array.from({ length: 2 }).map((_, i) => <Card key={i} className="border border-border/40 shadow-sm"><CardHeader className="p-4 lg:p-6 pb-2 lg:pb-4 space-y-2"><Skeleton className="h-5 lg:h-6 w-44" /><Skeleton className="h-3 lg:h-4 w-72 max-w-full" /></CardHeader><CardContent className="space-y-3 lg:space-y-4 p-4 lg:p-6 pt-0"><div className="grid gap-3 lg:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">{Array.from({ length: 3 }).map((_, j) => <div key={j} className="space-y-2"><Skeleton className="h-3 w-20" /><Skeleton className="h-10 w-full" /></div>)}</div><Skeleton className="h-9 w-32" /></CardContent></Card>)}
+    </div>
+  </div>
+));
+SettingsSectionSkeleton.displayName = "SettingsSectionSkeleton";
+
+export const EventsSectionSkeleton = memo(() => (
+  <div className="space-y-4 lg:space-y-6 animate-fade-in-soft">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3"><div className="space-y-2"><Skeleton className="h-7 w-28" /><Skeleton className="h-4 w-56" /></div><Skeleton className="h-9 w-full sm:w-32 rounded-xl" /></div>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3"><Skeleton className="h-9 flex-1 sm:max-w-sm rounded-xl" /><Skeleton className="h-9 w-full sm:w-[200px] rounded-xl" /></div>
+    <div className="flex gap-2 overflow-hidden">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-8 w-24 shrink-0 rounded-full" />)}</div>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 3 }).map((_, i) => <Card key={i} className="border border-border/40"><CardContent className="p-5 space-y-3"><Skeleton className="h-32 w-full rounded-xl" /><Skeleton className="h-5 w-3/4" /><Skeleton className="h-4 w-1/2" /><div className="flex gap-2 pt-2"><Skeleton className="h-8 flex-1" /><Skeleton className="h-8 w-8" /></div></CardContent></Card>)}</div>
+  </div>
+));
+EventsSectionSkeleton.displayName = "EventsSectionSkeleton";
+
+export const SuperAdminTableSkeleton = memo(() => (
+  <div className="space-y-6 animate-fade-in-soft">
+    <div className="flex items-center justify-between"><div className="space-y-2"><Skeleton className="h-8 w-56" /><Skeleton className="h-4 w-72" /></div><Skeleton className="h-10 w-40" /></div>
+    <Skeleton className="h-10 w-full max-w-sm" />
+    <Card><CardContent className="p-0"><div className="border-b p-4 grid grid-cols-5 gap-4">{Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-4 w-24" />)}</div>{Array.from({ length: 7 }).map((_, i) => <div key={i} className="border-b p-4 grid grid-cols-5 gap-4"><Skeleton className="h-4 w-32" /><Skeleton className="h-4 w-24" /><Skeleton className="h-5 w-16 rounded-full" /><Skeleton className="h-4 w-20" /><Skeleton className="h-8 w-8 ml-auto" /></div>)}</CardContent></Card>
+  </div>
+));
+SuperAdminTableSkeleton.displayName = "SuperAdminTableSkeleton";
+
+export const SuperAdminFormSkeleton = memo(() => (
+  <div className="space-y-6 max-w-5xl animate-fade-in-soft">
+    <div className="flex items-center gap-4"><Skeleton className="h-10 w-10 rounded-md" /><div className="space-y-2"><Skeleton className="h-8 w-56" /><Skeleton className="h-4 w-72" /></div></div>
+    {Array.from({ length: 3 }).map((_, i) => <Card key={i}><CardHeader className="space-y-2"><Skeleton className="h-6 w-44" /><Skeleton className="h-4 w-72" /></CardHeader><CardContent><div className="grid gap-4 md:grid-cols-2">{Array.from({ length: 4 }).map((_, j) => <div key={j} className="space-y-2"><Skeleton className="h-4 w-24" /><Skeleton className="h-10 w-full" /></div>)}</div></CardContent></Card>)}
+  </div>
+));
+SuperAdminFormSkeleton.displayName = "SuperAdminFormSkeleton";
+
 /**
  * Table skeleton for members/payments
  */

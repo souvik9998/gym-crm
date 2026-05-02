@@ -9,6 +9,7 @@ import { AcademicCapIcon, UserGroupIcon, ChartBarIcon } from "@heroicons/react/2
 import { useStaffPageData } from "@/hooks/queries/useStaffPageData";
 import { PageTour } from "@/components/guide/PageTour";
 import { STAFF_STEPS } from "@/components/guide/tourSteps";
+import { StaffManagementSkeleton } from "@/components/ui/skeleton-loaders";
 
 export interface Staff {
   id: string;
@@ -92,6 +93,8 @@ const StaffManagement = () => {
     },
     [setSearchParams],
   );
+
+  if (isLoading) return <StaffManagementSkeleton />;
 
   return (
     <>
