@@ -9,6 +9,7 @@ import { XMarkIcon } from "@heroicons/react/24/outline";
 import { useBranch } from "@/contexts/BranchContext";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -51,18 +52,17 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
     localStorage.setItem("admin-sidebar-collapsed", String(collapsed));
   };
 
-  // While auth/branch resolves, render NOTHING from this layout — the
-  // ProtectedRoute wrapper already gates rendering until auth is ready, and
-  // the route-level <Suspense> fallback (DashboardFullSkeleton /
-  // AdminSectionSkeleton) is the SINGLE skeleton the user sees. Showing
-  // a separate layout-level skeleton here would cause the dreaded
-  // "skeleton-swap" flash that the user is complaining about.
-  // Once auth is ready, the real sidebar+header mount once and stay
-  // mounted across navigations; only the main content swaps.
-
-  // Check if either admin or staff is logged in
+  // While auth resolves, show the centered spinner — never a blank screen.
+  // Once auth is ready, the real sidebar+header mount once and stay mounted
+  // across navigations; only the main content swaps via Suspense skeleton.
   const isUserAuthenticated = isAuthenticated || isStaffLoggedIn;
-  if (isLoading || staffLoading) return null;
+  if (isLoading || staffLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <PageLoader />
+      </div>
+    );
+  }
   if (!isUserAuthenticated) return null;
 
   // Check if this is a staff session by examining the email pattern

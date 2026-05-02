@@ -6,6 +6,7 @@ import { TenantFeaturePermissions } from "@/contexts/AuthContext";
 import { ShieldExclamationIcon } from "@heroicons/react/24/outline";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PageLoader } from "@/components/ui/skeleton-loaders";
 
 type PermissionKey = keyof StaffPermissions;
 
@@ -42,10 +43,14 @@ export const ProtectedRoute = ({
     staffUser 
   } = useStaffAuth();
 
-  // Still loading auth state — render nothing so the downstream layout's
-  // skeleton is the ONLY loading UI (avoids spinner → skeleton → skeleton flash).
+  // Still loading auth state — show the centered spinner so the user
+  // never sees a blank screen during the initial auth check.
   if (auth.isLoading || staffLoading) {
-    return null;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <PageLoader />
+      </div>
+    );
   }
 
   // Not authenticated - redirect to login
