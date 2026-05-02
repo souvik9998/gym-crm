@@ -366,50 +366,48 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Grid — use skeleton only; no separate main-section spinner. */}
-        {statsLoading && !stats ? (
-          <div key="stats-skeleton" className="animate-fade-in-soft">
-            <DashboardStatsSkeleton />
+        {/* Stats Grid — render the real grid immediately. While stats are
+            still loading we show zeros (which will animate up to real values
+            once the query resolves). The route-level <Suspense> fallback
+            (DashboardFullSkeleton) is the ONLY skeleton the user ever sees
+            for this page — no internal skeleton swap. */}
+        <div className="animate-fade-in-soft">
+          <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
+            <StatCard 
+              value={displayStats.totalMembers} 
+              label="Total Members" 
+              icon={UsersIcon}
+              index={0}
+            />
+            <StatCard 
+              value={displayStats.activeMembers} 
+              label="Active Members" 
+              icon={ArrowTrendingUpIcon}
+              colorClass="text-success"
+              bgClass="bg-success/10"
+              iconClass="text-success"
+              index={1}
+            />
+            <StatCard 
+              value={displayStats.expiringSoon} 
+              label="Expiring Soon" 
+              icon={ExclamationTriangleIcon}
+              colorClass="text-warning"
+              bgClass="bg-warning/10"
+              iconClass="text-warning"
+              index={2}
+            />
+            <StatCard 
+              value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
+              label="This Month" 
+              icon={CreditCardIcon}
+              colorClass="text-accent"
+              bgClass="bg-accent/10"
+              iconClass="text-accent"
+              index={3}
+            />
           </div>
-        ) : (
-          <div key="stats-content" className="animate-fade-in-soft">
-            <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
-              <StatCard 
-                value={displayStats.totalMembers} 
-                label="Total Members" 
-                icon={UsersIcon}
-                index={0}
-              />
-              <StatCard 
-                value={displayStats.activeMembers} 
-                label="Active Members" 
-                icon={ArrowTrendingUpIcon}
-                colorClass="text-success"
-                bgClass="bg-success/10"
-                iconClass="text-success"
-                index={1}
-              />
-              <StatCard 
-                value={displayStats.expiringSoon} 
-                label="Expiring Soon" 
-                icon={ExclamationTriangleIcon}
-                colorClass="text-warning"
-                bgClass="bg-warning/10"
-                iconClass="text-warning"
-                index={2}
-              />
-              <StatCard 
-                value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
-                label="This Month" 
-                icon={CreditCardIcon}
-                colorClass="text-accent"
-                bgClass="bg-accent/10"
-                iconClass="text-accent"
-                index={3}
-              />
-            </div>
-          </div>
-        )}
+        </div>
 
         {/* Tabs for Members & Payments */}
         <Card className="border-0 shadow-sm">
