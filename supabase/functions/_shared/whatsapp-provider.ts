@@ -54,6 +54,12 @@ export interface SendArgs {
   branchId?: string | null;
   /** Optional tenant override; otherwise resolved from branchId. */
   tenantId?: string | null;
+  /**
+   * For category="promotional" only: which of the 4 super-admin-configured
+   * promotional template slots to use (1-4). When omitted, send fails with
+   * "promotional_template_not_selected" so the caller can prompt the admin.
+   */
+  promotionalSlot?: number | null;
 }
 
 export interface SendResult {
@@ -132,6 +138,16 @@ export const MESSAGE_CATEGORIES: Array<{
 // Internal: tenant config cache (one per request lifecycle)
 // -------------------------------------------------------------------------
 
+export interface PromotionalTemplateSlot {
+  slot: number;            // 1-4
+  enabled: boolean;
+  name: string;
+  templateId: string;
+  description: string;
+  previewBody: string;
+  variables: Array<{ key: string; description?: string }>;
+}
+
 interface TenantMessagingConfig {
   active_provider: ProviderName;
   periskope_api_key_encrypted: string | null;
@@ -141,6 +157,7 @@ interface TenantMessagingConfig {
   zavu_api_key_iv: string | null;
   zavu_sender_id: string | null;
   zavu_templates: Record<string, string>;
+  promotional_templates: PromotionalTemplateSlot[];
 }
 
 interface ResolvedConfig {
@@ -178,7 +195,7 @@ async function loadConfig(
     .from("tenant_messaging_config")
     .select(
       "active_provider, periskope_api_key_encrypted, periskope_api_key_iv, periskope_phone, " +
-        "zavu_api_key_encrypted, zavu_api_key_iv, zavu_sender_id, zavu_templates",
+        "zavu_api_key_encrypted, zavu_api_key_iv, zavu_sender_id, zavu_templates, promotional_templates",
     )
     .eq("tenant_id", tenantId)
     .maybeSingle();
@@ -189,7 +206,15 @@ async function loadConfig(
     return null;
   }
 
-  const cfg = (data as TenantMessagingConfig | null) ?? null;
+  const raw = (data as Record<string, unknown> | null) ?? null;
+  const cfg = raw
+    ? ({
+        ...raw,
+        promotional_templates: Array.isArray(raw.promotional_templates)
+          ? (raw.promotional_templates as PromotionalTemplateSlot[])
+          : [],
+      } as TenantMessagingConfig)
+    : null;
   configByTenantCache.set(tenantId, cfg);
   return cfg;
 }
@@ -547,13 +572,47 @@ export async function sendWhatsAppForTenant(
     if (!config?.zavu_api_key_encrypted || !config?.zavu_api_key_iv || !encryptionKey) {
       result = { success: false, provider: "zavu", error: "Zavu credentials not configured" };
     } else {
-      // Each reminder category uses its own approved template — do NOT alias.
-      // expiring_2days  → gk_expiring_reminder         (vars: name, days, expiry_date, branch_name)
-      // expiring_today  → gk_expiring_today_reminder   (vars: name, expiry_date, branch_name)
-      // expired_reminder→ gk_expired_membership_reminder (vars: name, days_expired, expiry_date, branch_name)
       const effectiveCategory: MessageCategory = args.category;
 
-      const templateId = (config.zavu_templates ?? {})[effectiveCategory];
+      // Resolve template ID + variable order.
+      // Promotional uses the per-gym 4-slot system (active slot picked by admin).
+      // Other categories use the per-category zavu_templates map.
+      let templateId: string | undefined;
+      let variableOrder: string[] = ZAVU_TEMPLATE_VARIABLES[effectiveCategory] ?? [];
+
+      if (effectiveCategory === "promotional") {
+        const slotNum = args.promotionalSlot ?? null;
+        if (!slotNum || slotNum < 1 || slotNum > 4) {
+          result = {
+            success: false,
+            provider: "zavu",
+            error: "promotional_template_not_selected",
+          };
+          // Skip to usage-tracking block.
+          if (result.success && tenantId) {
+            try { await serviceClient.rpc("increment_whatsapp_usage", { _tenant_id: tenantId, _count: 1 }); } catch (_e) { /* noop */ }
+          }
+          return result;
+        }
+        const slot = (config.promotional_templates ?? []).find(
+          (t) => t && Number(t.slot) === Number(slotNum),
+        );
+        if (!slot || !slot.enabled || !slot.templateId) {
+          result = {
+            success: false,
+            provider: "zavu",
+            error: `promotional_template_not_configured:${slotNum}`,
+          };
+          return result;
+        }
+        templateId = slot.templateId;
+        variableOrder = Array.isArray(slot.variables)
+          ? slot.variables.map((v) => v.key)
+          : [];
+      } else {
+        templateId = (config.zavu_templates ?? {})[effectiveCategory];
+      }
+
       if (!templateId) {
         result = {
           success: false,
@@ -581,7 +640,7 @@ export async function sendWhatsAppForTenant(
             args.toPhone,
             templateId,
             vars,
-            ZAVU_TEMPLATE_VARIABLES[effectiveCategory],
+            variableOrder,
             args.document,
             args.ctaUrl,
           );

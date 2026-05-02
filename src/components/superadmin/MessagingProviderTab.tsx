@@ -33,11 +33,14 @@ const MESSAGE_CATEGORIES: Array<{ key: string; label: string; description: strin
   { key: "holiday_notification",group: "Manual / Admin",   label: "Holiday Notification",description: "Sent to members when a gym holiday / closure is announced from the Calendar.", vars: ["branch_name", "date", "closed_status"] },
 ];
 
+import PromotionalTemplatesEditor, { type PromoTemplateSlot } from "./PromotionalTemplatesEditor";
+
 interface MessagingConfig {
   active_provider: "periskope" | "zavu" | "none";
   periskope: { connected: boolean; phone: string | null; verified_at: string | null };
   zavu: { connected: boolean; sender_id: string | null; verified_at: string | null };
   zavu_templates: Record<string, string>;
+  promotional_templates: PromoTemplateSlot[];
 }
 
 interface Props { tenantId: string; }
@@ -155,6 +158,16 @@ export default function MessagingProviderTab({ tenantId }: Props) {
     try {
       await callAction("save-messaging-config", { zavu_templates: templates });
       toast.success("Zavu template IDs saved");
+      await refresh();
+    } catch (e) { toast.error((e as Error).message); }
+    finally { setSaving(false); }
+  };
+
+  const savePromotionalTemplates = async (promos: PromoTemplateSlot[]) => {
+    setSaving(true);
+    try {
+      await callAction("save-messaging-config", { promotional_templates: promos });
+      toast.success("Promotional templates saved");
       await refresh();
     } catch (e) { toast.error((e as Error).message); }
     finally { setSaving(false); }
@@ -333,6 +346,13 @@ export default function MessagingProviderTab({ tenantId }: Props) {
           </CardContent>
         </Card>
       )}
+
+      {/* Promotional 4-slot templates (independent of active provider — admin always sees these) */}
+      <PromotionalTemplatesEditor
+        initial={config?.promotional_templates ?? []}
+        onSave={savePromotionalTemplates}
+        saving={saving}
+      />
 
       {/* Test send */}
       <Card>

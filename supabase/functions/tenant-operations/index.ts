@@ -1287,7 +1287,7 @@ interface UsageUpdateRequest {
           .from("tenant_messaging_config")
           .select(
             "active_provider, periskope_api_key_encrypted, periskope_phone, periskope_verified_at, " +
-              "zavu_api_key_encrypted, zavu_sender_id, zavu_verified_at, zavu_templates"
+              "zavu_api_key_encrypted, zavu_sender_id, zavu_verified_at, zavu_templates, promotional_templates"
           )
           .eq("tenant_id", tenantId)
           .maybeSingle();
@@ -1310,6 +1310,9 @@ interface UsageUpdateRequest {
                 verified_at: cfg?.zavu_verified_at ?? null,
               },
               zavu_templates: (cfg?.zavu_templates as Record<string, string>) ?? {},
+              promotional_templates: Array.isArray(cfg?.promotional_templates)
+                ? (cfg!.promotional_templates as unknown[])
+                : [],
             },
           }),
           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1330,12 +1333,22 @@ interface UsageUpdateRequest {
           periskope,
           zavu,
           zavu_templates,
+          promotional_templates,
         } = body as {
           tenantId?: string;
           active_provider?: "periskope" | "zavu" | "none";
           periskope?: { apiKey?: string; phone?: string };
           zavu?: { apiKey?: string; senderId?: string };
           zavu_templates?: Record<string, string>;
+          promotional_templates?: Array<{
+            slot: number;
+            enabled?: boolean;
+            name?: string;
+            templateId?: string;
+            description?: string;
+            variables?: Array<{ key: string; description?: string }>;
+            previewBody?: string;
+          }>;
         };
 
         if (!tenantId) {
@@ -1424,6 +1437,30 @@ interface UsageUpdateRequest {
             if (typeof v === "string" && v.trim().length > 0) cleaned[k] = v.trim();
           }
           updates.zavu_templates = cleaned;
+        }
+
+        if (Array.isArray(promotional_templates)) {
+          // Sanitize: keep only slots 1-4, clamp fields, drop empty entries
+          const cleaned = promotional_templates
+            .filter((t) => t && Number.isInteger(t.slot) && t.slot >= 1 && t.slot <= 4)
+            .map((t) => ({
+              slot: t.slot,
+              enabled: t.enabled !== false,
+              name: typeof t.name === "string" ? t.name.trim().slice(0, 80) : "",
+              templateId: typeof t.templateId === "string" ? t.templateId.trim().slice(0, 200) : "",
+              description: typeof t.description === "string" ? t.description.trim().slice(0, 500) : "",
+              previewBody: typeof t.previewBody === "string" ? t.previewBody.slice(0, 2000) : "",
+              variables: Array.isArray(t.variables)
+                ? t.variables
+                    .filter((v) => v && typeof v.key === "string" && v.key.trim().length > 0)
+                    .slice(0, 12)
+                    .map((v) => ({
+                      key: v.key.trim().slice(0, 60),
+                      description: typeof v.description === "string" ? v.description.trim().slice(0, 200) : "",
+                    }))
+                : [],
+            }));
+          updates.promotional_templates = cleaned;
         }
 
         const { error: upsertError } = await supabase
