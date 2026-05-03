@@ -395,6 +395,7 @@ const AdminDashboard = () => {
               label="Total Members" 
               icon={UsersIconSolid}
               index={0}
+              loading={statsLoading && !stats}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -404,6 +405,7 @@ const AdminDashboard = () => {
               bgClass="bg-success/10"
               iconClass="text-success"
               index={1}
+              loading={statsLoading && !stats}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -413,6 +415,7 @@ const AdminDashboard = () => {
               bgClass="bg-warning/10"
               iconClass="text-warning"
               index={2}
+              loading={statsLoading && !stats}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -422,6 +425,7 @@ const AdminDashboard = () => {
               bgClass="bg-accent/10"
               iconClass="text-accent"
               index={3}
+              loading={statsLoading && !stats}
             />
           </div>
         </div>
