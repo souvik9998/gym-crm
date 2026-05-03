@@ -332,6 +332,10 @@ const AdminDashboard = () => {
               value={displayStats.totalMembers}
               label="Total Members"
               icon={UsersIconSolid}
+              colorClass="text-blue-600 dark:text-blue-400"
+              bgClass="bg-blue-500/10"
+              iconClass="text-blue-600 dark:text-blue-400"
+              hoverBorderClass="hover:border-blue-500/40"
               index={0}
               loading={!stats}
               onClick={() => { setActiveTab("members"); handleMemberFilterChange("all"); }}
@@ -343,6 +347,7 @@ const AdminDashboard = () => {
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
+              hoverBorderClass="hover:border-success/40"
               index={1}
               loading={!stats}
               onClick={() => { setActiveTab("members"); handleMemberFilterChange("active"); }}
@@ -354,6 +359,7 @@ const AdminDashboard = () => {
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
+              hoverBorderClass="hover:border-warning/40"
               index={2}
               loading={!stats}
               onClick={() => { setActiveTab("members"); handleMemberFilterChange("expiring_soon"); }}
@@ -365,6 +371,7 @@ const AdminDashboard = () => {
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
+              hoverBorderClass="hover:border-accent/40"
               index={3}
               loading={!stats}
               onClick={() => setActiveTab("payments")}
