@@ -101,8 +101,8 @@ export const ZAVU_TEMPLATE_VARIABLES: Record<MessageCategory, string[]> = {
   check_in:            ["name", "check_in_time", "branch_name"],
   password_reset:      ["name", "reset_link", "branch_name"],
   daily_summary_admin: ["summary_text"],
-  // Template: gk_holiday_notification — {{1}}=branch_name, {{2}}=date, {{3}}=closed_status
-  holiday_notification: ["branch_name", "date", "closed_status"],
+  // Template: gk_holiday_notification_dynamic — {{1}}=branch_name, {{2}}=date, {{3}}=closed_status, {{4}}=holiday_name
+  holiday_notification: ["branch_name", "date", "closed_status", "holiday_name"],
 };
 
 // User-friendly metadata for the Super Admin UI
