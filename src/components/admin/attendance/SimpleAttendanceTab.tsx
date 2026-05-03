@@ -748,11 +748,12 @@ export const SimpleAttendanceTab = () => {
       )}
 
       {/* Filter Pills — colorful segmented filters */}
-      <div className="flex items-center gap-1.5 lg:gap-2 p-1 rounded-xl bg-gradient-to-r from-muted/40 via-muted/20 to-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
+      <div className="flex items-center gap-1 lg:gap-2 p-0.5 lg:p-1 rounded-xl bg-gradient-to-r from-muted/40 via-muted/20 to-muted/40 border border-border/40 overflow-x-auto scrollbar-hide animate-fade-in">
         {([
           {
             key: "all",
             label: "All",
+            shortLabel: "All",
             count: stats.total,
             inactive: "text-muted-foreground hover:text-foreground hover:bg-background/60",
             active: "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md shadow-primary/30",
@@ -764,6 +765,7 @@ export const SimpleAttendanceTab = () => {
           {
             key: "present",
             label: "Present",
+            shortLabel: "P",
             count: stats.present,
             inactive: "text-green-700 dark:text-green-400 hover:bg-green-500/10",
             active: "bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-md shadow-green-500/30",
@@ -775,6 +777,7 @@ export const SimpleAttendanceTab = () => {
           {
             key: "skipped",
             label: "Skipped",
+            shortLabel: "S",
             count: stats.skipped,
             inactive: "text-slate-700 dark:text-slate-300 hover:bg-slate-500/10",
             active: "bg-gradient-to-br from-slate-500 to-slate-600 text-white shadow-md shadow-slate-500/30",
@@ -786,6 +789,7 @@ export const SimpleAttendanceTab = () => {
           {
             key: "absent",
             label: "Absent",
+            shortLabel: "A",
             count: stats.absent,
             inactive: "text-red-700 dark:text-red-400 hover:bg-red-500/10",
             active: "bg-gradient-to-br from-red-500 to-rose-600 text-white shadow-md shadow-red-500/30",
@@ -801,16 +805,18 @@ export const SimpleAttendanceTab = () => {
               key={pill.key}
               type="button"
               onClick={() => setStatusFilter(isActive ? "all" : pill.key as any)}
+              title={pill.label}
               className={cn(
-                "flex-1 min-w-[80px] flex items-center justify-center gap-1.5 lg:gap-2 px-2.5 py-1.5 lg:px-3 lg:py-2 rounded-lg text-xs lg:text-sm font-semibold transition-all duration-300 whitespace-nowrap",
+                "flex-1 min-w-0 lg:min-w-[80px] flex items-center justify-center gap-1 lg:gap-2 px-1.5 py-1 lg:px-3 lg:py-2 rounded-lg text-[11px] lg:text-sm font-semibold transition-all duration-300 whitespace-nowrap",
                 "active:scale-95",
                 isActive ? cn(pill.active, "scale-[1.03]") : pill.inactive
               )}
             >
-              <span className={cn("w-1.5 h-1.5 rounded-full shrink-0 transition-colors", isActive ? pill.dotActive : pill.dot)} />
-              <span>{pill.label}</span>
+              <span className={cn("hidden lg:inline-block w-1.5 h-1.5 rounded-full shrink-0 transition-colors", isActive ? pill.dotActive : pill.dot)} />
+              <span className="lg:hidden">{pill.shortLabel}</span>
+              <span className="hidden lg:inline">{pill.label}</span>
               <span className={cn(
-                "text-[10px] lg:text-xs px-1.5 py-0.5 rounded-full font-bold tabular-nums transition-colors",
+                "text-[9px] lg:text-xs px-1 lg:px-1.5 py-0 lg:py-0.5 rounded-full font-bold tabular-nums transition-colors",
                 isActive ? pill.badgeActive : pill.badgeInactive
               )}>
                 {pill.count}
