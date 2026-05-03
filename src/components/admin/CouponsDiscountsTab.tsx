@@ -37,6 +37,7 @@ interface Coupon {
   applicable_on: any;
   applicable_plan_ids: string[] | null;
   applicable_branch_ids: string[] | null;
+  applicable_event_ids: string[] | null;
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
@@ -65,6 +66,7 @@ type CouponForm = {
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
+  applicable_event_ids: string[];
   notes: string;
 };
 
@@ -83,6 +85,7 @@ const defaultForm: CouponForm = {
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
+  applicable_event_ids: [],
   notes: "",
 };
 
@@ -181,6 +184,7 @@ export const CouponsDiscountsTab = () => {
   };
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [events, setEvents] = useState<{ id: string; title: string; status: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -220,6 +224,19 @@ export const CouponsDiscountsTab = () => {
 
   useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
 
+  useEffect(() => {
+    if (!currentBranch) return;
+    (async () => {
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, status")
+        .eq("branch_id", currentBranch.id)
+        .eq("status", "published")
+        .order("event_date", { ascending: false });
+      setEvents(data || []);
+    })();
+  }, [currentBranch]);
+
   const getCouponStatus = (c: Coupon): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
     if (!c.is_active) return { label: "Disabled", variant: "secondary" };
     const today = new Date().toISOString().split("T")[0];
@@ -258,6 +275,7 @@ export const CouponsDiscountsTab = () => {
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
+      applicable_event_ids: coupon.applicable_event_ids || [],
       notes: coupon.notes || "",
     });
     setShowForm(true);
@@ -302,6 +320,9 @@ export const CouponsDiscountsTab = () => {
         total_usage_limit: parsed.data.total_usage_limit === "" ? null : parsed.data.total_usage_limit,
         per_user_limit: parsed.data.per_user_limit,
         applicable_on: getApplicableOnFromTarget(parsed.data.coupon_target),
+        applicable_event_ids: parsed.data.coupon_target === "event" && form.applicable_event_ids.length > 0
+          ? form.applicable_event_ids
+          : null,
         first_time_only: parsed.data.first_time_only,
         existing_members_only: parsed.data.existing_members_only,
         expired_members_only: parsed.data.expired_members_only,
@@ -618,6 +639,48 @@ export const CouponsDiscountsTab = () => {
                 </p>
               )}
             </div>
+
+            {/* Applicable Events (only for event coupons) */}
+            {form.coupon_target === "event" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Applicable Events
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Leave all unchecked to apply this coupon to <strong>all published events</strong>. Otherwise, select the specific event(s) this coupon is valid for.
+                </p>
+                {events.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No published events found in this branch.</p>
+                ) : (
+                  <div className="max-h-44 overflow-y-auto border border-border/60 rounded-lg p-2 space-y-1 bg-muted/20">
+                    {events.map(ev => {
+                      const checked = form.applicable_event_ids.includes(ev.id);
+                      return (
+                        <label key={ev.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md hover:bg-accent/10 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={e => setForm(f => ({
+                              ...f,
+                              applicable_event_ids: e.target.checked
+                                ? [...f.applicable_event_ids, ev.id]
+                                : f.applicable_event_ids.filter(id => id !== ev.id),
+                            }))}
+                            className="w-4 h-4 rounded border-border accent-accent"
+                          />
+                          <span className="truncate">{ev.title}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {form.applicable_event_ids.length > 0 && (
+                  <p className="text-[11px] text-accent">
+                    ✓ Restricted to {form.applicable_event_ids.length} selected event(s)
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>

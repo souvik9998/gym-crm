@@ -580,6 +580,7 @@ export type Database = {
       coupons: {
         Row: {
           applicable_branch_ids: string[] | null
+          applicable_event_ids: string[] | null
           applicable_on: Json
           applicable_plan_ids: string[] | null
           auto_apply: boolean
@@ -609,6 +610,7 @@ export type Database = {
         }
         Insert: {
           applicable_branch_ids?: string[] | null
+          applicable_event_ids?: string[] | null
           applicable_on?: Json
           applicable_plan_ids?: string[] | null
           auto_apply?: boolean
@@ -638,6 +640,7 @@ export type Database = {
         }
         Update: {
           applicable_branch_ids?: string[] | null
+          applicable_event_ids?: string[] | null
           applicable_on?: Json
           applicable_plan_ids?: string[] | null
           auto_apply?: boolean
