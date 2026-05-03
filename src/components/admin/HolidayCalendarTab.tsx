@@ -30,6 +30,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
   MagnifyingGlassIcon,
   UsersIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
