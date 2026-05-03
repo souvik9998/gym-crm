@@ -328,14 +328,14 @@ const AdminDashboard = () => {
             fallback zeros never flash while auth/branch/query state settles. */}
         <div className="animate-fade-in-soft">
           <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
-            <StatCard 
+            <AnimatedStatCard 
               value={displayStats.totalMembers} 
               label="Total Members" 
               icon={UsersIconSolid}
               index={0}
               loading={!stats}
             />
-            <StatCard 
+            <AnimatedStatCard 
               value={displayStats.activeMembers} 
               label="Active Members" 
               icon={ArrowTrendingUpIconSolid}
@@ -345,7 +345,7 @@ const AdminDashboard = () => {
               index={1}
               loading={!stats}
             />
-            <StatCard 
+            <AnimatedStatCard 
               value={displayStats.expiringSoon} 
               label="Expiring Soon" 
               icon={ExclamationTriangleIconSolid}
@@ -355,7 +355,7 @@ const AdminDashboard = () => {
               index={2}
               loading={!stats}
             />
-            <StatCard 
+            <AnimatedStatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
               label="This Month" 
               icon={CreditCardIconSolid}
