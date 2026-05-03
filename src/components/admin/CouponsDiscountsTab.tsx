@@ -683,9 +683,33 @@ export const CouponsDiscountsTab = () => {
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">{status.label}</Badge>
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {discountLabel(coupon)} • Used {coupon.usage_count}{coupon.total_usage_limit ? `/${coupon.total_usage_limit}` : ""} times
+                          {discountLabel(coupon)}
                           {coupon.end_date ? ` • Expires ${format(new Date(coupon.end_date), "d MMM yyyy")}` : ""}
                         </p>
+                        {/* Usage bar — visible at-a-glance transparency */}
+                        <div className="mt-1.5 flex items-center gap-2 max-w-[260px]">
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all ${
+                                coupon.total_usage_limit
+                                  ? coupon.usage_count >= coupon.total_usage_limit
+                                    ? "bg-destructive"
+                                    : coupon.usage_count / coupon.total_usage_limit > 0.75
+                                      ? "bg-warning"
+                                      : "bg-accent"
+                                  : "bg-accent/60"
+                              }`}
+                              style={{
+                                width: coupon.total_usage_limit
+                                  ? `${Math.min(100, (coupon.usage_count / coupon.total_usage_limit) * 100)}%`
+                                  : coupon.usage_count > 0 ? "100%" : "0%",
+                              }}
+                            />
+                          </div>
+                          <span className="text-[10px] text-muted-foreground font-medium tabular-nums whitespace-nowrap">
+                            {coupon.usage_count}{coupon.total_usage_limit ? `/${coupon.total_usage_limit}` : " used"}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">

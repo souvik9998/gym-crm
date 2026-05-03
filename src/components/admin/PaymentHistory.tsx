@@ -24,7 +24,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical, CalendarDays } from "lucide-react";
+import { Calendar, CreditCard, Banknote, Filter, X, Dumbbell, Download, User, Clock, FileText, Eye, Copy, MoreVertical, CalendarDays, TicketPercent } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 import { exportToExcel } from "@/utils/exportToExcel";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -284,6 +284,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         "Payment Mode": payment.payment_mode === "online" ? "Online" : "Cash",
         Amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
         Status: getStatusText(payment.status),
+        Coupon: payment.coupon_usage?.code || "-",
+        "Discount Applied": payment.coupon_usage ? `₹${Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")}` : "-",
         Notes: payment.notes || "-",
       }));
 
@@ -652,6 +654,21 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                       <p className="text-xs text-muted-foreground">Status</p>
                       <div className="mt-0.5">{getStatusBadge(payment.status)}</div>
                     </div>
+                    {payment.coupon_usage && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TicketPercent className="w-3 h-3" /> Coupon Applied
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className="font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-400">{payment.coupon_usage.code}</span>
+                          {payment.coupon_usage.discount_applied > 0 && (
+                            <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900">
+                              −₹{Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")} off
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {payment.notes && (
                       <div className="col-span-2">
                         <p className="text-xs text-muted-foreground">Notes</p>
@@ -763,6 +780,15 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         <span className="ml-1 text-purple-600 dark:text-purple-400">· {getPaymentEventName(payment)}</span>
                       )}
                     </div>
+                    {payment.coupon_usage && (
+                      <Badge variant="outline" className="mt-1 text-[10px] py-0 px-1.5 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900">
+                        <TicketPercent className="w-3 h-3" />
+                        <span className="font-mono">{payment.coupon_usage.code}</span>
+                        {payment.coupon_usage.discount_applied > 0 && (
+                          <span className="font-semibold">−₹{Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")}</span>
+                        )}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     {getPaymentTypeBadge(payment.payment_type)}
