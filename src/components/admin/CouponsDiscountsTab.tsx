@@ -256,8 +256,16 @@ export const CouponsDiscountsTab = () => {
       if (statusFilter === "disabled" && status !== "disabled") return false;
       if (statusFilter === "scheduled" && status !== "scheduled") return false;
     }
+    if (targetFilter !== "all" && getCouponTarget(c.applicable_on) !== targetFilter) return false;
     return true;
   });
+
+  const targetBadgeStyle: Record<string, string> = {
+    new_registration: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    renewal: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+    event: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+    pt_renewal: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  };
 
   const openEditForm = (coupon: Coupon) => {
     setEditingId(coupon.id);
