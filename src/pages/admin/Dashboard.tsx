@@ -453,7 +453,7 @@ const AdminDashboard = () => {
                           aria-hidden
                           className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[800ms] ease-out bg-gradient-to-r from-transparent via-background/25 to-transparent"
                         />
-                        <PlusIcon className="w-4 h-4 relative transition-transform duration-500 group-hover:rotate-180" />
+                        <PlusIcon className="w-4 h-4 relative" />
                         <span className="relative tracking-wide">Add Member</span>
                       </Button>
                     )}
