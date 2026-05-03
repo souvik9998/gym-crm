@@ -870,15 +870,17 @@ Deno.serve(async (req) => {
 
       if (type === "holiday_notification" && holidayDetails) {
         const resolvedBranchName = memberBranchName || branchName || "Your Gym";
+        const holidayName = holidayDetails.holiday_name?.trim() || "holiday";
         variables = {
           branch_name: resolvedBranchName,
           date: holidayDetails.date,
           closed_status: holidayDetails.closed_status,
+          holiday_name: holidayName,
         };
         // fallbackText for non-template providers (Periskope)
         message = customMessage && customMessage.trim().length > 0
           ? customMessage
-          : `🏋️ *Holiday Notice - ${resolvedBranchName}*\n\nDear Member,\n\n*${resolvedBranchName}* will be *closed* on *${holidayDetails.date}*${holidayDetails.holiday_name ? ` for *${holidayDetails.holiday_name}*` : ""}.\n\n🚫 *Closed:* ${holidayDetails.closed_status}\n\nRegular hours will resume the next working day.\n\nThank you for your understanding! 💪`;
+          : `🏋️ *Holiday Notice - ${resolvedBranchName}*\n\nDear Member,\n\nWe would like to inform you that *${resolvedBranchName}* will be *closed* on *${holidayDetails.date}* for *${holidayName}*.\n\n🚫 *Closed:* ${holidayDetails.closed_status}\n\nThank you for your understanding! 💪`;
       }
 
       // Per-send overrides from admin (e.g. promotional offer/url) — these
