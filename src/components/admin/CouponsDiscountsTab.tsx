@@ -37,6 +37,7 @@ interface Coupon {
   applicable_on: any;
   applicable_plan_ids: string[] | null;
   applicable_branch_ids: string[] | null;
+  applicable_event_ids: string[] | null;
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
