@@ -1,0 +1,1 @@
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS applicable_event_ids UUID[] DEFAULT NULL;
