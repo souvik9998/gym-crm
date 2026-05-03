@@ -131,15 +131,16 @@
     /* Reserve space for the scrollbar so layout width stays constant
        across tab switches / pages with varying content height. */
     scrollbar-gutter: stable;
+    overflow-y: scroll;
   }
 
-  /* Admin shell takes over scrolling internally so the sticky header
-     and sidebar stay in place and the scrollbar lives inside <main>,
-     never running over the header. */
-  html:has(.admin-shell),
-  html:has(.admin-shell) body {
+  /* When the admin shell is mounted, move scrolling inside the shell so
+     the sticky header sits above the scrollbar (no gutter overlap). */
+  html:has(.admin-shell-root),
+  html:has(.admin-shell-root) body {
     height: 100%;
     overflow: hidden;
+    scrollbar-gutter: auto;
   }
 
   body {
