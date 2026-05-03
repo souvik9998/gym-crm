@@ -398,6 +398,34 @@ const HolidayCalendarTab = () => {
     setIsDialogOpen(true);
   };
 
+  const openNotifyDialog = (holiday: Holiday) => {
+    setNotifyHoliday(holiday);
+    setSelectedDate(parseISO(holiday.holiday_date));
+    setFormName(holiday.holiday_name);
+    setFormDescription(holiday.description || "");
+    setFormType(holiday.holiday_type);
+    setFormStartTime(holiday.half_day_start_time || "09:00");
+    setFormEndTime(holiday.half_day_end_time || "13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
+    // Pre-generate the message
+    const msg = generateWhatsAppMessage(
+      holiday.holiday_name,
+      parseISO(holiday.holiday_date),
+      holiday.holiday_type,
+      holiday.description || "",
+      "06:00",
+      "22:00",
+      holiday.half_day_start_time || "09:00",
+      holiday.half_day_end_time || "13:00",
+    );
+    setFormWhatsAppMessage(msg);
+    setNotifyAudience("all_active");
+    setNotifySelectedIds(new Set());
+    setNotifySearch("");
+    setIsNotifyDialogOpen(true);
+  };
+
   const handleSave = async () => {
     if (!currentBranch || !selectedDate || !formName.trim()) {
       toast.error("Please fill in the holiday name");
