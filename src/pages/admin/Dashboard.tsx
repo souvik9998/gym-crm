@@ -441,15 +441,20 @@ const AdminDashboard = () => {
                         data-tour="add-member"
                         size="sm"
                         onClick={() => setIsAddMemberOpen(true)}
-                        className="group relative overflow-hidden gap-1.5 h-9 bg-foreground text-background hover:bg-foreground hover:shadow-lg hover:shadow-foreground/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] transition-all duration-300"
+                        className="group relative overflow-hidden gap-1.5 h-9 bg-foreground text-background hover:bg-foreground hover:shadow-[0_0_0_3px_hsl(var(--foreground)/0.12)] active:scale-[0.96] transition-[box-shadow,transform] duration-300"
                       >
+                        {/* Soft radial glow that fades in on hover */}
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 bg-[radial-gradient(circle_at_center,hsl(var(--background)/0.18),transparent_60%)]"
+                        />
                         {/* Sheen sweep */}
                         <span
                           aria-hidden
                           className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[800ms] ease-out bg-gradient-to-r from-transparent via-background/25 to-transparent"
                         />
-                        <PlusIcon className="w-4 h-4 relative transition-transform duration-300 group-hover:rotate-90" />
-                        <span className="relative">Add Member</span>
+                        <PlusIcon className="w-4 h-4 relative transition-transform duration-500 group-hover:rotate-180" />
+                        <span className="relative tracking-wide">Add Member</span>
                       </Button>
                     )}
                   </div>
