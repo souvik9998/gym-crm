@@ -21,7 +21,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ExclamationTriangleIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
@@ -224,6 +228,96 @@ const SimpleAttendanceSkeleton = ({ isMobile, weekDates }: { isMobile: boolean; 
         </table>
       </div>
     </Card>
+  );
+};
+
+interface DatePickerControlProps {
+  value: string;
+  today: string;
+  onChange: (iso: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  canGoNext: boolean;
+  compact?: boolean;
+}
+
+const DatePickerControl = ({ value, today, onChange, onPrev, onNext, canGoNext, compact }: DatePickerControlProps) => {
+  const [open, setOpen] = useState(false);
+  const [animKey, setAnimKey] = useState(value);
+  const [direction, setDirection] = useState<"prev" | "next" | null>(null);
+
+  useEffect(() => {
+    setAnimKey(value);
+  }, [value]);
+
+  const date = parseISO(value);
+  const todayD = startOfDay(parseISO(today));
+  const labelLong = format(date, "EEE, dd MMM yyyy");
+  const labelShort = format(date, "EEE, dd MMM");
+  const isToday = value === today;
+
+  const handlePrev = () => { setDirection("prev"); onPrev(); };
+  const handleNext = () => { setDirection("next"); onNext(); };
+  const handleSelect = (d: Date | undefined) => {
+    if (!d) return;
+    const iso = format(d, "yyyy-MM-dd");
+    setDirection(iso > value ? "next" : "prev");
+    onChange(iso);
+    setOpen(false);
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1 rounded-xl border border-border/60 bg-card/60 px-1 py-0.5 shadow-sm transition-shadow hover:shadow",
+      compact ? "w-full" : "min-w-[260px]"
+    )}>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-primary/10 transition-transform active:scale-90" onClick={handlePrev}>
+        <ChevronLeftIcon className="w-4 h-4" />
+      </Button>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg",
+              "text-xs lg:text-sm font-semibold text-foreground",
+              "hover:bg-primary/5 active:scale-[0.98] transition-all duration-200 overflow-hidden"
+            )}
+          >
+            <CalendarDaysIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary shrink-0" />
+            <span
+              key={animKey}
+              className={cn(
+                "truncate inline-block",
+                direction === "next" && "animate-[slideInFromRight_0.28s_cubic-bezier(0.22,1,0.36,1)]",
+                direction === "prev" && "animate-[slideInFromLeft_0.28s_cubic-bezier(0.22,1,0.36,1)]",
+              )}
+            >
+              <span className="lg:hidden">{labelShort}</span>
+              <span className="hidden lg:inline">{labelLong}</span>
+            </span>
+            {isToday && (
+              <span className="ml-1 text-[9px] font-medium uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">
+                Today
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 rounded-xl shadow-lg border border-border/60 animate-scale-in" align="center" sideOffset={6}>
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleSelect}
+            disabled={(d) => isAfter(startOfDay(d), todayD)}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-primary/10 transition-transform active:scale-90" onClick={handleNext} disabled={!canGoNext}>
+        <ChevronRightIcon className="w-4 h-4" />
+      </Button>
+    </div>
   );
 };
 
@@ -616,73 +710,18 @@ export const SimpleAttendanceTab = () => {
   return (
     <TooltipProvider delayDuration={150}>
     <div className="space-y-4 animate-fade-in">
-      {/* Desktop: Week Nav row + Filters row (separate to prevent overflow/clipping) */}
+      {/* Desktop: Compact date picker + filters */}
       <div className="hidden lg:block space-y-3">
-        {/* Week Navigation */}
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
-            <ChevronLeftIcon className="w-4 h-4" />
-          </Button>
-          <div ref={weekStripRef} className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
-            {weekDates.map((d) => {
-              const isSelected = d === selectedDate;
-              const isToday = d === today;
-              const isFuture = d > today;
-              const isPast = d < today;
-              const hasData = weekLookup[d] && Object.keys(weekLookup[d]).length > 0;
-              return (
-                <button
-                  key={d}
-                  data-date={d}
-                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
-                  disabled={isFuture}
-                  className={cn(
-                    "relative flex flex-col items-center rounded-xl shrink-0 px-2.5 py-1.5 min-w-[44px]",
-                    "transition-all duration-300 ease-out",
-                    "active:scale-90 hover:scale-105",
-                    isSelected
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
-                      : isToday
-                        ? "bg-primary/10 text-primary ring-1 ring-primary/30"
-                        : isFuture
-                          ? "opacity-20 cursor-not-allowed"
-                          : isPast
-                            ? "hover:bg-muted/80 text-muted-foreground hover:text-foreground cursor-pointer"
-                            : "hover:bg-muted text-muted-foreground"
-                  )}
-                >
-                  <span className="text-[10px] font-medium uppercase">{dayLabelFull(d)}</span>
-                  <span className={cn(
-                    "text-sm font-bold transition-transform duration-300",
-                    isSelected && "animate-[bounce_0.4s_ease-out]"
-                  )}>{formatDayNum(d)}</span>
-                  {/* Attendance indicator dot */}
-                  {hasData && !isSelected && (
-                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500 animate-[fadeIn_0.3s_ease-out]" />
-                  )}
-                  {/* Today pulse ring */}
-                  {isToday && !isSelected && (
-                    <div className="absolute inset-0 rounded-xl ring-2 ring-primary/20 animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
-            <ChevronRightIcon className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Filters: time chips take full row width; trainer + slot dropdowns sit alongside */}
-        <div className="flex items-stretch gap-3">
-          <TimeBucketChips
-            value={timeFilter}
-            onChange={setTimeFilter}
-            options={bucketOptions}
-            compact
-            className="flex-1 min-w-0"
+        <div className="flex items-center gap-3 flex-wrap">
+          <DatePickerControl
+            value={selectedDate}
+            today={today}
+            onChange={setSelectedDate}
+            onPrev={() => navigateWeek("prev")}
+            onNext={() => navigateWeek("next")}
+            canGoNext={canGoNext}
           />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <TrainerFilterDropdown
               value={selectedTrainerId}
               onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -694,6 +733,13 @@ export const SimpleAttendanceTab = () => {
             />
           </div>
         </div>
+        <TimeBucketChips
+          value={timeFilter}
+          onChange={setTimeFilter}
+          options={bucketOptions}
+          compact
+          className="w-full"
+        />
       </div>
 
       {timeFilter === "custom" && (
@@ -784,58 +830,15 @@ export const SimpleAttendanceTab = () => {
 
       {/* Mobile: Stacked layout */}
       <div className="lg:hidden space-y-3">
-        <div className="flex items-center gap-1.5 justify-start">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
-            <ChevronLeftIcon className="w-4 h-4" />
-          </Button>
-          <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 justify-between">
-            {weekDates.map((d, i) => {
-              const isSelected = d === selectedDate;
-              const isToday = d === today;
-              const isFuture = d > today;
-              const isPast = d < today;
-              const hasData = weekLookup[d] && Object.keys(weekLookup[d]).length > 0;
-              return (
-                <button
-                  key={d}
-                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
-                  disabled={isFuture}
-                  className={cn(
-                    "relative flex flex-col items-center rounded-xl shrink-0 px-2 py-1.5 min-w-[38px]",
-                    "transition-all duration-300 ease-out",
-                    "active:scale-90",
-                    isSelected
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-110"
-                      : isToday
-                        ? "bg-primary/10 text-primary ring-1 ring-primary/30"
-                        : isFuture
-                          ? "opacity-20 cursor-not-allowed"
-                          : isPast
-                            ? "text-muted-foreground active:bg-muted/80"
-                            : "text-muted-foreground"
-                  )}
-                >
-                  <span className="text-[9px] font-medium uppercase">{dayLabelShort(d)}</span>
-                  <span className={cn(
-                    "text-sm font-bold transition-transform duration-300",
-                    isSelected && "animate-[bounce_0.4s_ease-out]"
-                  )}>{formatDayNum(d)}</span>
-                  {/* Attendance indicator dot */}
-                  {hasData && !isSelected && (
-                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500" />
-                  )}
-                  {/* Today pulse ring */}
-                  {isToday && !isSelected && (
-                    <div className="absolute inset-0 rounded-xl ring-2 ring-primary/20 animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
-            <ChevronRightIcon className="w-4 h-4" />
-          </Button>
-        </div>
+        <DatePickerControl
+          value={selectedDate}
+          today={today}
+          onChange={setSelectedDate}
+          onPrev={() => navigateWeek("prev")}
+          onNext={() => navigateWeek("next")}
+          canGoNext={canGoNext}
+          compact
+        />
         <div className="flex flex-col gap-2">
           {/* Desktop & tablet: full chip strip */}
           <div className="hidden sm:block">
