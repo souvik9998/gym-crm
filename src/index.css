@@ -134,6 +134,15 @@
     overflow-y: scroll;
   }
 
+  /* When the admin shell is mounted, move scrolling inside the shell so
+     the sticky header sits above the scrollbar (no gutter overlap). */
+  html:has(.admin-shell-root),
+  html:has(.admin-shell-root) body {
+    height: 100%;
+    overflow: hidden;
+    scrollbar-gutter: auto;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;

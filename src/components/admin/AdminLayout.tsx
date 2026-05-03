@@ -74,7 +74,7 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
   const displayName = isStaffSession ? (staffUser?.fullName || "Staff") : (adminUser?.email || "User");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="admin-shell-root h-screen overflow-hidden bg-background">
       {/* Desktop Sidebar - visible on lg and up */}
       <div className="hidden lg:block">
         <AdminSidebar
@@ -125,10 +125,12 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
         />
       </div>
 
-      {/* Main Content */}
+      {/* Main Content column — scroll lives here, NOT on the body, so the
+          sticky header always stays in place and the scrollbar never
+          overlaps it. */}
       <div
         className={cn(
-          "min-h-screen transition-all duration-300 ease-in-out",
+          "h-screen flex flex-col transition-all duration-300 ease-in-out",
           sidebarCollapsed ? "lg:pl-[68px]" : "lg:pl-64"
         )}
       >
@@ -141,7 +143,9 @@ export const AdminLayout = ({ children, title, subtitle, onRefresh }: AdminLayou
           isStaffUser={isStaffSession}
           staffName={staffUser?.fullName}
         />
-        <main className="px-3 sm:px-4 lg:px-6 pt-2 sm:pt-2.5 lg:pt-3 pb-3 sm:pb-4 lg:pb-6 max-w-full overflow-x-hidden">{children}</main>
+        <main className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-4 lg:px-6 pt-2 sm:pt-2.5 lg:pt-3 pb-3 sm:pb-4 lg:pb-6 max-w-full">
+          {children}
+        </main>
       </div>
     </div>
   );
