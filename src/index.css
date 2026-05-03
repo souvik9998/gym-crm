@@ -142,6 +142,16 @@
     overflow-x: hidden;
   }
 
+  /* Radix UI (DropdownMenu, Dialog, Popover, Sheet) locks body scroll on open
+     and adds margin-right / padding-right to compensate for the scrollbar.
+     Since we already reserve the scrollbar via `scrollbar-gutter: stable`,
+     this compensation causes a horizontal shift. Neutralize it. */
+  body[data-scroll-locked] {
+    margin-right: 0 !important;
+    padding-right: 0 !important;
+    overflow: visible !important;
+  }
+
   /* Remove all blue focus outlines globally */
   *:focus {
     outline: none !important;
