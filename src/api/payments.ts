@@ -57,7 +57,8 @@ export async function fetchPayments(branchId?: string): Promise<PaymentWithDetai
       daily_pass_user_id,
       member:members(name, phone),
       daily_pass_user:daily_pass_users(name, phone),
-      event_registrations(name, phone, event:events(title))
+      event_registrations(name, phone, event:events(title)),
+      coupon_usage(discount_applied, coupon:coupons(code, discount_type, discount_value))
     `)
     .order("created_at", { ascending: false });
 
