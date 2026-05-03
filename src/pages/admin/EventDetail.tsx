@@ -360,9 +360,56 @@ export default function EventDetail() {
 
   if (eventLoading) {
     return (
-      <div className="space-y-4">
-        <div className="h-8 w-48 bg-muted/50 rounded animate-pulse" />
-        <div className="h-48 bg-muted/50 rounded-xl animate-pulse" />
+      <div className="space-y-4 lg:space-y-6 animate-fade-in">
+        {/* Back button */}
+        <div className="h-8 w-20 bg-muted/60 rounded-xl animate-pulse" />
+
+        {/* Event card */}
+        <Card className="border border-border/40 overflow-hidden">
+          <div className="h-40 lg:h-56 bg-gradient-to-br from-muted/70 to-muted/40 animate-pulse" />
+          <CardContent className="p-4 lg:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+              <div className="space-y-2 flex-1">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-56 bg-muted/60 rounded-md animate-pulse" />
+                  <div className="h-5 w-20 bg-muted/50 rounded-full animate-pulse" />
+                </div>
+                <div className="h-4 w-72 bg-muted/40 rounded animate-pulse" />
+              </div>
+              <div className="flex items-center gap-2">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-8 w-20 bg-muted/50 rounded-xl animate-pulse" />
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-7 w-32 bg-muted/40 rounded-full animate-pulse" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Registrations card */}
+        <Card className="border border-border/40">
+          <CardContent className="p-4 lg:p-6 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="h-6 w-36 bg-muted/60 rounded animate-pulse" />
+              <div className="flex items-center gap-2">
+                <div className="h-9 w-56 bg-muted/40 rounded-md animate-pulse hidden sm:block" />
+                <div className="h-9 w-24 bg-muted/40 rounded-md animate-pulse" />
+                <div className="h-9 w-24 bg-muted/40 rounded-md animate-pulse" />
+                <div className="h-9 w-28 bg-muted/50 rounded-md animate-pulse" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="h-10 w-full bg-muted/40 rounded-md animate-pulse" />
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-12 w-full bg-muted/30 rounded-md animate-pulse" style={{ animationDelay: `${i * 60}ms` }} />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
