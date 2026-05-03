@@ -231,6 +231,96 @@ const SimpleAttendanceSkeleton = ({ isMobile, weekDates }: { isMobile: boolean; 
   );
 };
 
+interface DatePickerControlProps {
+  value: string;
+  today: string;
+  onChange: (iso: string) => void;
+  onPrev: () => void;
+  onNext: () => void;
+  canGoNext: boolean;
+  compact?: boolean;
+}
+
+const DatePickerControl = ({ value, today, onChange, onPrev, onNext, canGoNext, compact }: DatePickerControlProps) => {
+  const [open, setOpen] = useState(false);
+  const [animKey, setAnimKey] = useState(value);
+  const [direction, setDirection] = useState<"prev" | "next" | null>(null);
+
+  useEffect(() => {
+    setAnimKey(value);
+  }, [value]);
+
+  const date = parseISO(value);
+  const todayD = startOfDay(parseISO(today));
+  const labelLong = format(date, "EEE, dd MMM yyyy");
+  const labelShort = format(date, "EEE, dd MMM");
+  const isToday = value === today;
+
+  const handlePrev = () => { setDirection("prev"); onPrev(); };
+  const handleNext = () => { setDirection("next"); onNext(); };
+  const handleSelect = (d: Date | undefined) => {
+    if (!d) return;
+    const iso = format(d, "yyyy-MM-dd");
+    setDirection(iso > value ? "next" : "prev");
+    onChange(iso);
+    setOpen(false);
+  };
+
+  return (
+    <div className={cn(
+      "flex items-center gap-1 rounded-xl border border-border/60 bg-card/60 px-1 py-0.5 shadow-sm transition-shadow hover:shadow",
+      compact ? "w-full" : "min-w-[260px]"
+    )}>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-primary/10 transition-transform active:scale-90" onClick={handlePrev}>
+        <ChevronLeftIcon className="w-4 h-4" />
+      </Button>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              "flex-1 min-w-0 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg",
+              "text-xs lg:text-sm font-semibold text-foreground",
+              "hover:bg-primary/5 active:scale-[0.98] transition-all duration-200 overflow-hidden"
+            )}
+          >
+            <CalendarDaysIcon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-primary shrink-0" />
+            <span
+              key={animKey}
+              className={cn(
+                "truncate inline-block",
+                direction === "next" && "animate-[slideInFromRight_0.28s_cubic-bezier(0.22,1,0.36,1)]",
+                direction === "prev" && "animate-[slideInFromLeft_0.28s_cubic-bezier(0.22,1,0.36,1)]",
+              )}
+            >
+              <span className="lg:hidden">{labelShort}</span>
+              <span className="hidden lg:inline">{labelLong}</span>
+            </span>
+            {isToday && (
+              <span className="ml-1 text-[9px] font-medium uppercase tracking-wide bg-primary/10 text-primary px-1.5 py-0.5 rounded-full shrink-0">
+                Today
+              </span>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0 rounded-xl shadow-lg border border-border/60 animate-scale-in" align="center" sideOffset={6}>
+          <Calendar
+            mode="single"
+            selected={date}
+            onSelect={handleSelect}
+            disabled={(d) => isAfter(startOfDay(d), todayD)}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+      <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-lg hover:bg-primary/10 transition-transform active:scale-90" onClick={handleNext} disabled={!canGoNext}>
+        <ChevronRightIcon className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+};
+
 export const SimpleAttendanceTab = () => {
   const { currentBranch } = useBranch();
   const { staffUser, permissions, isStaffLoggedIn } = useStaffAuth();
