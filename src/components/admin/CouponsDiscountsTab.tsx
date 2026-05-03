@@ -195,6 +195,7 @@ export const CouponsDiscountsTab = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [targetFilter, setTargetFilter] = useState<string>("all");
   const [form, setForm] = useState<CouponForm>(defaultForm);
   const selectedTargetMeta = useMemo(
     () => couponTargetOptions.find((option) => option.value === form.coupon_target) ?? couponTargetOptions[0],
