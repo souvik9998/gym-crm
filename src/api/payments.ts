@@ -71,9 +71,16 @@ export async function fetchPayments(branchId?: string): Promise<PaymentWithDetai
 
   return (data || []).map((p: any) => {
     const er = p.event_registrations?.[0];
+    const cu = p.coupon_usage?.[0];
     return {
       ...p,
       event_registrations: undefined,
+      coupon_usage: cu && cu.coupon ? {
+        code: cu.coupon.code,
+        discount_applied: Number(cu.discount_applied || 0),
+        discount_type: cu.coupon.discount_type,
+        discount_value: Number(cu.coupon.discount_value || 0),
+      } : null,
       event_registration: er ? {
         name: er.name,
         phone: er.phone,
