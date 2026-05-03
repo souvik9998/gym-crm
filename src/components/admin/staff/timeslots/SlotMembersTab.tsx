@@ -762,11 +762,11 @@ export const SlotMembersTab = ({
                 </div>
 
                 <div className="space-y-1 sm:col-span-2 xl:col-span-2">
-                  <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Search slot or trainer</label>
+                  <label className="text-[11px] font-medium text-muted-foreground lg:text-xs">Search</label>
                   <div className="relative">
                     <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
                     <Input
-                      placeholder="Search by trainer or time..."
+                      placeholder="Trainer or time…"
                       value={slotSearch}
                       onChange={(e) => setSlotSearch(e.target.value)}
                       className="h-8 border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm lg:h-9 lg:text-sm"
