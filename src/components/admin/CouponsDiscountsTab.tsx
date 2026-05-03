@@ -851,15 +851,15 @@ export const CouponsDiscountsTab = () => {
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Type</p>
                         <p className="font-medium capitalize">{coupon.discount_type.replace("_", " ")}</p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-border/30 hover:border-accent/30 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Min Order</p>
                         <p className="font-medium">{coupon.min_order_value ? `₹${coupon.min_order_value}` : "None"}</p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-border/30 hover:border-accent/30 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Per User</p>
                         <p className="font-medium">{coupon.per_user_limit}x</p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2 col-span-2 sm:col-span-1">
+                      <div className="bg-gradient-to-br from-accent/5 to-muted/20 rounded-lg p-2.5 col-span-2 sm:col-span-1 border border-accent/20 hover:border-accent/40 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
                           {getCouponTargetLabel(getCouponTarget(coupon.applicable_on))}
@@ -874,18 +874,18 @@ export const CouponsDiscountsTab = () => {
                           </p>
                         )}
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-border/30 hover:border-accent/30 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Conditions</p>
                         <p className="font-medium">
                           {[coupon.first_time_only && "First-time", coupon.existing_members_only && "Existing", coupon.expired_members_only && "Expired"].filter(Boolean).join(", ") || "No restrictions"}
                         </p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-border/30 hover:border-accent/30 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Validity</p>
                         <p className="font-medium">{format(new Date(coupon.start_date), "d MMM")} — {coupon.end_date ? format(new Date(coupon.end_date), "d MMM yyyy") : "No end"}</p>
                       </div>
                       {coupon.notes && (
-                        <div className="bg-muted/30 rounded-lg p-2 col-span-full">
+                        <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 col-span-full border border-border/30">
                           <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Notes</p>
                           <p className="font-medium">{coupon.notes}</p>
                         </div>
