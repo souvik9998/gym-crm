@@ -652,6 +652,21 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                       <p className="text-xs text-muted-foreground">Status</p>
                       <div className="mt-0.5">{getStatusBadge(payment.status)}</div>
                     </div>
+                    {payment.coupon_usage && (
+                      <div className="col-span-2">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <TicketPercent className="w-3 h-3" /> Coupon Applied
+                        </p>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <span className="font-mono text-sm font-semibold text-emerald-700 dark:text-emerald-400">{payment.coupon_usage.code}</span>
+                          {payment.coupon_usage.discount_applied > 0 && (
+                            <Badge variant="outline" className="text-[10px] py-0 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900">
+                              −₹{Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")} off
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    )}
                     {payment.notes && (
                       <div className="col-span-2">
                         <p className="text-xs text-muted-foreground">Notes</p>
