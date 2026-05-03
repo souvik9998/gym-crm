@@ -423,6 +423,40 @@ const AdminDashboard = () => {
               icon={UsersIconSolid}
               index={0}
               loading={!stats}
+              onClick={() => setActiveTab("members")}
+            />
+            <StatCard 
+              value={displayStats.activeMembers} 
+              label="Active Members" 
+              icon={ArrowTrendingUpIconSolid}
+              colorClass="text-success"
+              bgClass="bg-success/10"
+              iconClass="text-success"
+              index={1}
+              loading={!stats}
+              onClick={() => setActiveTab("members")}
+            />
+            <StatCard 
+              value={displayStats.expiringSoon} 
+              label="Expiring Soon" 
+              icon={ExclamationTriangleIconSolid}
+              colorClass="text-warning"
+              bgClass="bg-warning/10"
+              iconClass="text-warning"
+              index={2}
+              loading={!stats}
+              onClick={() => setActiveTab("members")}
+            />
+            <StatCard 
+              value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
+              label="This Month" 
+              icon={CreditCardIconSolid}
+              colorClass="text-accent"
+              bgClass="bg-accent/10"
+              iconClass="text-accent"
+              index={3}
+              loading={!stats}
+              onClick={() => setActiveTab("payments")}
             />
             <StatCard 
               value={displayStats.activeMembers} 
