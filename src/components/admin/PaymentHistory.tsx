@@ -284,6 +284,8 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
         "Payment Mode": payment.payment_mode === "online" ? "Online" : "Cash",
         Amount: `₹${Number(payment.amount).toLocaleString("en-IN")}`,
         Status: getStatusText(payment.status),
+        Coupon: payment.coupon_usage?.code || "-",
+        "Discount Applied": payment.coupon_usage ? `₹${Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")}` : "-",
         Notes: payment.notes || "-",
       }));
 
