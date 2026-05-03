@@ -426,11 +426,11 @@ const AdminDashboard = () => {
                       data-tour="export"
                       variant="outline" 
                       size="icon"
-                      className="h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground"
+                      className="group h-9 w-9 border-border bg-background text-foreground hover:bg-muted hover:text-foreground hover:border-primary/40 hover:shadow-md transition-all duration-300 active:scale-95"
                       title="Export Data"
                       onClick={handleExport}
                     >
-                      <ArrowDownTrayIcon className="w-4 h-4" />
+                      <ArrowDownTrayIcon className="w-4 h-4 transition-transform duration-300 group-hover:translate-y-0.5 group-hover:scale-110" />
                     </Button>
                     
                     
@@ -441,10 +441,15 @@ const AdminDashboard = () => {
                         data-tour="add-member"
                         size="sm"
                         onClick={() => setIsAddMemberOpen(true)}
-                        className="gap-1.5 h-9 bg-foreground text-background hover:bg-foreground/90"
+                        className="group relative overflow-hidden gap-1.5 h-9 bg-foreground text-background hover:bg-foreground hover:shadow-lg hover:shadow-foreground/20 hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.97] transition-all duration-300"
                       >
-                        <PlusIcon className="w-4 h-4" />
-                        <span>Add Member</span>
+                        {/* Sheen sweep */}
+                        <span
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[800ms] ease-out bg-gradient-to-r from-transparent via-background/25 to-transparent"
+                        />
+                        <PlusIcon className="w-4 h-4 relative transition-transform duration-300 group-hover:rotate-90" />
+                        <span className="relative">Add Member</span>
                       </Button>
                     )}
                   </div>
