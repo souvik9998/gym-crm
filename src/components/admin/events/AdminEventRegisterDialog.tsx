@@ -459,19 +459,8 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
       }
 
       // Ledger: record event registration income (only when payment is recorded as success)
+      let createdPaymentId: string | null = null;
       if (effectivePaymentStatus === "success" && amountToPay > 0) {
-        try {
-          await createEventRegistrationIncomeEntry({
-            amount: amountToPay,
-            eventTitle: event.title,
-            registrantName: name.trim(),
-            memberId: foundMember?.id || undefined,
-            branchId: event.branch_id,
-          });
-        } catch (ledgerErr) {
-          console.error("Ledger entry (event registration) failed:", ledgerErr);
-        }
-
         // Record the cash payment so it appears in the Payments tab
         try {
           const { data: payRow } = await supabase.from("payments").insert({
@@ -485,12 +474,44 @@ export function AdminEventRegisterDialog({ open, onOpenChange, event }: Props) {
           }).select("id").single();
 
           if (payRow?.id) {
+            createdPaymentId = payRow.id;
             await supabase.from("event_registrations")
               .update({ payment_id: payRow.id })
               .eq("id", reg.id);
           }
         } catch (payErr) {
           console.error("Payment record (event registration) failed:", payErr);
+        }
+
+        // Record coupon usage linked to the payment
+        if (appliedCoupon && createdPaymentId) {
+          try {
+            await supabase.from("coupon_usage").insert({
+              coupon_id: appliedCoupon.id,
+              member_id: foundMember?.id || null,
+              payment_id: createdPaymentId,
+              discount_applied: appliedCoupon.discountAmount || 0,
+              branch_id: event.branch_id,
+            });
+          } catch (couponErr) {
+            console.error("Coupon usage record (admin event) failed:", couponErr);
+          }
+        }
+
+        try {
+          const couponSuffix = appliedCoupon
+            ? ` — Coupon ${appliedCoupon.code} (-₹${appliedCoupon.discountAmount})`
+            : "";
+          await createEventRegistrationIncomeEntry({
+            amount: amountToPay,
+            eventTitle: `${event.title}${couponSuffix}`,
+            registrantName: name.trim(),
+            memberId: foundMember?.id || undefined,
+            paymentId: createdPaymentId || undefined,
+            branchId: event.branch_id,
+          });
+        } catch (ledgerErr) {
+          console.error("Ledger entry (event registration) failed:", ledgerErr);
         }
       }
 
