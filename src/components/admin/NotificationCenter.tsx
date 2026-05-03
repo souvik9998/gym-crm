@@ -345,20 +345,17 @@ export function NotificationCenter() {
             title="Notifications"
           >
             <Bell className="w-[18px] h-[18px]" />
-            {unseenDanger > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-destructive text-[10px] font-bold text-destructive-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {unseenDanger > 9 ? "9+" : unseenDanger}
-              </span>
-            )}
-            {unseenDanger === 0 && unseenSuccess > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {unseenSuccess > 9 ? "9+" : unseenSuccess}
-              </span>
-            )}
-            {unseenDanger === 0 && unseenSuccess === 0 && unseenTotal > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground px-1 animate-in zoom-in-50 duration-300 border-2 border-card">
-                {unseenTotal > 9 ? "9+" : unseenTotal}
-              </span>
+            {unseenTotal > 0 && (
+              <span
+                className={cn(
+                  "absolute top-1 right-1 h-2 w-2 rounded-full ring-2 ring-card animate-in zoom-in-50 duration-300",
+                  unseenDanger > 0
+                    ? "bg-destructive"
+                    : unseenSuccess > 0
+                      ? "bg-emerald-500"
+                      : "bg-primary",
+                )}
+              />
             )}
           </Button>
         </PopoverTrigger>
