@@ -118,6 +118,8 @@ Deno.serve(async (req) => {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
+      couponId,
+      couponDiscount,
     } = parsed.data;
 
     const isMultiSelect = Array.isArray(selectedItems) && selectedItems.length > 0;
