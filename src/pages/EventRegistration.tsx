@@ -171,6 +171,10 @@ export default function EventRegistration() {
       if (coupon.end_date && coupon.end_date < today) { setCouponError("Coupon has expired"); return; }
       if (coupon.total_usage_limit && coupon.usage_count >= coupon.total_usage_limit) { setCouponError("Coupon usage limit reached"); return; }
       if (coupon.applicable_branch_ids?.length > 0 && !coupon.applicable_branch_ids.includes(event?.branch_id)) { setCouponError("Coupon not valid for this branch"); return; }
+      if (coupon.applicable_event_ids && coupon.applicable_event_ids.length > 0 && eventId && !coupon.applicable_event_ids.includes(eventId)) {
+        setCouponError("This coupon is not valid for this event");
+        return;
+      }
 
       const memberConditionResults: boolean[] = [];
       if (coupon.first_time_only) {
