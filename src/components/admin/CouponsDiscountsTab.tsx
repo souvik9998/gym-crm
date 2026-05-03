@@ -16,7 +16,7 @@ import { logStaffActivity } from "@/hooks/useStaffActivityLog";
 import { useStaffAuth } from "@/contexts/StaffAuthContext";
 import {
   Plus, Search, Pencil, Trash2, Copy, TicketPercent,
-  AlertTriangle, ChevronDown, ChevronUp, RefreshCw,
+  AlertTriangle, ChevronDown, RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
 import { z } from "zod";
