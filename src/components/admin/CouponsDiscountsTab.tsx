@@ -261,6 +261,7 @@ export const CouponsDiscountsTab = () => {
       first_time_only: coupon.first_time_only,
       existing_members_only: coupon.existing_members_only,
       expired_members_only: coupon.expired_members_only,
+      applicable_event_ids: coupon.applicable_event_ids || [],
       notes: coupon.notes || "",
     });
     setShowForm(true);
