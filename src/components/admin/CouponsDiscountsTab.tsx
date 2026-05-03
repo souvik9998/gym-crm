@@ -85,6 +85,7 @@ const defaultForm: CouponForm = {
   first_time_only: false,
   existing_members_only: false,
   expired_members_only: false,
+  applicable_event_ids: [],
   notes: "",
 };
 
