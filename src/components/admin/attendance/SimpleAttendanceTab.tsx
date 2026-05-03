@@ -620,73 +620,18 @@ export const SimpleAttendanceTab = () => {
   return (
     <TooltipProvider delayDuration={150}>
     <div className="space-y-4 animate-fade-in">
-      {/* Desktop: Week Nav row + Filters row (separate to prevent overflow/clipping) */}
+      {/* Desktop: Compact date picker + filters */}
       <div className="hidden lg:block space-y-3">
-        {/* Week Navigation */}
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
-            <ChevronLeftIcon className="w-4 h-4" />
-          </Button>
-          <div ref={weekStripRef} className="flex items-center gap-1 overflow-x-auto scrollbar-hide flex-1 min-w-0">
-            {weekDates.map((d) => {
-              const isSelected = d === selectedDate;
-              const isToday = d === today;
-              const isFuture = d > today;
-              const isPast = d < today;
-              const hasData = weekLookup[d] && Object.keys(weekLookup[d]).length > 0;
-              return (
-                <button
-                  key={d}
-                  data-date={d}
-                  onClick={() => { if (!isFuture) setSelectedDate(d); }}
-                  disabled={isFuture}
-                  className={cn(
-                    "relative flex flex-col items-center rounded-xl shrink-0 px-2.5 py-1.5 min-w-[44px]",
-                    "transition-all duration-300 ease-out",
-                    "active:scale-90 hover:scale-105",
-                    isSelected
-                      ? "bg-primary text-primary-foreground shadow-lg shadow-primary/25 scale-105"
-                      : isToday
-                        ? "bg-primary/10 text-primary ring-1 ring-primary/30"
-                        : isFuture
-                          ? "opacity-20 cursor-not-allowed"
-                          : isPast
-                            ? "hover:bg-muted/80 text-muted-foreground hover:text-foreground cursor-pointer"
-                            : "hover:bg-muted text-muted-foreground"
-                  )}
-                >
-                  <span className="text-[10px] font-medium uppercase">{dayLabelFull(d)}</span>
-                  <span className={cn(
-                    "text-sm font-bold transition-transform duration-300",
-                    isSelected && "animate-[bounce_0.4s_ease-out]"
-                  )}>{formatDayNum(d)}</span>
-                  {/* Attendance indicator dot */}
-                  {hasData && !isSelected && (
-                    <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-green-500 animate-[fadeIn_0.3s_ease-out]" />
-                  )}
-                  {/* Today pulse ring */}
-                  {isToday && !isSelected && (
-                    <div className="absolute inset-0 rounded-xl ring-2 ring-primary/20 animate-pulse" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("next")} disabled={!canGoNext}>
-            <ChevronRightIcon className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Filters: time chips take full row width; trainer + slot dropdowns sit alongside */}
-        <div className="flex items-stretch gap-3">
-          <TimeBucketChips
-            value={timeFilter}
-            onChange={setTimeFilter}
-            options={bucketOptions}
-            compact
-            className="flex-1 min-w-0"
+        <div className="flex items-center gap-3 flex-wrap">
+          <DatePickerControl
+            value={selectedDate}
+            today={today}
+            onChange={setSelectedDate}
+            onPrev={() => navigateWeek("prev")}
+            onNext={() => navigateWeek("next")}
+            canGoNext={canGoNext}
           />
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 ml-auto shrink-0">
             <TrainerFilterDropdown
               value={selectedTrainerId}
               onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -698,6 +643,13 @@ export const SimpleAttendanceTab = () => {
             />
           </div>
         </div>
+        <TimeBucketChips
+          value={timeFilter}
+          onChange={setTimeFilter}
+          options={bucketOptions}
+          compact
+          className="w-full"
+        />
       </div>
 
       {timeFilter === "custom" && (
