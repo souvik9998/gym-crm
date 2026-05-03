@@ -65,6 +65,7 @@ export const AnimatedStatCard = memo(
     colorClass = "text-foreground",
     bgClass = "bg-primary/10",
     iconClass = "text-primary",
+    hoverBorderClass = "hover:border-primary/40",
     index = 0,
     loading = false,
     onClick,
