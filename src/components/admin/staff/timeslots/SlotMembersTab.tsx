@@ -704,12 +704,17 @@ export const SlotMembersTab = ({
   );
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h3 className="text-base font-semibold lg:text-lg">Slot Member Management</h3>
-        <p className="text-xs text-muted-foreground lg:text-sm">
-          Filter members by slot, time window, and trainer. Trainer names stay visible across the branch for quick assignment review.
-        </p>
+    <div className="space-y-4 animate-fade-in">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5">
+          <div className="rounded-lg bg-primary/10 p-2 text-primary">
+            <UserGroupIcon className="h-4 w-4" />
+          </div>
+          <h3 className="text-base font-semibold lg:text-lg">Slot Members</h3>
+        </div>
+        {(isSlotsFetching || isMembersFetching) && (
+          <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        )}
       </div>
 
       {isSlotsLoading ? (
@@ -719,20 +724,8 @@ export const SlotMembersTab = ({
         </>
       ) : (
         <>
-          <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65">
+          <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65 transition-shadow hover:shadow-md">
             <CardContent className="space-y-3 p-3 lg:space-y-4 lg:p-4">
-              <div className="flex items-center gap-2">
-                <div className="rounded-md bg-primary/10 p-1.5 text-primary lg:p-2">
-                  <FunnelIcon className="h-3.5 w-3.5 lg:h-4 lg:w-4" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs font-medium text-foreground lg:text-sm">Time-based filters</p>
-                    {isSlotsFetching && <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground lg:text-xs">Mix time, trainer, availability, and a specific slot when needed.</p>
-                </div>
-              </div>
 
               <div className="lg:hidden">
                 <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
