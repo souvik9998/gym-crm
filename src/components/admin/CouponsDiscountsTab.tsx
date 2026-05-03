@@ -320,6 +320,9 @@ export const CouponsDiscountsTab = () => {
         total_usage_limit: parsed.data.total_usage_limit === "" ? null : parsed.data.total_usage_limit,
         per_user_limit: parsed.data.per_user_limit,
         applicable_on: getApplicableOnFromTarget(parsed.data.coupon_target),
+        applicable_event_ids: parsed.data.coupon_target === "event" && form.applicable_event_ids.length > 0
+          ? form.applicable_event_ids
+          : null,
         first_time_only: parsed.data.first_time_only,
         existing_members_only: parsed.data.existing_members_only,
         expired_members_only: parsed.data.expired_members_only,
