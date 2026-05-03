@@ -1684,7 +1684,7 @@ export const MembersTable = ({
       ) : (
         /* Desktop Table Layout */
         <div className="rounded-lg border overflow-hidden">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-hidden">
             <Table className="min-w-[600px]">
               <TableHeader>
                 <TableRow className="bg-muted/50">
