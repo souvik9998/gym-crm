@@ -710,18 +710,17 @@ export const SimpleAttendanceTab = () => {
   return (
     <TooltipProvider delayDuration={150}>
     <div className="space-y-4 animate-fade-in">
-      {/* Desktop: Compact date picker + filters */}
+      {/* Desktop: Filters only (date picker moved into the table card header) */}
       <div className="hidden lg:block space-y-3">
         <div className="flex items-center gap-3 flex-wrap">
-          <DatePickerControl
-            value={selectedDate}
-            today={today}
-            onChange={setSelectedDate}
-            onPrev={() => navigateWeek("prev")}
-            onNext={() => navigateWeek("next")}
-            canGoNext={canGoNext}
+          <TimeBucketChips
+            value={timeFilter}
+            onChange={setTimeFilter}
+            options={bucketOptions}
+            compact
+            className="flex-1 min-w-0"
           />
-          <div className="flex items-center gap-2 ml-auto shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <TrainerFilterDropdown
               value={selectedTrainerId}
               onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }}
@@ -733,13 +732,6 @@ export const SimpleAttendanceTab = () => {
             />
           </div>
         </div>
-        <TimeBucketChips
-          value={timeFilter}
-          onChange={setTimeFilter}
-          options={bucketOptions}
-          compact
-          className="w-full"
-        />
       </div>
 
       {timeFilter === "custom" && (
