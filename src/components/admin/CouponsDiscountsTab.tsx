@@ -224,6 +224,19 @@ export const CouponsDiscountsTab = () => {
 
   useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
 
+  useEffect(() => {
+    if (!currentBranch) return;
+    (async () => {
+      const { data } = await supabase
+        .from("events")
+        .select("id, title, status")
+        .eq("branch_id", currentBranch.id)
+        .eq("status", "published")
+        .order("event_date", { ascending: false });
+      setEvents(data || []);
+    })();
+  }, [currentBranch]);
+
   const getCouponStatus = (c: Coupon): { label: string; variant: "default" | "secondary" | "destructive" | "outline" } => {
     if (!c.is_active) return { label: "Disabled", variant: "secondary" };
     const today = new Date().toISOString().split("T")[0];
