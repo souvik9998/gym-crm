@@ -21,7 +21,11 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ExclamationTriangleIcon,
+  CalendarDaysIcon,
 } from "@heroicons/react/24/outline";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format, parseISO, isAfter, startOfDay } from "date-fns";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { TrainerFilterDropdown } from "@/components/admin/TrainerFilterDropdown";
 import { TimeSlotFilterDropdown } from "@/components/admin/TimeSlotFilterDropdown";
