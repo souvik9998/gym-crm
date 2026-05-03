@@ -906,6 +906,16 @@ export const SimpleAttendanceTab = () => {
       ) : (
         /* Desktop: Table layout */
         <Card className="border border-border/40 shadow-sm overflow-hidden animate-fade-in">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 border-b border-border/40 bg-muted/20">
+            <DatePickerControl
+              value={selectedDate}
+              today={today}
+              onChange={setSelectedDate}
+              onPrev={() => navigateWeek("prev")}
+              onNext={() => navigateWeek("next")}
+              canGoNext={canGoNext}
+            />
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full" style={{ minWidth: `${230 + weekDates.length * 60 + 100}px` }}>
               <thead>
