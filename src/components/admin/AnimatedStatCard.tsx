@@ -109,20 +109,28 @@ export const AnimatedStatCard = memo(
         className={cn(
           "group relative overflow-hidden border border-border/60 shadow-sm h-full rounded-xl",
           "transition-all duration-300 ease-out will-change-transform",
-          "hover:-translate-y-1 hover:shadow-xl hover:border-primary/30",
+          "hover:-translate-y-1 hover:shadow-xl",
           "active:translate-y-0 active:scale-[0.98]",
           interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "animate-fade-in",
         )}
         style={{ animationDelay: `${index * 70}ms` }}
       >
+        {/* Colored hover border — uses the card's own accent */}
+        <div
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-0 rounded-xl border opacity-0 group-hover:opacity-100 transition-opacity duration-300",
+            bgClass.replace("/10", "/50").replace("bg-", "border-"),
+          )}
+        />
         {/* Soft radial glow follows the icon color */}
         <div
           aria-hidden
           className={cn(
             "pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full blur-2xl",
-            "opacity-0 group-hover:opacity-70 transition-opacity duration-500",
-            bgClass,
+            "opacity-0 group-hover:opacity-80 transition-opacity duration-500",
+            bgClass.replace("/10", "/40"),
           )}
         />
         {/* Diagonal sheen sweep on hover */}
