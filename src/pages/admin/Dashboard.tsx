@@ -383,11 +383,8 @@ const AdminDashboard = () => {
           </div>
         )}
 
-        {/* Stats Grid — render the real grid immediately. While stats are
-            still loading we show zeros (which will animate up to real values
-            once the query resolves). The route-level <Suspense> fallback
-            (DashboardFullSkeleton) is the ONLY skeleton the user ever sees
-            for this page — no internal skeleton swap. */}
+        {/* Stats Grid — keep cards in skeleton state until stats exist so
+            fallback zeros never flash while auth/branch/query state settles. */}
         <div className="animate-fade-in-soft">
           <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
             <StatCard 
@@ -395,7 +392,7 @@ const AdminDashboard = () => {
               label="Total Members" 
               icon={UsersIconSolid}
               index={0}
-              loading={statsLoading && !stats}
+              loading={!stats}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -405,7 +402,7 @@ const AdminDashboard = () => {
               bgClass="bg-success/10"
               iconClass="text-success"
               index={1}
-              loading={statsLoading && !stats}
+              loading={!stats}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -415,7 +412,7 @@ const AdminDashboard = () => {
               bgClass="bg-warning/10"
               iconClass="text-warning"
               index={2}
-              loading={statsLoading && !stats}
+              loading={!stats}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -425,7 +422,7 @@ const AdminDashboard = () => {
               bgClass="bg-accent/10"
               iconClass="text-accent"
               index={3}
-              loading={statsLoading && !stats}
+              loading={!stats}
             />
           </div>
         </div>
