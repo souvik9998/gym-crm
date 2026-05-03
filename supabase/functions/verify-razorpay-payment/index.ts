@@ -485,6 +485,7 @@ Deno.serve(async (req) => {
           isDailyPass: true,
           dailyPassUserId: dailyPassUser.id,
           subscriptionId: subscription.id,
+          paymentId: paymentData?.id,
           endDate: endDate.toISOString().split("T")[0],
         }),
         {
