@@ -817,57 +817,52 @@ export const SlotMembersTab = ({
           </Card>
 
           {selectedSlotData && !trainerPtId && (
-            <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 p-3 backdrop-blur-sm text-foreground">
+            <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-muted/40 p-3 backdrop-blur-sm text-foreground animate-fade-in">
               <ExclamationTriangleIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-              <p className="text-xs">
-                This trainer has no active Personal Trainer profile. Only members with an existing PT subscription under this trainer can be assigned here.
-              </p>
+              <p className="text-xs">No active PT profile for this trainer — only existing PT members can be assigned.</p>
             </div>
           )}
 
           {isMembersLoading ? (
             <RowsSkeleton />
           ) : (
-            <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65">
+            <Card className="border-border/60 bg-card/75 shadow-sm backdrop-blur-sm supports-[backdrop-filter]:bg-card/65 transition-shadow hover:shadow-md">
               <CardContent className="space-y-3 p-3 lg:p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium text-foreground">{selectedSlotData ? "Selected slot members" : "Members across filtered slots"}</p>
-                      {isMembersFetching && !isMembersLoading && <ArrowPathIcon className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
-                    </div>
+                  <div className="space-y-0.5">
+                    <p className="text-sm font-medium text-foreground">
+                      {selectedSlotData ? "Slot members" : "All members"}
+                    </p>
                     <p className="text-xs text-muted-foreground">
                       {selectedSlotData
-                        ? `${selectedSlotCount}/${selectedSlotData.capacity} assigned • ${selectedSlotData.trainer_name}`
-                        : "Compare members across matching slots and then drill into one slot for actions."}
+                        ? `${selectedSlotCount}/${selectedSlotData.capacity} • ${selectedSlotData.trainer_name}`
+                        : `${filteredMembers.length} across filtered slots`}
                     </p>
                   </div>
-                  <div className="flex w-full flex-wrap gap-2 lg:w-auto">
-                    <div className="relative w-full lg:w-auto">
-                      <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        placeholder="Search members, trainer, phone"
-                        value={searchFilter}
-                        onChange={(e) => setSearchFilter(e.target.value)}
-                        className="h-8 w-full border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm lg:w-56"
-                      />
-                    </div>
+                  <div className="relative w-full lg:w-auto">
+                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Search…"
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      className="h-8 w-full border-border/70 bg-background/70 pl-8 text-xs backdrop-blur-sm lg:w-56"
+                    />
                   </div>
                 </div>
 
-                {selectedSlotData && isSelectedSlotFull && <Badge variant="destructive">This slot is full</Badge>}
+                {selectedSlotData && isSelectedSlotFull && <Badge variant="destructive">Slot full</Badge>}
 
                 {!selectedSlotData && (
-                  <div className="rounded-lg border border-border/70 bg-background/45 p-3 text-xs text-muted-foreground backdrop-blur-sm">
-                    Select an exact slot when you need to assign, remove, or transfer members. Browsing stays enabled across all matching slots.
+                  <div className="rounded-lg border border-dashed border-border/70 bg-background/45 p-2.5 text-[11px] text-muted-foreground backdrop-blur-sm">
+                    Pick a slot to assign or remove members.
                   </div>
                 )}
 
                 {filteredMembers.length === 0 ? (
-                  <div className="py-8 text-center">
+                  <div className="py-8 text-center animate-fade-in">
                     <UserGroupIcon className="mx-auto mb-2 h-10 w-10 text-muted-foreground/50" />
-                    <p className="text-sm font-medium text-muted-foreground">No members found for the current filters</p>
-                    <p className="mt-1 text-xs text-muted-foreground/70">Try another time window, trainer, or slot.</p>
+                    <p className="text-sm font-medium text-muted-foreground">No members found</p>
+                    <p className="mt-1 text-xs text-muted-foreground/70">Try a different filter.</p>
                   </div>
                 ) : (
                   <TooltipProvider delayDuration={150}>
