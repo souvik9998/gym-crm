@@ -488,6 +488,18 @@ export const CouponsDiscountsTab = () => {
                 <SelectItem value="scheduled">Scheduled</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={targetFilter} onValueChange={setTargetFilter}>
+              <SelectTrigger className="w-[150px] h-9 text-sm rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="new_registration">New Registration</SelectItem>
+                <SelectItem value="renewal">Renewal</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+                <SelectItem value="pt_renewal">PT Renewal</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
