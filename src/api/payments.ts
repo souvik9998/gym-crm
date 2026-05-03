@@ -135,7 +135,8 @@ export async function fetchPaymentsPaginated(
       daily_pass_user_id,
       member:members(name, phone),
       daily_pass_user:daily_pass_users(name, phone),
-      event_registrations(name, phone, event:events(title))
+      event_registrations(name, phone, event:events(title)),
+      coupon_usage(discount_applied, coupon:coupons(code, discount_type, discount_value))
     `)
     .eq("branch_id", branchId)
     .order("created_at", { ascending: false })
