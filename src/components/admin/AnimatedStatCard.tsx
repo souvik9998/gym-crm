@@ -10,6 +10,7 @@ interface AnimatedStatCardProps {
   colorClass?: string;
   bgClass?: string;
   iconClass?: string;
+  hoverBorderClass?: string;
   index?: number;
   loading?: boolean;
   onClick?: () => void;
@@ -64,6 +65,7 @@ export const AnimatedStatCard = memo(
     colorClass = "text-foreground",
     bgClass = "bg-primary/10",
     iconClass = "text-primary",
+    hoverBorderClass = "hover:border-primary/40",
     index = 0,
     loading = false,
     onClick,
@@ -109,7 +111,8 @@ export const AnimatedStatCard = memo(
         className={cn(
           "group relative overflow-hidden border border-border/60 shadow-sm h-full rounded-xl",
           "transition-all duration-300 ease-out will-change-transform",
-          "hover:-translate-y-1 hover:shadow-xl hover:border-primary/30",
+          "hover:-translate-y-1 hover:shadow-xl",
+          hoverBorderClass,
           "active:translate-y-0 active:scale-[0.98]",
           interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "animate-fade-in",
