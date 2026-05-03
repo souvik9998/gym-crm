@@ -195,6 +195,7 @@ export const CouponsDiscountsTab = () => {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [targetFilter, setTargetFilter] = useState<string>("all");
   const [form, setForm] = useState<CouponForm>(defaultForm);
   const selectedTargetMeta = useMemo(
     () => couponTargetOptions.find((option) => option.value === form.coupon_target) ?? couponTargetOptions[0],
@@ -255,8 +256,16 @@ export const CouponsDiscountsTab = () => {
       if (statusFilter === "disabled" && status !== "disabled") return false;
       if (statusFilter === "scheduled" && status !== "scheduled") return false;
     }
+    if (targetFilter !== "all" && getCouponTarget(c.applicable_on) !== targetFilter) return false;
     return true;
   });
+
+  const targetBadgeStyle: Record<string, string> = {
+    new_registration: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+    renewal: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20",
+    event: "bg-purple-500/10 text-purple-600 border-purple-500/20",
+    pt_renewal: "bg-orange-500/10 text-orange-600 border-orange-500/20",
+  };
 
   const openEditForm = (coupon: Coupon) => {
     setEditingId(coupon.id);
@@ -477,6 +486,18 @@ export const CouponsDiscountsTab = () => {
                 <SelectItem value="expired">Expired</SelectItem>
                 <SelectItem value="disabled">Disabled</SelectItem>
                 <SelectItem value="scheduled">Scheduled</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={targetFilter} onValueChange={setTargetFilter}>
+              <SelectTrigger className="w-[150px] h-9 text-sm rounded-lg">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Types</SelectItem>
+                <SelectItem value="new_registration">New Registration</SelectItem>
+                <SelectItem value="renewal">Renewal</SelectItem>
+                <SelectItem value="event">Event</SelectItem>
+                <SelectItem value="pt_renewal">PT Renewal</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -741,9 +762,24 @@ export const CouponsDiscountsTab = () => {
                         <TicketPercent className="w-4 h-4 text-accent" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold font-mono tracking-wider">{coupon.code}</span>
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">{status.label}</Badge>
+                          {(() => {
+                            const t = getCouponTarget(coupon.applicable_on);
+                            return (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium ${targetBadgeStyle[t]}`}>
+                                {getCouponTargetLabel(t)}
+                              </span>
+                            );
+                          })()}
+                          {getCouponTarget(coupon.applicable_on) === "event" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">
+                              {coupon.applicable_event_ids && coupon.applicable_event_ids.length > 0
+                                ? `${coupon.applicable_event_ids.length} event${coupon.applicable_event_ids.length > 1 ? "s" : ""}`
+                                : "All events"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {discountLabel(coupon)}
@@ -811,11 +847,20 @@ export const CouponsDiscountsTab = () => {
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Per User</p>
                         <p className="font-medium">{coupon.per_user_limit}x</p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-muted/30 rounded-lg p-2 col-span-2 sm:col-span-1">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
                           {getCouponTargetLabel(getCouponTarget(coupon.applicable_on))}
                         </p>
+                        {getCouponTarget(coupon.applicable_on) === "event" && (
+                          <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                            {coupon.applicable_event_ids && coupon.applicable_event_ids.length > 0
+                              ? coupon.applicable_event_ids
+                                  .map(id => events.find(e => e.id === id)?.title || "Unknown event")
+                                  .join(", ")
+                              : "All published events"}
+                          </p>
+                        )}
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Conditions</p>
