@@ -320,26 +320,7 @@ export function SubscriptionPlanTab() {
               </div>
             )}
 
-            {disabledModules.length > 0 && (
-              <div className="space-y-1.5 lg:space-y-2">
-                <p className="text-[10px] lg:text-xs font-semibold uppercase tracking-wider text-muted-foreground">Not Included</p>
-                <div className="grid gap-1.5 lg:gap-2 grid-cols-1 sm:grid-cols-2">
-                  {disabledModules.map(([key]) => {
-                    const info = MODULE_LABELS[key];
-                    if (!info) return null;
-                    return (
-                      <div key={key} className="flex items-center gap-2 lg:gap-3 p-2 lg:p-3 rounded-lg bg-muted/50 border border-border opacity-60">
-                        <div className="w-1.5 h-1.5 lg:w-2 lg:h-2 rounded-full bg-muted-foreground flex-shrink-0" />
-                        <div>
-                          <p className="text-xs lg:text-sm font-medium">{info.label}</p>
-                          <p className="text-[10px] lg:text-xs text-muted-foreground hidden sm:block">{info.description}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {/* "Not Included" section intentionally removed */}
 
             {enabledModules.length === 0 && disabledModules.length === 0 && (
               <p className="text-xs lg:text-sm text-muted-foreground text-center py-3 lg:py-4">
