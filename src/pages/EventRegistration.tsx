@@ -543,6 +543,8 @@ export default function EventRegistration() {
                   razorpayOrderId: response.razorpay_order_id,
                   razorpayPaymentId: response.razorpay_payment_id,
                   razorpaySignature: response.razorpay_signature,
+                  couponId: appliedCoupon?.id || null,
+                  couponDiscount: appliedCoupon?.discountAmount || 0,
                 },
               }
             );
