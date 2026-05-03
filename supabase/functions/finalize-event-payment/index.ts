@@ -28,6 +28,8 @@ const FinalizeEventPaymentSchema = z.object({
   razorpayOrderId: z.string().min(1).max(100),
   razorpayPaymentId: z.string().min(1).max(100).optional(),
   razorpaySignature: z.string().min(1).max(200).optional(),
+  couponId: z.string().uuid().optional().nullable(),
+  couponDiscount: z.number().min(0).optional().nullable(),
 });
 
 function jsonResponse(body: unknown, status = 200) {
