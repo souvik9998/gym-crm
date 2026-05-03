@@ -184,6 +184,7 @@ export const CouponsDiscountsTab = () => {
   };
 
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [events, setEvents] = useState<{ id: string; title: string; status: string }[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
