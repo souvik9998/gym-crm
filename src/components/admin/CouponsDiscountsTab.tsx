@@ -762,9 +762,24 @@ export const CouponsDiscountsTab = () => {
                         <TicketPercent className="w-4 h-4 text-accent" />
                       </div>
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-sm font-bold font-mono tracking-wider">{coupon.code}</span>
                           <Badge variant={status.variant} className="text-[10px] px-1.5 py-0">{status.label}</Badge>
+                          {(() => {
+                            const t = getCouponTarget(coupon.applicable_on);
+                            return (
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded-md border font-medium ${targetBadgeStyle[t]}`}>
+                                {getCouponTargetLabel(t)}
+                              </span>
+                            );
+                          })()}
+                          {getCouponTarget(coupon.applicable_on) === "event" && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-medium">
+                              {coupon.applicable_event_ids && coupon.applicable_event_ids.length > 0
+                                ? `${coupon.applicable_event_ids.length} event${coupon.applicable_event_ids.length > 1 ? "s" : ""}`
+                                : "All events"}
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {discountLabel(coupon)}
