@@ -83,12 +83,11 @@ const Attendance = () => {
             {isSlotMode ? "Time slot based attendance" : "Track daily member attendance"}
           </p>
         </div>
-        <Badge variant="outline" className={cn(
-          "text-[9px] lg:text-xs shrink-0 transition-colors duration-300 px-1.5 py-0.5 lg:px-2.5 lg:py-0.5",
-          isSlotMode ? "border-primary/30 text-primary" : "border-muted-foreground/30"
-        )}>
-          {isSlotMode ? "Slot Mode" : "Simple Mode"}
-        </Badge>
+        {isSlotMode && (
+          <Badge variant="outline" className="text-[9px] lg:text-xs shrink-0 transition-colors duration-300 px-1.5 py-0.5 lg:px-2.5 lg:py-0.5 border-primary/30 text-primary">
+            Slot Mode
+          </Badge>
+        )}
       </div>
 
       <Tabs defaultValue={defaultTab} className="space-y-5 lg:space-y-6">
