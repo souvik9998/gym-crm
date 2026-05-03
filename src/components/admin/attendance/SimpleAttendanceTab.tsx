@@ -740,6 +740,16 @@ export const SimpleAttendanceTab = () => {
 
       {/* Mobile: Stacked layout */}
       <div className="lg:hidden space-y-3">
+        <DatePickerControl
+          value={selectedDate}
+          today={today}
+          onChange={setSelectedDate}
+          onPrev={() => navigateWeek("prev")}
+          onNext={() => navigateWeek("next")}
+          canGoNext={canGoNext}
+          compact
+        />
+        {false && (
         <div className="flex items-center gap-1.5 justify-start">
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigateWeek("prev")}>
             <ChevronLeftIcon className="w-4 h-4" />
