@@ -28,6 +28,8 @@ const FinalizeEventPaymentSchema = z.object({
   razorpayOrderId: z.string().min(1).max(100),
   razorpayPaymentId: z.string().min(1).max(100).optional(),
   razorpaySignature: z.string().min(1).max(200).optional(),
+  couponId: z.string().uuid().optional().nullable(),
+  couponDiscount: z.number().min(0).optional().nullable(),
 });
 
 function jsonResponse(body: unknown, status = 200) {
@@ -116,6 +118,8 @@ Deno.serve(async (req) => {
       razorpayOrderId,
       razorpayPaymentId,
       razorpaySignature,
+      couponId,
+      couponDiscount,
     } = parsed.data;
 
     const isMultiSelect = Array.isArray(selectedItems) && selectedItems.length > 0;
@@ -284,13 +288,61 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Record coupon usage if a coupon was applied
+    let appliedCouponCode: string | null = null;
+    if (couponId) {
+      try {
+        const { data: existingUsage } = await supabase
+          .from("coupon_usage")
+          .select("id")
+          .eq("payment_id", paymentRecordId)
+          .eq("coupon_id", couponId)
+          .maybeSingle();
+
+        if (!existingUsage) {
+          await supabase.from("coupon_usage").insert({
+            coupon_id: couponId,
+            member_id: memberId || null,
+            payment_id: paymentRecordId,
+            discount_applied: couponDiscount || 0,
+            branch_id: branchId,
+          });
+
+          const { data: couponRow } = await supabase
+            .from("coupons")
+            .select("usage_count, code")
+            .eq("id", couponId)
+            .maybeSingle();
+          if (couponRow) {
+            appliedCouponCode = couponRow.code;
+            await supabase
+              .from("coupons")
+              .update({ usage_count: (couponRow.usage_count || 0) + 1 })
+              .eq("id", couponId);
+          }
+        } else {
+          const { data: couponRow } = await supabase
+            .from("coupons")
+            .select("code")
+            .eq("id", couponId)
+            .maybeSingle();
+          appliedCouponCode = couponRow?.code || null;
+        }
+      } catch (couponErr) {
+        console.error("Coupon usage record (event payment) failed:", couponErr);
+      }
+    }
+
     // Ledger: record event registration income
     try {
       if (amount > 0) {
+        const couponSuffix = appliedCouponCode && couponDiscount
+          ? ` — Coupon ${appliedCouponCode} (-₹${couponDiscount})`
+          : "";
         await supabase.from("ledger_entries").insert({
           entry_type: "income",
           category: "event_registration",
-          description: `Event registration: ${name} (online payment)`,
+          description: `Event registration: ${name} (online payment)${couponSuffix}`,
           amount,
           entry_date: new Date().toISOString().split("T")[0],
           member_id: memberId || null,

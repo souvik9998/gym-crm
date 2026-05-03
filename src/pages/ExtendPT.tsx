@@ -353,13 +353,14 @@ const ExtendPT = () => {
               await supabase.from("coupon_usage").insert({
                 coupon_id: coupon.appliedCoupon.coupon.id,
                 member_id: data.memberId,
+                payment_id: data.paymentId || null,
                 discount_applied: couponDiscount,
                 branch_id: branchId,
               });
 
               const { data: couponData } = await supabase
                 .from("coupons")
-                .select("usage_count")
+                .select("usage_count, code")
                 .eq("id", coupon.appliedCoupon.coupon.id)
                 .single();
 
@@ -368,6 +369,27 @@ const ExtendPT = () => {
                   .from("coupons")
                   .update({ usage_count: couponData.usage_count + 1 })
                   .eq("id", coupon.appliedCoupon.coupon.id);
+
+                if (data.paymentId && couponDiscount) {
+                  try {
+                    const { data: ledgerRows } = await supabase
+                      .from("ledger_entries")
+                      .select("id, description")
+                      .eq("payment_id", data.paymentId);
+                    for (const row of ledgerRows || []) {
+                      if (!row.description?.includes("Coupon ")) {
+                        await supabase
+                          .from("ledger_entries")
+                          .update({
+                            description: `${row.description} — Coupon ${couponData.code} (-₹${couponDiscount})`,
+                          })
+                          .eq("id", row.id);
+                      }
+                    }
+                  } catch (ledgerErr) {
+                    console.error("Failed to update ledger with coupon info:", ledgerErr);
+                  }
+                }
               }
             } catch (couponError) {
               console.error("Failed to record PT coupon usage:", couponError);

@@ -34,6 +34,7 @@ interface RazorpayOptions {
     memberId?: string;
     dailyPassUserId?: string;
     subscriptionId: string;
+    paymentId?: string;
     endDate: string;
     isDailyPass?: boolean;
   }) => void;
@@ -204,6 +205,7 @@ export const useRazorpay = () => {
                 memberId: verifyData.memberId,
                 dailyPassUserId: verifyData.dailyPassUserId,
                 subscriptionId: verifyData.subscriptionId,
+                paymentId: verifyData.paymentId,
                 endDate: verifyData.endDate,
                 isDailyPass: verifyData.isDailyPass,
               });
