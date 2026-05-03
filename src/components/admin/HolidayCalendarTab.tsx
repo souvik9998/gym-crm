@@ -305,7 +305,8 @@ const HolidayCalendarTab = () => {
   // Fetch members when notify section becomes active
   useEffect(() => {
     const fetchNotifyMembers = async () => {
-      if (!isDialogOpen || !formNotify || !currentBranch?.id || notifyMembers.length > 0) return;
+      if ((!isDialogOpen || !formNotify) && !isNotifyDialogOpen) return;
+      if (!currentBranch?.id || notifyMembers.length > 0) return;
       setNotifyLoadingMembers(true);
       try {
         const { data, error } = await supabase
