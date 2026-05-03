@@ -742,7 +742,15 @@ export const CouponsDiscountsTab = () => {
             const status = getCouponStatus(coupon);
             const isExpanded = expandedId === coupon.id;
             return (
-              <Card key={coupon.id} className="border border-border/50 shadow-sm hover:shadow-md transition-shadow">
+              <Card
+                key={coupon.id}
+                className={`border shadow-sm hover:shadow-md transition-all cursor-pointer ${
+                  isExpanded
+                    ? "border-accent/40 shadow-md ring-1 ring-accent/20"
+                    : "border-border/50 hover:border-accent/30"
+                }`}
+                onClick={() => setExpandedId(isExpanded ? null : coupon.id)}
+              >
                 <CardContent className="p-3 lg:p-4">
                   {/* Delete confirm inline */}
                   {confirmDeleteId === coupon.id && (
