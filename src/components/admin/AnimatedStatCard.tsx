@@ -10,6 +10,7 @@ interface AnimatedStatCardProps {
   colorClass?: string;
   bgClass?: string;
   iconClass?: string;
+  hoverBorderClass?: string;
   index?: number;
   loading?: boolean;
   onClick?: () => void;
