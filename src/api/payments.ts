@@ -31,6 +31,12 @@ export interface PaymentWithDetails {
     phone: string;
     event_name: string;
   } | null;
+  coupon_usage?: {
+    code: string;
+    discount_applied: number;
+    discount_type: string;
+    discount_value: number;
+  } | null;
 }
 
 /**
