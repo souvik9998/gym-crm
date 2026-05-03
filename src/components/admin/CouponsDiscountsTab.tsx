@@ -66,6 +66,7 @@ type CouponForm = {
   first_time_only: boolean;
   existing_members_only: boolean;
   expired_members_only: boolean;
+  applicable_event_ids: string[];
   notes: string;
 };
 
