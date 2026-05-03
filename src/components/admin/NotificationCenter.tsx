@@ -438,16 +438,7 @@ export function NotificationCenter() {
                         <p className="text-[13px] font-semibold text-foreground leading-tight truncate">{n.title}</p>
                         <NotificationBadge type={n.type} />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">{n.description}</p>
-                      {(n.category === "member" || n.category === "expired_checkin") && (
-                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to send reminder →</p>
-                      )}
-                      {n.category === "event" && (
-                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to view event →</p>
-                      )}
-                      {n.category === "plan" && (
-                        <p className="text-[11px] text-primary mt-1.5 font-medium group-hover:underline">Tap to view options →</p>
-                      )}
+                      <p className="text-xs text-muted-foreground leading-snug line-clamp-1">{n.description}</p>
                     </div>
                     <ChevronRight className="w-4 h-4 text-muted-foreground/30 flex-shrink-0 mt-2.5 group-hover:text-foreground/60 group-hover:translate-x-0.5 transition-all duration-200" />
                   </button>
