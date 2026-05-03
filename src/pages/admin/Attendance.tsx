@@ -91,17 +91,23 @@ const Attendance = () => {
         </Badge>
       </div>
 
-      <Tabs defaultValue={defaultTab} className="space-y-3 lg:space-y-3">
-        {/* Tabs - scrollable pill style on mobile, left-aligned */}
+      <Tabs defaultValue={defaultTab} className="space-y-5 lg:space-y-6">
+        {/* Tabs - smooth pill style with subtle gradient on active */}
         <div className="-mx-1 px-1 lg:mx-0 lg:px-0 overflow-x-auto scrollbar-hide">
-          <TabsList className="bg-muted/50 rounded-lg p-0.5 lg:p-1 h-auto inline-flex w-auto lg:w-auto gap-0.5 justify-start">
+          <TabsList className="bg-muted/40 backdrop-blur-sm rounded-xl p-1 h-auto inline-flex w-auto gap-1 justify-start border border-border/40 shadow-sm">
             {tabs.map((tab) => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="gap-1 lg:gap-1.5 rounded-md text-[10px] lg:text-xs px-2 lg:px-3 py-1.5 lg:py-2 data-[state=active]:shadow-sm shrink-0 transition-all duration-200 data-[state=active]:scale-[1.02] whitespace-nowrap"
+                className={cn(
+                  "gap-1.5 lg:gap-2 rounded-lg text-[11px] lg:text-xs font-medium px-2.5 lg:px-3.5 py-1.5 lg:py-2 shrink-0 whitespace-nowrap",
+                  "transition-all duration-300 ease-out text-muted-foreground",
+                  "hover:text-foreground hover:bg-background/60",
+                  "data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md data-[state=active]:shadow-primary/5",
+                  "data-[state=active]:scale-[1.02]"
+                )}
               >
-                <tab.icon className="w-3 h-3 lg:w-4 lg:h-4" />
+                <tab.icon className="w-3.5 h-3.5 lg:w-4 lg:h-4 transition-transform duration-300" />
                 {tab.label}
               </TabsTrigger>
             ))}
