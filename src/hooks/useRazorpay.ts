@@ -205,6 +205,7 @@ export const useRazorpay = () => {
                 memberId: verifyData.memberId,
                 dailyPassUserId: verifyData.dailyPassUserId,
                 subscriptionId: verifyData.subscriptionId,
+                paymentId: verifyData.paymentId,
                 endDate: verifyData.endDate,
                 isDailyPass: verifyData.isDailyPass,
               });
