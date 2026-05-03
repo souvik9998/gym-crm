@@ -107,30 +107,28 @@ export const AnimatedStatCard = memo(
             : undefined
         }
         className={cn(
-          "group relative overflow-hidden border border-border/50 shadow-sm h-full",
-          "transition-all duration-300 ease-out",
-          "hover:-translate-y-0.5 hover:shadow-lg hover:border-border",
+          "group relative overflow-hidden border border-border/60 shadow-sm h-full rounded-xl",
+          "transition-all duration-300 ease-out will-change-transform",
+          "hover:-translate-y-1 hover:shadow-xl hover:border-primary/30",
           "active:translate-y-0 active:scale-[0.98]",
           interactive && "cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           "animate-fade-in",
         )}
         style={{ animationDelay: `${index * 70}ms` }}
       >
-        {/* Hover sheen */}
+        {/* Soft radial glow follows the icon color */}
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-500 group-hover:opacity-100",
-            "bg-gradient-to-br from-transparent via-foreground/[0.02] to-foreground/[0.05]",
+            "pointer-events-none absolute -top-12 -right-12 h-32 w-32 rounded-full blur-2xl",
+            "opacity-0 group-hover:opacity-70 transition-opacity duration-500",
+            bgClass,
           )}
         />
-        {/* Top accent bar */}
+        {/* Diagonal sheen sweep on hover */}
         <div
           aria-hidden
-          className={cn(
-            "absolute top-0 left-0 h-[2px] w-0 transition-all duration-500 ease-out group-hover:w-full",
-            bgClass.replace("/10", "/60"),
-          )}
+          className="pointer-events-none absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-[900ms] ease-out bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent"
         />
 
         {/* Mobile/Tablet layout */}
