@@ -763,6 +763,15 @@ export const PaymentHistory = ({ refreshKey }: PaymentHistoryProps) => {
                         <span className="ml-1 text-purple-600 dark:text-purple-400">· {getPaymentEventName(payment)}</span>
                       )}
                     </div>
+                    {payment.coupon_usage && (
+                      <Badge variant="outline" className="mt-1 text-[10px] py-0 px-1.5 gap-1 bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-900">
+                        <TicketPercent className="w-3 h-3" />
+                        <span className="font-mono">{payment.coupon_usage.code}</span>
+                        {payment.coupon_usage.discount_applied > 0 && (
+                          <span className="font-semibold">−₹{Number(payment.coupon_usage.discount_applied).toLocaleString("en-IN")}</span>
+                        )}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     {getPaymentTypeBadge(payment.payment_type)}
