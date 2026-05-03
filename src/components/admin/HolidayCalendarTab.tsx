@@ -30,6 +30,7 @@ import {
   ChatBubbleLeftEllipsisIcon,
   MagnifyingGlassIcon,
   UsersIcon,
+  PaperAirplaneIcon,
 } from "@heroicons/react/24/outline";
 import { logAdminActivity } from "@/hooks/useAdminActivityLog";
 import { TimePicker12h } from "@/components/ui/time-picker-12h";
@@ -116,6 +117,8 @@ const HolidayCalendarTab = () => {
   const [isSaving, setIsSaving] = useState(false);
   const whatsAppOverlay = useWhatsAppOverlay();
   const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+  const [isNotifyDialogOpen, setIsNotifyDialogOpen] = useState(false);
+  const [notifyHoliday, setNotifyHoliday] = useState<Holiday | null>(null);
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -302,7 +305,8 @@ const HolidayCalendarTab = () => {
   // Fetch members when notify section becomes active
   useEffect(() => {
     const fetchNotifyMembers = async () => {
-      if (!isDialogOpen || !formNotify || !currentBranch?.id || notifyMembers.length > 0) return;
+      if ((!isDialogOpen || !formNotify) && !isNotifyDialogOpen) return;
+      if (!currentBranch?.id || notifyMembers.length > 0) return;
       setNotifyLoadingMembers(true);
       try {
         const { data, error } = await supabase
@@ -331,7 +335,7 @@ const HolidayCalendarTab = () => {
       }
     };
     fetchNotifyMembers();
-  }, [isDialogOpen, formNotify, currentBranch?.id, notifyMembers.length]);
+  }, [isDialogOpen, formNotify, isNotifyDialogOpen, currentBranch?.id, notifyMembers.length]);
 
   const filteredNotifyMembers = useMemo(() => {
     const q = notifySearch.trim().toLowerCase();
@@ -392,6 +396,34 @@ const HolidayCalendarTab = () => {
     setNotifySelectedIds(new Set());
     setNotifySearch("");
     setIsDialogOpen(true);
+  };
+
+  const openNotifyDialog = (holiday: Holiday) => {
+    setNotifyHoliday(holiday);
+    setSelectedDate(parseISO(holiday.holiday_date));
+    setFormName(holiday.holiday_name);
+    setFormDescription(holiday.description || "");
+    setFormType(holiday.holiday_type);
+    setFormStartTime(holiday.half_day_start_time || "09:00");
+    setFormEndTime(holiday.half_day_end_time || "13:00");
+    setFormOpenTime("06:00");
+    setFormCloseTime("22:00");
+    // Pre-generate the message
+    const msg = generateWhatsAppMessage(
+      holiday.holiday_name,
+      parseISO(holiday.holiday_date),
+      holiday.holiday_type,
+      holiday.description || "",
+      "06:00",
+      "22:00",
+      holiday.half_day_start_time || "09:00",
+      holiday.half_day_end_time || "13:00",
+    );
+    setFormWhatsAppMessage(msg);
+    setNotifyAudience("all_active");
+    setNotifySelectedIds(new Set());
+    setNotifySearch("");
+    setIsNotifyDialogOpen(true);
   };
 
   const handleSave = async () => {
@@ -1019,6 +1051,16 @@ const HolidayCalendarTab = () => {
                     </div>
                     <div className="flex items-center gap-0.5 lg:gap-1 flex-shrink-0">
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 lg:h-8 px-2 lg:px-2.5 rounded-lg text-[10px] lg:text-xs gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700 hover:border-emerald-500/50"
+                        onClick={() => openNotifyDialog(holiday)}
+                        title="Send WhatsApp notification to members"
+                      >
+                        <PaperAirplaneIcon className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                        <span className="hidden sm:inline">Notify</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-foreground"
@@ -1373,6 +1415,182 @@ const HolidayCalendarTab = () => {
               ) : (
                 "Add Holiday"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Send Notification Dialog (for existing holidays) */}
+      <Dialog open={isNotifyDialogOpen} onOpenChange={setIsNotifyDialogOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PaperAirplaneIcon className="w-4 h-4 text-emerald-600" />
+              Send Holiday Notification
+            </DialogTitle>
+            <DialogDescription>
+              {notifyHoliday ? `${notifyHoliday.holiday_name} · ${format(parseISO(notifyHoliday.holiday_date), "EEE, dd MMM yyyy")}` : ""}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Send To</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {([
+                  { key: "all_active", label: "All Active", desc: "Active members" },
+                  { key: "all", label: "All Members", desc: "Everyone" },
+                  { key: "specific", label: "Specific", desc: "Pick members" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setNotifyAudience(opt.key)}
+                    className={cn(
+                      "p-2.5 rounded-xl border text-left transition-all duration-200",
+                      notifyAudience === opt.key
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border/40 hover:border-border hover:bg-muted/30"
+                    )}
+                  >
+                    <p className="font-medium text-xs lg:text-sm">{opt.label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">{opt.desc}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {notifyAudience === "specific" && (
+              <div className="space-y-2 animate-fade-in">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Select Members</Label>
+                  <div className="flex items-center gap-2 text-[11px]">
+                    {notifySelectedIds.size > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setNotifySelectedIds(new Set())}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        Clear ({notifySelectedIds.size})
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setNotifySelectedIds((prev) => {
+                          const next = new Set(prev);
+                          filteredNotifyMembers.forEach((m) => next.add(m.id));
+                          return next;
+                        });
+                      }}
+                      className="text-primary hover:underline"
+                    >
+                      Select all visible
+                    </button>
+                  </div>
+                </div>
+                <div className="relative">
+                  <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or phone…"
+                    value={notifySearch}
+                    onChange={(e) => setNotifySearch(e.target.value)}
+                    className="pl-9 h-9 text-sm"
+                  />
+                </div>
+                <div className="border border-border/40 rounded-xl overflow-hidden">
+                  <ScrollArea className="h-[200px]">
+                    {notifyLoadingMembers ? (
+                      <div className="p-3 space-y-2">
+                        {[0, 1, 2, 3].map((i) => (
+                          <div key={i} className="h-10 bg-muted/30 rounded-lg animate-pulse" />
+                        ))}
+                      </div>
+                    ) : filteredNotifyMembers.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center h-full py-8 text-center">
+                        <UsersIcon className="w-8 h-8 text-muted-foreground/40 mb-2" />
+                        <p className="text-sm text-muted-foreground">
+                          {notifySearch ? "No members match your search" : "No members found"}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border/30">
+                        {filteredNotifyMembers.map((m) => {
+                          const isSelected = notifySelectedIds.has(m.id);
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => toggleNotifyMember(m.id)}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-2.5 text-left transition-colors",
+                                isSelected ? "bg-primary/5" : "hover:bg-muted/40"
+                              )}
+                            >
+                              <Checkbox checked={isSelected} className="pointer-events-none" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium truncate">{m.name}</p>
+                                <p className="text-[11px] text-muted-foreground">{m.phone}</p>
+                              </div>
+                              {m.status === "active" && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-green-500/10 text-green-600">
+                                  Active
+                                </span>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </ScrollArea>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <UsersIcon className="w-3 h-3" />
+                  <span>
+                    {notifyTargetMemberIds.length} recipient{notifyTargetMemberIds.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="p-3 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                  <ChatBubbleLeftEllipsisIcon className="w-3.5 h-3.5" />
+                  Message Preview
+                </p>
+                <span className="text-[9px] text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">Editable</span>
+              </div>
+              <Textarea
+                value={formWhatsAppMessage}
+                onChange={(e) => setFormWhatsAppMessage(e.target.value)}
+                className="min-h-[160px] text-xs rounded-lg bg-background"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setIsNotifyDialogOpen(false)} className="rounded-xl" disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!formWhatsAppMessage.trim()) {
+                  toast.error("Message cannot be empty");
+                  return;
+                }
+                setIsSaving(true);
+                setIsNotifyDialogOpen(false);
+                try {
+                  await sendHolidayNotifications();
+                } finally {
+                  setIsSaving(false);
+                }
+              }}
+              disabled={isSaving || !formWhatsAppMessage.trim() || (notifyAudience === "specific" && notifySelectedIds.size === 0)}
+              className="gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700"
+            >
+              {isSaving ? <><ButtonSpinner /> Sending...</> : <><PaperAirplaneIcon className="w-4 h-4" /> Send Notification</>}
             </Button>
           </DialogFooter>
         </DialogContent>
