@@ -64,6 +64,7 @@ const StatCard = memo(({
   bgClass = "bg-primary/10",
   iconClass = "text-primary",
   index = 0,
+  loading = false,
 }: { 
   value: number | string; 
   label: string; 
@@ -72,14 +73,19 @@ const StatCard = memo(({
   bgClass?: string;
   iconClass?: string;
   index?: number;
+  loading?: boolean;
 }) => (
   <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
     {/* Mobile/Tablet layout - smaller, cleaner icon on right */}
     <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between gap-2">
       <div className="flex-1 min-w-0">
-        <p className={`text-base md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
-          {value}
-        </p>
+        {loading ? (
+          <Skeleton className="h-5 md:h-6 w-12 md:w-16 rounded-md" />
+        ) : (
+          <p className={`text-base md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
+            {value}
+          </p>
+        )}
         <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5 font-medium truncate">
           {label}
         </p>
@@ -93,7 +99,11 @@ const StatCard = memo(({
     <CardContent className="hidden lg:block lg:p-4">
       <div className="flex items-center justify-between">
         <div className="min-w-0 flex-1">
-          <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          {loading ? (
+            <Skeleton className="h-7 w-20 rounded-md" />
+          ) : (
+            <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+          )}
           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
         </div>
         <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
