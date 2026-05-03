@@ -1051,6 +1051,16 @@ const HolidayCalendarTab = () => {
                     </div>
                     <div className="flex items-center gap-0.5 lg:gap-1 flex-shrink-0">
                       <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 lg:h-8 px-2 lg:px-2.5 rounded-lg text-[10px] lg:text-xs gap-1 border-emerald-500/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/10 hover:text-emerald-700 hover:border-emerald-500/50"
+                        onClick={() => openNotifyDialog(holiday)}
+                        title="Send WhatsApp notification to members"
+                      >
+                        <PaperAirplaneIcon className="w-3 h-3 lg:w-3.5 lg:h-3.5" />
+                        <span className="hidden sm:inline">Notify</span>
+                      </Button>
+                      <Button
                         variant="ghost"
                         size="icon"
                         className="h-7 w-7 lg:h-8 lg:w-8 rounded-lg text-muted-foreground hover:text-foreground"
