@@ -819,31 +819,35 @@ export const CouponsDiscountsTab = () => {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       <Switch
                         checked={coupon.is_active}
                         onCheckedChange={() => handleToggle(coupon)}
                         disabled={togglingId === coupon.id}
                         className="scale-75"
                       />
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => { navigator.clipboard.writeText(coupon.code); toast.success("Code copied!"); }}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(coupon.code); toast.success("Code copied!"); }}>
                         <Copy className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => openEditForm(coupon)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { e.stopPropagation(); openEditForm(coupon); }}>
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={() => setConfirmDeleteId(confirmDeleteId === coupon.id ? null : coupon.id)}>
+                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive" onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(confirmDeleteId === coupon.id ? null : coupon.id); }}>
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
-                      <button onClick={() => setExpandedId(isExpanded ? null : coupon.id)} className="p-1">
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setExpandedId(isExpanded ? null : coupon.id); }}
+                        className="p-1 rounded-md hover:bg-muted transition-colors"
+                        aria-label={isExpanded ? "Collapse details" : "Expand details"}
+                      >
+                        <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform duration-300 ${isExpanded ? "rotate-180" : ""}`} />
                       </button>
                     </div>
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                      <div className="bg-muted/30 rounded-lg p-2">
+                    <div className="mt-3 pt-3 border-t border-border/40 grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs animate-in fade-in slide-in-from-top-1 duration-300">
+                      <div className="bg-gradient-to-br from-muted/40 to-muted/20 rounded-lg p-2.5 border border-border/30 hover:border-accent/30 transition-colors">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Type</p>
                         <p className="font-medium capitalize">{coupon.discount_type.replace("_", " ")}</p>
                       </div>
