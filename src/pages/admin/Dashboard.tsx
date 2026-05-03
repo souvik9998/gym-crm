@@ -55,66 +55,7 @@ import { useDashboardStore } from "@/stores/dashboardStore";
 
 import { RecommendedNextStep } from "@/components/guide/RecommendedNextStep";
 import { DashboardTour } from "@/components/guide/DashboardTour";
-
-// Memoized stat card component
-const StatCard = memo(({ 
-  value, 
-  label, 
-  icon: Icon, 
-  colorClass = "text-foreground",
-  bgClass = "bg-primary/10",
-  iconClass = "text-primary",
-  index = 0,
-  loading = false,
-}: { 
-  value: number | string; 
-  label: string; 
-  icon: React.ElementType;
-  colorClass?: string;
-  bgClass?: string;
-  iconClass?: string;
-  index?: number;
-  loading?: boolean;
-}) => (
-  <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
-    {/* Mobile/Tablet layout - smaller, cleaner icon on right */}
-    <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between gap-2">
-      <div className="flex-1 min-w-0">
-        {loading ? (
-          <Skeleton className="h-5 md:h-6 w-12 md:w-16 rounded-md" />
-        ) : (
-          <p className={`text-base md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
-            {value}
-          </p>
-        )}
-        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5 font-medium truncate">
-          {label}
-        </p>
-      </div>
-      <div className={`w-7 h-7 md:w-9 md:h-9 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} strokeWidth={1.75} />
-      </div>
-    </CardContent>
-
-    {/* Desktop layout */}
-    <CardContent className="hidden lg:block lg:p-4">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1">
-          {loading ? (
-            <Skeleton className="h-7 w-20 rounded-md" />
-          ) : (
-            <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
-          )}
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
-        </div>
-        <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-5 h-5 ${iconClass}`} strokeWidth={1.75} />
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-));
-StatCard.displayName = "StatCard";
+import { AnimatedStatCard } from "@/components/admin/AnimatedStatCard";
 
 
 const AdminDashboard = () => {
@@ -387,42 +328,46 @@ const AdminDashboard = () => {
             fallback zeros never flash while auth/branch/query state settles. */}
         <div className="animate-fade-in-soft">
           <div data-tour="stats-grid" className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-3.5 lg:gap-4">
-            <StatCard 
-              value={displayStats.totalMembers} 
-              label="Total Members" 
+            <AnimatedStatCard
+              value={displayStats.totalMembers}
+              label="Total Members"
               icon={UsersIconSolid}
               index={0}
               loading={!stats}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("all"); }}
             />
-            <StatCard 
-              value={displayStats.activeMembers} 
-              label="Active Members" 
+            <AnimatedStatCard
+              value={displayStats.activeMembers}
+              label="Active Members"
               icon={ArrowTrendingUpIconSolid}
               colorClass="text-success"
               bgClass="bg-success/10"
               iconClass="text-success"
               index={1}
               loading={!stats}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("active"); }}
             />
-            <StatCard 
-              value={displayStats.expiringSoon} 
-              label="Expiring Soon" 
+            <AnimatedStatCard
+              value={displayStats.expiringSoon}
+              label="Expiring Soon"
               icon={ExclamationTriangleIconSolid}
               colorClass="text-warning"
               bgClass="bg-warning/10"
               iconClass="text-warning"
               index={2}
               loading={!stats}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("expiring_soon"); }}
             />
-            <StatCard 
-              value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
-              label="This Month" 
+            <AnimatedStatCard
+              value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`}
+              label="This Month"
               icon={CreditCardIconSolid}
               colorClass="text-accent"
               bgClass="bg-accent/10"
               iconClass="text-accent"
               index={3}
               loading={!stats}
+              onClick={() => setActiveTab("payments")}
             />
           </div>
         </div>
