@@ -143,6 +143,12 @@
     scrollbar-gutter: auto;
   }
 
+  /* Keep the admin main scroll gutter reserved at all times so content
+     width never shifts when content height changes between pages/tabs. */
+  .admin-shell-root main {
+    scrollbar-gutter: stable;
+  }
+
   body {
     @apply bg-background text-foreground;
     font-family: 'Geist', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
