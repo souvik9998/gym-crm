@@ -34,6 +34,7 @@ interface RazorpayOptions {
     memberId?: string;
     dailyPassUserId?: string;
     subscriptionId: string;
+    paymentId?: string;
     endDate: string;
     isDailyPass?: boolean;
   }) => void;
