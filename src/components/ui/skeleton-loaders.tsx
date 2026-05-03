@@ -718,44 +718,16 @@ export const InlineSpinner = memo(({ size = "sm", className }: { size?: "sm" | "
 InlineSpinner.displayName = "InlineSpinner";
 
 /**
- * Modern brand loader: GymKloud logo with a soft halo,
- * a rotating conic ring, and a gentle breathing scale.
- * Used as the global page/route fallback.
+ * Full-page loader using the prix-clip ring pattern with a soft halo.
  */
 export const PageLoader = memo(() => (
-  <div className="flex flex-col items-center justify-center py-12 gap-3 animate-fade-in">
-    <div className="relative w-16 h-16">
-      {/* Soft outer halo */}
-      <span
-        aria-hidden
-        className="absolute -inset-3 rounded-full bg-primary/10 blur-xl animate-[spinner-pulse_1.8s_ease-in-out_infinite]"
-      />
-      {/* Rotating gradient ring */}
-      <span
-        aria-hidden
-        className="absolute inset-0 rounded-full p-[2px] animate-[spinner-orbit_1.6s_linear_infinite]"
-        style={{
-          background:
-            "conic-gradient(from 0deg, hsl(var(--primary)) 0deg, hsl(var(--primary)/0.0) 200deg, hsl(var(--primary)) 360deg)",
-          WebkitMask:
-            "linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)",
-          WebkitMaskComposite: "xor",
-          maskComposite: "exclude",
-        }}
-      />
-      {/* Logo with breathing pulse */}
-      <div className="absolute inset-[4px] rounded-full overflow-hidden bg-card border border-border/60 shadow-sm flex items-center justify-center animate-[spinner-pulse_1.8s_ease-in-out_infinite]">
-        <img
-          src="/logo.jpg"
-          alt="Loading"
-          className="w-full h-full object-cover"
-          draggable={false}
-        />
-      </div>
+  <div className="flex items-center justify-center py-10 animate-fade-in">
+    <div className="relative w-7 h-7 text-primary">
+      <span className="absolute inset-0 rounded-full bg-primary/10 blur-md animate-[spinner-pulse_1.6s_ease-in-out_infinite]" />
+      <span className="absolute inset-0 rounded-full animate-[spinner-orbit_1s_linear_infinite]">
+        <span className="block w-full h-full box-border rounded-full border-[3px] border-current animate-[prix-clip-fix_2s_linear_infinite]" />
+      </span>
     </div>
-    <p className="text-[11px] font-medium tracking-wide text-muted-foreground/80">
-      Loading<span className="inline-block animate-pulse">…</span>
-    </p>
   </div>
 ));
 PageLoader.displayName = "PageLoader";
