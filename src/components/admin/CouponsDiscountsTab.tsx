@@ -640,6 +640,48 @@ export const CouponsDiscountsTab = () => {
               )}
             </div>
 
+            {/* Applicable Events (only for event coupons) */}
+            {form.coupon_target === "event" && (
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Applicable Events
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Leave all unchecked to apply this coupon to <strong>all published events</strong>. Otherwise, select the specific event(s) this coupon is valid for.
+                </p>
+                {events.length === 0 ? (
+                  <p className="text-xs text-muted-foreground italic">No published events found in this branch.</p>
+                ) : (
+                  <div className="max-h-44 overflow-y-auto border border-border/60 rounded-lg p-2 space-y-1 bg-muted/20">
+                    {events.map(ev => {
+                      const checked = form.applicable_event_ids.includes(ev.id);
+                      return (
+                        <label key={ev.id} className="flex items-center gap-2 text-sm px-2 py-1.5 rounded-md hover:bg-accent/10 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={e => setForm(f => ({
+                              ...f,
+                              applicable_event_ids: e.target.checked
+                                ? [...f.applicable_event_ids, ev.id]
+                                : f.applicable_event_ids.filter(id => id !== ev.id),
+                            }))}
+                            className="w-4 h-4 rounded border-border accent-accent"
+                          />
+                          <span className="truncate">{ev.title}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                {form.applicable_event_ids.length > 0 && (
+                  <p className="text-[11px] text-accent">
+                    ✓ Restricted to {form.applicable_event_ids.length} selected event(s)
+                  </p>
+                )}
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Status</Label>
               <label className="flex items-center gap-2 text-sm">
