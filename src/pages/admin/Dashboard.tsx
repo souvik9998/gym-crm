@@ -436,6 +436,8 @@ const AdminDashboard = () => {
               icon={UsersIconSolid}
               index={0}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "all" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("all"); }}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -446,6 +448,8 @@ const AdminDashboard = () => {
               iconClass="text-success"
               index={1}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "active" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("active"); }}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -456,6 +460,8 @@ const AdminDashboard = () => {
               iconClass="text-warning"
               index={2}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "expiring_soon" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("expiring_soon"); }}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -466,6 +472,8 @@ const AdminDashboard = () => {
               iconClass="text-accent"
               index={3}
               loading={!stats}
+              active={activeTab === "payments"}
+              onClick={() => setActiveTab("payments")}
             />
           </div>
         </div>
