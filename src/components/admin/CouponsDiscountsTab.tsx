@@ -847,11 +847,20 @@ export const CouponsDiscountsTab = () => {
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Per User</p>
                         <p className="font-medium">{coupon.per_user_limit}x</p>
                       </div>
-                      <div className="bg-muted/30 rounded-lg p-2">
+                      <div className="bg-muted/30 rounded-lg p-2 col-span-2 sm:col-span-1">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Applies To</p>
                         <p className="font-medium">
                           {getCouponTargetLabel(getCouponTarget(coupon.applicable_on))}
                         </p>
+                        {getCouponTarget(coupon.applicable_on) === "event" && (
+                          <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                            {coupon.applicable_event_ids && coupon.applicable_event_ids.length > 0
+                              ? coupon.applicable_event_ids
+                                  .map(id => events.find(e => e.id === id)?.title || "Unknown event")
+                                  .join(", ")
+                              : "All published events"}
+                          </p>
+                        )}
                       </div>
                       <div className="bg-muted/30 rounded-lg p-2">
                         <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70 font-semibold mb-0.5">Conditions</p>
