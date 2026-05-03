@@ -878,7 +878,7 @@ export const SlotMembersTab = ({
                         return (
                           <div
                             key={`${member.slot_id}-${member.member_id}`}
-                            className="grid gap-2 rounded-lg border border-border/70 bg-background/70 p-2.5 backdrop-blur-sm md:gap-3 md:p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center"
+                            className="grid gap-2 rounded-lg border border-border/70 bg-background/70 p-2.5 backdrop-blur-sm transition-all duration-200 hover:border-primary/30 hover:bg-background/90 hover:shadow-sm md:gap-3 md:p-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)_auto] md:items-center animate-fade-in"
                           >
                             <div className="min-w-0">
                               <div className="flex flex-wrap items-center gap-1.5 md:gap-2">
