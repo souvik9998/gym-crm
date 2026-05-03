@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useMemo, memo, Fragment } from "react";
+import { cn } from "@/lib/utils";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -66,6 +67,8 @@ const StatCard = memo(({
   iconClass = "text-primary",
   index = 0,
   loading = false,
+  onClick,
+  active = false,
 }: { 
   value: number | string; 
   label: string; 
@@ -75,45 +78,85 @@ const StatCard = memo(({
   iconClass?: string;
   index?: number;
   loading?: boolean;
-}) => (
-  <Card className="hover-lift border-0 shadow-sm h-full lg:animate-none" style={{ animationDelay: `${index * 80}ms` }}>
-    {/* Mobile/Tablet layout - smaller, cleaner icon on right */}
-    <CardContent className="p-2.5 md:p-3 lg:hidden flex items-center justify-between gap-2">
-      <div className="flex-1 min-w-0">
-        {loading ? (
-          <Skeleton className="h-5 md:h-6 w-12 md:w-16 rounded-md" />
-        ) : (
-          <p className={`text-base md:text-xl font-bold ${colorClass} leading-tight break-words tracking-tight`}>
-            {value}
-          </p>
+  onClick?: () => void;
+  active?: boolean;
+}) => {
+  const interactive = !!onClick && !loading;
+  return (
+    <Card
+      onClick={interactive ? onClick : undefined}
+      role={interactive ? "button" : undefined}
+      tabIndex={interactive ? 0 : undefined}
+      onKeyDown={interactive ? (e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick?.();
+        }
+      } : undefined}
+      className={cn(
+        "group relative border-0 shadow-sm h-full overflow-hidden transition-all duration-300 ease-out lg:animate-none",
+        "before:absolute before:inset-0 before:bg-gradient-to-br before:from-transparent before:via-transparent before:to-transparent before:transition-opacity before:duration-300 before:opacity-0",
+        interactive && "cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:before:opacity-100 active:translate-y-0 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        active && "ring-2 ring-primary/40 shadow-md -translate-y-0.5"
+      )}
+      style={{ animationDelay: `${index * 80}ms` }}
+    >
+      {/* shimmer accent on hover */}
+      <span
+        aria-hidden
+        className={cn(
+          "pointer-events-none absolute -inset-x-2 -top-1 h-px opacity-0 transition-opacity duration-500",
+          "bg-gradient-to-r from-transparent via-foreground/20 to-transparent",
+          interactive && "group-hover:opacity-100"
         )}
-        <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5 font-medium truncate">
-          {label}
-        </p>
-      </div>
-      <div className={`w-7 h-7 md:w-9 md:h-9 ${bgClass} rounded-lg flex items-center justify-center flex-shrink-0`}>
-        <Icon className={`w-3.5 h-3.5 md:w-[18px] md:h-[18px] ${iconClass}`} strokeWidth={1.75} />
-      </div>
-    </CardContent>
+      />
 
-    {/* Desktop layout */}
-    <CardContent className="hidden lg:block lg:p-4">
-      <div className="flex items-center justify-between">
-        <div className="min-w-0 flex-1">
+      {/* Mobile/Tablet layout */}
+      <CardContent className="relative p-2.5 md:p-3 lg:hidden flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
           {loading ? (
-            <Skeleton className="h-7 w-20 rounded-md" />
+            <Skeleton className="h-5 md:h-6 w-12 md:w-16 rounded-md" />
           ) : (
-            <p className={`text-2xl font-bold ${colorClass} truncate`}>{value}</p>
+            <p className={cn("text-base md:text-xl font-bold leading-tight break-words tracking-tight transition-transform duration-300 group-hover:-translate-y-0.5", colorClass)}>
+              {value}
+            </p>
           )}
-          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
+          <p className="text-[10px] md:text-xs text-muted-foreground leading-tight mt-0.5 font-medium truncate">
+            {label}
+          </p>
         </div>
-        <div className={`p-2.5 ${bgClass} rounded-xl flex-shrink-0 ml-2`}>
-          <Icon className={`w-5 h-5 ${iconClass}`} strokeWidth={1.75} />
+        <div className={cn(
+          "w-7 h-7 md:w-9 md:h-9 rounded-lg flex items-center justify-center flex-shrink-0 transition-all duration-300",
+          bgClass,
+          interactive && "group-hover:scale-110 group-hover:rotate-3 group-active:scale-95"
+        )}>
+          <Icon className={cn("w-3.5 h-3.5 md:w-[18px] md:h-[18px]", iconClass)} strokeWidth={1.75} />
         </div>
-      </div>
-    </CardContent>
-  </Card>
-));
+      </CardContent>
+
+      {/* Desktop layout */}
+      <CardContent className="relative hidden lg:block lg:p-4">
+        <div className="flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            {loading ? (
+              <Skeleton className="h-7 w-20 rounded-md" />
+            ) : (
+              <p className={cn("text-2xl font-bold truncate transition-transform duration-300 group-hover:-translate-y-0.5", colorClass)}>{value}</p>
+            )}
+            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{label}</p>
+          </div>
+          <div className={cn(
+            "p-2.5 rounded-xl flex-shrink-0 ml-2 transition-all duration-300",
+            bgClass,
+            interactive && "group-hover:scale-110 group-hover:rotate-3 group-active:scale-95"
+          )}>
+            <Icon className={cn("w-5 h-5", iconClass)} strokeWidth={1.75} />
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+});
 StatCard.displayName = "StatCard";
 
 
@@ -393,6 +436,8 @@ const AdminDashboard = () => {
               icon={UsersIconSolid}
               index={0}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "all" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("all"); }}
             />
             <StatCard 
               value={displayStats.activeMembers} 
@@ -403,6 +448,8 @@ const AdminDashboard = () => {
               iconClass="text-success"
               index={1}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "active" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("active"); }}
             />
             <StatCard 
               value={displayStats.expiringSoon} 
@@ -413,6 +460,8 @@ const AdminDashboard = () => {
               iconClass="text-warning"
               index={2}
               loading={!stats}
+              active={activeTab === "members" && memberFilter === "expiring_soon" && !ptFilterActive}
+              onClick={() => { setActiveTab("members"); handleMemberFilterChange("expiring_soon"); }}
             />
             <StatCard 
               value={`₹${displayStats.monthlyRevenue.toLocaleString("en-IN")}`} 
@@ -423,6 +472,8 @@ const AdminDashboard = () => {
               iconClass="text-accent"
               index={3}
               loading={!stats}
+              active={activeTab === "payments"}
+              onClick={() => setActiveTab("payments")}
             />
           </div>
         </div>
