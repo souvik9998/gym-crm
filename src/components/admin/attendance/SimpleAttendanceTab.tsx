@@ -749,6 +749,39 @@ export const SimpleAttendanceTab = () => {
           canGoNext={canGoNext}
           compact
         />
+        <div className="flex flex-col gap-2">
+          {/* Desktop & tablet: full chip strip */}
+          <div className="hidden sm:block">
+            <TimeBucketChips
+              value={timeFilter}
+              onChange={setTimeFilter}
+              options={bucketOptions}
+              className="w-full"
+            />
+          </div>
+          {/* Mobile: 3-up dropdown row aligned with Trainer + Slot */}
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-2">
+            <div className="sm:hidden">
+              <TimeBucketDropdown value={timeFilter} onChange={setTimeFilter} options={bucketOptions} />
+            </div>
+            <TrainerFilterDropdown value={selectedTrainerId} onChange={(v) => { setSelectedTrainerId(v); setSelectedSlotId(null); }} compact />
+            <TimeSlotFilterDropdown value={selectedSlotId} onChange={setSelectedSlotId} trainerFilter={selectedTrainerId} compact />
+          </div>
+          {timeFilter === "custom" && (
+            <div className="grid gap-2 rounded-xl border border-border/50 bg-card/60 p-3 sm:grid-cols-2 animate-fade-in">
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">Start time</label>
+                <TimePicker12h value={customStart} onChange={setCustomStart} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[11px] font-medium text-muted-foreground">End time</label>
+                <TimePicker12h value={customEnd} onChange={setCustomEnd} />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Search + Quick Actions */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative min-w-0 flex-1">
