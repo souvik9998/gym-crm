@@ -719,6 +719,7 @@ Deno.serve(async (req) => {
           success: true,
           memberId: finalMemberId,
           subscriptionId: ptSub.id,
+          paymentId: paymentData?.id,
           endDate: endDateIso,
         }),
         {
