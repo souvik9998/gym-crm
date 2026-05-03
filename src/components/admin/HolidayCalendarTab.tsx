@@ -335,7 +335,7 @@ const HolidayCalendarTab = () => {
       }
     };
     fetchNotifyMembers();
-  }, [isDialogOpen, formNotify, currentBranch?.id, notifyMembers.length]);
+  }, [isDialogOpen, formNotify, isNotifyDialogOpen, currentBranch?.id, notifyMembers.length]);
 
   const filteredNotifyMembers = useMemo(() => {
     const q = notifySearch.trim().toLowerCase();
